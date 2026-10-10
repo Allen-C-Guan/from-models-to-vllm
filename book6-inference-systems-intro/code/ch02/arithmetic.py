@@ -93,7 +93,9 @@ def machine_rows():
             "machine": cfg["name"], "total_params": total,
             "act_params_per_token": total,          # 稠密：激活=总参
             "flops_per_token": 2 * total,
-            "weights_bf16_MB": round(total * 2 / 2**20, 1),
+            "flops_matrix_side": 2 * (total - cfg["vocab"] * cfg["d_model"]),   # 不含 embedding 查表（DESIGN-409M §3 口径侧）
+            "weights_bf16_MB": round(total * 2 / 1e6, 1),                        # 十进制 MB（正文口径）
+            "weights_bf16_MiB": round(total * 2 / 2**20, 1),
             "kv_elem_per_token": kv["elements"], "kv_B_per_token_bf16": kv["bytes"],
             "decode_floor_ms@1190": round(total * 2 / (BW_910B3 * 1e9) * 1e3, 3),
         })
@@ -103,7 +105,9 @@ def machine_rows():
         "total_params": 409_115_648,
         "act_params_per_token": TWOKNIFE_ACT_PARAMS,      # 168.9M（含 lm_head，DESIGN-409M §3）
         "flops_per_token": 2 * TWOKNIFE_ACT_PARAMS,
-        "weights_bf16_MB": round(409_115_648 * 2 / 2**20, 1),
+        "weights_bf16_MB": round(409_115_648 * 2 / 1e6, 1),
+        "weights_bf16_MiB": round(409_115_648 * 2 / 2**20, 1),
+        "weights_active_bf16_MB": round(TWOKNIFE_ACT_PARAMS * 2 / 1e6, 1),      # 下限分母=激活权重
         "kv_elem_per_token": TWOKNIFE_KV_PER_TOK,
         "kv_B_per_token_bf16": TWOKNIFE_KV_PER_TOK * 2,
         "decode_floor_ms@1190": round(TWOKNIFE_ACT_PARAMS * 2 / (BW_910B3 * 1e9) * 1e3, 3),
@@ -116,9 +120,13 @@ def no_engine_price():
     """「没有引擎的价格」：ch1 实测稳态 vs 带宽下限（notes/01 §五 定稿口径）。"""
     floor_ms = LLAMA215_TOTAL * 2 / (BW_910B3 * 1e9) * 1e3
     measured_ms = 25.15        # bf16 稳态（serve_baseline_base.json n0=512 档）
+    floor_fp32 = LLAMA215_TOTAL * 4 / (BW_910B3 * 1e9) * 1e3
+    measured_fp32 = 25.05      # fp32 稳态（同 JSON n0=512 档——同 dtype 相除，勿跨口径）
     return {"bandwidth_floor_ms": round(floor_ms, 3), "measured_ms": measured_ms,
-            "ratio": round(measured_ms / floor_ms, 1),
-            "gap_decomposition": "launch/算子调度开销（主导——25ms 与 dtype/n0 无关）+ 无批处理权重不摊薄 + fp32 路径"}
+            "ratio_bf16": round(measured_ms / floor_ms, 1),
+            "floor_fp32_ms": round(floor_fp32, 3), "measured_fp32_ms": measured_fp32,
+            "ratio_fp32": round(measured_fp32 / floor_fp32, 1),
+            "gap_decomposition": "launch/算子调度开销（主导——25ms 与 dtype/n0 无关）+ 无批处理权重不摊薄（+无 KV 的 O(n^2) 重算是基线口径自带）"}
 
 
 def mfu(flops_per_tok, tokens_per_s, peak=PEAK_910B3 * 1e12):
@@ -157,13 +165,16 @@ def main() -> None:
     with open(p, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=1)
 
+    l215m = out["flops_per_token_llama215"]
     print("[llama215 逐层账] ", {k: f"{v:,}" for k, v in l215.items()})
+    print(f"[2N 双口径] 全参 2×207,119,360={l215m['matmul_2N']:,} | 矩阵侧(去 embedding 查表) {l215m['matmul_2N'] - 2 * 32_768_000:,}——差 {(l215m['matmul_2N'] / (l215m['matmul_2N'] - 2 * 32_768_000) - 1) * 100:.1f}%")
     for r in out["machine_matrix"]:
         print(f"[{r['machine']:>22}] 总参 {r['total_params']:,} | 激活/token {r['act_params_per_token']:,} "
               f"| FLOP/token {r['flops_per_token']:,} | bf16 权重 {r['weights_bf16_MB']:.0f}MB "
               f"| KV {r['kv_elem_per_token']:,} 元素/token | decode 下限 {r['decode_floor_ms@1190']} ms")
     ne = out["no_engine_price"]
-    print(f"[没有引擎的价格] 实测 {ne['measured_ms']} ms vs 带宽下限 {ne['bandwidth_floor_ms']} ms ≈ {ne['ratio']}×")
+    print(f"[双口径价格] bf16: 实测 {ne['measured_ms']} ms / 下限 {ne['bandwidth_floor_ms']} ms ≈ {ne['ratio_bf16']}× | "
+          f"fp32: {ne['measured_fp32_ms']} / {ne['floor_fp32_ms']} ≈ {ne['ratio_fp32']}×（同 dtype 相除）")
     m = out["mfu_example"]
     print(f"[利用率] 算力 {m['achieved_TFLOPS']} TFLOPS=峰值 {m['vs_microbench_peak_269.3_pct']}% | 带宽 {m['bw_util_pct']}%（单请求裸跑连零头都用不上）")
     print(f"[产物] {p}")

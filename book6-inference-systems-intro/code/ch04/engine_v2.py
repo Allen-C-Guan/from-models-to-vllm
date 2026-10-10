@@ -1,14 +1,14 @@
 # engine_v2.py —— Book6 大项目 v2：连续批处理引擎（iteration 级调度 + KV cache）
-# 用途：ch4 §4.6 正身。对 v1 三宗罪的偿还：①iteration 级调度（每步重组活跃批——完成即出、
+# 用途：ch4 §4.5-4.6 正身。对 v1 三宗罪的偿还：①iteration 级调度（每步重组活跃批——完成即出、
 #   腾位即入，浪费位归零）；②KV cache（手写带缓存的步进前向——prefill 全段一次入缓存、
-#   decode 每步只算新 token，O(n²) 账清偿）；③selective batching 教学实现（注意力段各请求
-#   读写各自 KV、投影/FFN 段逐请求调用共享权重——拼批语义的合法最简形态；完全向量化批步进
-#   由 v3 的批化执行层承接，此处头注声明）。
+#   decode 每步只算新 token，O(n²) 账清偿）；③selective batching 教学实现：投影/FFN 段真拼批
+#   (B,1,C)；注意力段 pad+mask 向量化异长共存（各请求 K/V pad 到 n_max、softmax 掩掉 pad 位）
+#   ——Orca 正身（attention 按请求各自算）的合法向量化降档，头注声明版本契约。
 #   KV 存放=每请求一段连续预分配 buffer (L,2,h_kv,n_cap,hd)——v3 分页改造的对象。
 # 执行层复用 llama215 全部权重组件（HF 键位 q/k/v/o_proj、RMSNorm、SwiGLUMLP），
 #   RoPE 单位置现算（Book3 ch04 build_rope_cache）——「改装史写在 import 语句里」的引擎版。
 # 数值口径：与 llama215.forward 全量重算对拍（CPU fp32 allclose——见文件尾 self_test）。
-# 所属章节：Book6 ch4 §4.6；设计书=plan/Book6-推理系统导论.md ch4
+# 所属章节：Book6 ch4 §4.5-4.6；设计书=plan/Book6-推理系统导论.md ch4
 # 运行：cd <workspace> && source env.sh && ASCEND_RT_VISIBLE_DEVICES=<卡> \
 #      python code/Book6-推理系统导论/ch04/engine_v2.py [--max-batch 8 --smoke --out-name s1]
 # 产物：log/book6-ch04/engine_v2_<out-name>.json（吞吐/TPOT/显存/KV 账）

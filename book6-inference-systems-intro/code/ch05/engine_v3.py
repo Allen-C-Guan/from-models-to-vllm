@@ -9,6 +9,9 @@
 # 运行：cd <workspace> && source env.sh && ASCEND_RT_VISIBLE_DEVICES=<卡> \
 #      python code/Book6-推理系统导论/ch05/engine_v3.py [--block-size 32 --smoke --out-name s1]
 # 产物：log/book6-ch05/engine_v3_<out-name>.json（吞吐/KV 峰值/碎片账 v2v3 对照）
+#   --dump-tables：每请求块表逐行打印并写入 JSON（逻辑块序->物理块号——章稿「实物」底单）
+#   --admission N：分配器级准入对照（不加载模型，同种子同长度分布）：连续买断 n_cap∈{198,512,2048}
+#     vs 分页按需，同一池容量下各自驻留请求数与 KV 利用率（「碎片换并发」读数）
 import argparse
 import importlib.util
 import json
@@ -72,8 +75,8 @@ class BlockTable:
     def append_block(self, phys):
         self.blocks.append(phys)
 
-    def locate(self, pos):        # 逻辑 token 位置 -> (物理块号, slot)
-        return self.blocks[pos // self_bs], pos % BS_PLACEHOLDER
+    def locate(self, pool, pos):  # 逻辑 token 位置 -> (物理块号, slot)——(p÷b, p mod b)
+        return self.blocks[pos // pool.bs], pos % pool.bs
 
     def gather_layer(self, pool, li, n):
         """收集前 n 个逻辑 token 在第 li 层的 K：按块拼 (h_kv, n, hd)。"""
@@ -93,8 +96,7 @@ class BlockTable:
         return torch.cat(outs, dim=1)
 
     def write(self, pool, li, pos, k, v):        # 单 token 写入（k/v: (h_kv, hd)）
-        lb, slot = pos // pool.bs, pos % pool.bs
-        phys = self.blocks[lb]
+        phys, slot = self.locate(pool, pos)
         pool.blocks[phys, li, 0, :, slot] = k
         pool.blocks[phys, li, 1, :, slot] = v
 
@@ -200,6 +202,41 @@ class PagedStepper:
         return st.model.lm_head(st.m.norm(x))[:, 0]
 
 
+def admission_probe(a):
+    """分配器级准入对照（不加载模型）：同一池容量（4096 块）下，连续买断（三档 n_cap）
+    vs 分页按需各自能驻留多少条请求、KV 利用率多少。长度分布与主实验同法同种子。"""
+    g = torch.Generator().manual_seed(SEED)
+    lo, hi = a.max_span // 4, a.max_span
+    lens = (a.p_len + torch.randint(lo, hi + 1, (a.admission,), generator=g)).tolist()
+    cap_tokens = 4096 * a.block_size
+    rows = []
+    for label, need_fn in [
+        ("contig_n198", lambda n: 198),
+        ("contig_n512", lambda n: 512),
+        ("contig_n2048", lambda n: 2048),
+        ("paged", lambda n: (n + a.block_size - 1) // a.block_size * a.block_size),
+    ]:
+        used_slots, admitted = 0, 0
+        for n in lens:
+            need = need_fn(n)
+            if used_slots + need > cap_tokens:
+                break
+            used_slots += need
+            admitted += 1
+        real = sum(lens[:admitted])
+        util = round(real / cap_tokens * 100, 1)
+        rows.append(dict(policy=label, admitted=admitted, used_slots=used_slots,
+                         real_tokens=real, utilization_pct=util))
+        print(f"[admission] {label:12s} 驻留 {admitted:4d}/{a.admission} 条 | "
+              f"占用 {used_slots} 槽 | 实际 KV {real} tok | 利用率 {util}%")
+    p = os.path.join(OUT_DIR, "engine_v3_admission.json")
+    with open(p, "w", encoding="utf-8") as f:
+        json.dump(dict(capacity_tokens=cap_tokens, block_size=a.block_size,
+                       n_requests=len(lens), lens_head=lens[:8], rows=rows),
+                  f, ensure_ascii=False, indent=1)
+    print(f"[产物] {p}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="v3 分页 KV 引擎（BlockTable+BlockFreeList）")
     ap.add_argument("--max-batch", type=int, default=8)
@@ -208,9 +245,14 @@ def main() -> None:
     ap.add_argument("--block-size", type=int, default=32)
     ap.add_argument("--smoke", action="store_true")
     ap.add_argument("--out-name", default=None)
+    ap.add_argument("--dump-tables", action="store_true", help="打印并落档每请求块表")
+    ap.add_argument("--admission", type=int, default=0, help="分配器级准入对照的请求数（0=关；不加载模型）")
     a = ap.parse_args()
     name = a.out_name or ("smoke" if a.smoke else "base")
     os.makedirs(OUT_DIR, exist_ok=True)
+    if a.admission:
+        admission_probe(a)
+        return
     if a.smoke:
         a.max_batch, a.p_len, a.max_span, a.block_size = 4, 64, 16, 16
 
@@ -261,7 +303,6 @@ def main() -> None:
                 batch_in.append(pending.pop(0))
             tables = [BlockTable() for _ in batch_in]
             with torch.no_grad():
-                logits = pst.prefill_batch if False else None
                 outs = []
                 for i, rid in enumerate(batch_in):      # prefill 逐条（分页写入教学版）
                     outs.append(pst.prefill(prompts[rid].unsqueeze(0).to(device), tables[i]))
@@ -280,11 +321,18 @@ def main() -> None:
             s["last"] = logits[i]
             if s["produced"] >= max_new[rid]:
                 finished[rid] = dict(produced=s["produced"], n_final=s["table"].n,
-                                     blocks=len(s["table"].blocks))
+                                     blocks=len(s["table"].blocks),
+                                     table=list(s["table"].blocks))
                 s["table"].release_all(pool)             # 请求退出——物理块即刻归还
                 del active[rid]
     wall = time.perf_counter() - t0
     peak = torch.npu.max_memory_allocated() / 2**20 if device == "npu" else 0
+
+    if a.dump_tables:
+        print("[块表] 请求: 终长/块数/逻辑块序->物理块号")
+        for rid in sorted(finished):
+            fi = finished[rid]
+            print(f"  req{rid}: n_final={fi['n_final']} blocks={fi['blocks']} -> {fi['table']}")
 
     useful = sum(f["produced"] for f in finished.values())
     # 碎片账：v2 连续布局的理论预留（每请求 n_cap 买断） vs v3 实际占用（块数和）
@@ -304,6 +352,9 @@ def main() -> None:
         "kv_saving_pct": round((1 - v3_kv / v2_kv) * 100, 1),
         "fragment_note": f"v3 碎片=每请求最后一块内的空 slot（块大小 {a.block_size} 时最大 {a.block_size-1} token/请求）",
     }
+    if a.dump_tables:
+        out["block_tables"] = {f"req{r}": dict(n_final=finished[r]["n_final"],
+                                               table=finished[r]["table"]) for r in sorted(finished)}
     p = os.path.join(OUT_DIR, f"engine_v3_{name}.json")
     with open(p, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=1)

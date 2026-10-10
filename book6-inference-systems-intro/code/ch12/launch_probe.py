@@ -55,6 +55,37 @@ def main() -> None:
     t2 = torch.ones(1, device=dev)
     row_launch = bench(lambda: t1.add_(t2), n=2000, warmup=100)
 
+    # ②' 图执行对照（torch.npu.NPUGraph capture/replay）：同一条 8 语句链（profiler 实证每语句
+    #     拆 2 个设备算子=Muls+Adds 各 8，共 16 kernel）eager 逐个发射 vs 录一次后 replay
+    #     ——「N 次发射并成 1 次」的本机读数（每算子账按 16 计：21.4/1.9 µs）
+    row_graph = {}
+    try:
+        gs = torch.npu.Stream()
+        gp = torch.npu.graphs.graph_pool_handle()
+
+        def chain(x_):
+            y = x_
+            for _ in range(8):                    # 8 个小算子的直线链（无分支、静态形状）
+                y = y * 1.0001 + 0.001
+            return y
+
+        gx = torch.randn(8, 1024, device=dev, dtype=torch.bfloat16)
+        # 预热（ allocator 稳定后再录——图执行的红线：地址静态）
+        for _ in range(3):
+            chain(gx)
+        torch.npu.synchronize()
+        with torch.npu.stream(gs):
+            graph = torch.npu.NPUGraph()
+            with torch.npu.graph(graph, pool=gp):
+                chain(gx)
+        row_graph["eager_ms"] = round(bench(lambda: chain(gx), n=500, warmup=50), 4)
+        torch.npu.synchronize()
+        row_graph["replay_ms"] = round(bench(lambda: graph.replay(), n=500, warmup=50), 4)
+        row_graph["ratio"] = round(row_graph["eager_ms"] / max(1e-9, row_graph["replay_ms"]), 1)
+        row_graph["note"] = "同一条 8 算子链：eager 逐个发射 vs NPUGraph 录一次整链 replay（capture/replay 的本机正身读数）"
+    except Exception as e:
+        row_graph["probe"] = f"skip: {type(e).__name__}: {str(e)[:120]}"
+
     # ③ ACLGraph 实证锚（黑盒）：接口在位性与默认配置读数（机制不展开——红线）
     anchor = {}
     try:
@@ -76,6 +107,7 @@ def main() -> None:
                             ratio=round(row_small / max(1e-9, row_fused), 1),
                             note="同层数学两种发射法：拆成 4 个小算子串行发射 vs 一个融合算子——拆分税即发射税的层内缩影"),
         bare_launch_us=round(row_launch * 1e3, 2),
+        graph_vs_eager=row_graph,
         aclgraph_anchor=anchor,
         note="裸发射≈每 kernel 的固定成本下限；融合与图执行是把 N 次发射并成 1 次的两条路（前者编译期、后者运行期）",
     )

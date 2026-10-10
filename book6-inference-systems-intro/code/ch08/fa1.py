@@ -4,7 +4,7 @@
 #   ②CPU fp32 数值对拍 torch.sdpa（allclose 打印）——两实现 vs sdpa 三方一致；
 #   ③NPU bf16 wall-clock 对照（naive vs 分块 vs sdpa：中间量的访存账变成时延差——n 扫描）。
 # 数值口径：softmax 全程 fp32（对拍约定）；分块 tile 大小 --tile 可调。
-# 所属章节：Book6 ch8 §8.4；设计书=plan/Book6-推理系统导论.md ch8
+# 所属章节：Book6 ch8 §8.3；设计书=plan/Book6-推理系统导论.md ch8
 # 运行：cd <workspace> && source env.sh && ASCEND_RT_VISIBLE_DEVICES=<卡> \
 #      python code/Book6-推理系统导论/ch08/fa1.py [--n 1024 --tile 128 --bench-npu --out-name base]
 # 产物：log/book6-ch08/fa1_<out-name>.json（对拍 allclose + NPU 时延表）

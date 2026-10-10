@@ -54,12 +54,42 @@ def main() -> None:
     err_act_after = float((rtn_quant(Xs, bits=8) - Xs).abs().mean())
     scale_demo["act_quant_err_before_after"] = [round(err_act_before, 5), round(err_act_after, 5)]
 
-    # ③ 显存与带宽账（207M 口径）
+    # ③ GPTQ 式逐列量化+二阶补偿（toy Hessian）：与同口径 RTN 在**输出空间**对账
+    #    逐层重建目标 min ||(W'-W)X||_F：H = 2XX^T + 阻尼；逐列量化后按 H^{-1} 的列摊派误差给余列
+    #    （GPTQ §4 Algorithm 1 的单块版——固定顺序替代贪心、全行共用一个 H）
+    Xc = torch.randn(128, 96, generator=g) * 1.0        # 校准集：96 条伪样本的层输入
+    Xc[:, 3] = Xc[:, 3] * 8                              # 顺带带一个相关结构（离群输入通道）
+    H = 2 * Xc @ Xc.T
+    damp = 0.01 * H.diag().mean()
+    H += damp * torch.eye(128)
+    Hinv = torch.linalg.inv(H)
+    W0 = W.clone()                                       # 与 ① 同一只 W（带离群通道）
+    qmax = 2 ** 3                                        # 4bit 有符号档（15 档）用于拉开差距
+
+    def col_quant(w):                                    # per-输入通道（逐列）RTN
+        sc = w.abs().amax(dim=0, keepdim=True) / qmax
+        return torch.round(w / sc.clamp_min(1e-12)) * sc
+
+    Q_rtn = col_quant(W0.clone())                        # 臂一：RTN（逐列、无补偿）
+    Wg = W0.clone(); Qg = torch.zeros_like(Wg)
+    for j in range(Wg.shape[1]):                         # 臂二：GPTQ 单块版
+        Qg[:, j] = col_quant(Wg[:, j:j+1]).squeeze(1)
+        e = (Wg[:, j] - Qg[:, j]) / Hinv[j, j]           # 该列误差（Hinv 对角归一）
+        if j + 1 < Wg.shape[1]:                          # 摊派给余列（块内更新；128 列单块跑全量）
+            Wg[:, j+1:] -= e.unsqueeze(1) * Hinv[j, j+1:].unsqueeze(0)
+    def rel_out_err(Q):
+        return float(((Q - W0) @ Xc).norm() / (W0 @ Xc).norm())
+    gptq_demo = dict(
+        rtn_out_err=round(rel_out_err(Q_rtn), 4),
+        gptq_out_err=round(rel_out_err(Qg), 4),
+        note="输出空间相对误差 ||(W'-W)X||_F/||WX||_F——同一只 W（含离群通道）、同一 4bit 逐列量化器；GPTQ 的补偿按 Hinv 把误差摊给后续列（toy Hessian=2XX^T+1%阻尼，96 条校准样本）")
+
+    # ④ 显存与带宽账（207M 口径）
     N = 207_119_360
     mem = {f"w{b}": dict(MB=round(N * b / 8 / 1e6), decode_floor_ms=round(N * b / 8 / 1.19e12 * 1e3, 3))
            for b in (16, 8, 4)}
-    res = dict(rtn_errors=errs, scale_transfer=scale_demo, memory_bandwidth=mem,
-               note="误差相对口径：|Δ|均值/|x|均值；RTN 无校准集（对 GPTQ 式校准法的对照见正文）")
+    res = dict(rtn_errors=errs, scale_transfer=scale_demo, gptq_sim=gptq_demo, memory_bandwidth=mem,
+               note="误差相对口径：|Δ|均值/|x|均值（权重空间）；gptq_sim 为输出空间口径")
     p = os.path.join(out_dir, f"quant_sim_{a.out_name}.json")
     with open(p, "w", encoding="utf-8") as f:
         json.dump(res, f, ensure_ascii=False, indent=1)

@@ -1,10 +1,10 @@
 # engine_v1.py —— Book6 大项目 v1：naive 引擎（静态批 + 无 KV 全量重算——明知故犯的反面教材）
-# 用途：ch4 §4.5 的正身载体。三宗「罪」全部保留：①静态批（一批算到全批完成为止，先完成的
+# 用途：ch4 §4.4 的正身载体。三宗「罪」全部保留：①静态批（一批算到全批完成为止，先完成的
 #   请求空转陪跑——decode 期浪费 token 位的账由此可测）；②无 KV cache（每步全量重算整段序列，
 #   与 ch1 基线同口径——O(n²) 的账保留）；③逐批串行（批间无重叠）。v2 逐条偿还。
-#   workload：等长 prompt（tokens32k 同一起点切 128 token）+ 变长输出（8-64）——prefill 无 pad
+#   workload：等长 prompt（tokens32k 同一起点切 128 token）+ 变长输出（16-64）——prefill 无 pad
 #   干扰（教学焦点在 decode 空转），输出长短不齐制造静态批的经典浪费。
-# 所属章节：Book6 ch4 §4.5；设计书=plan/Book6-推理系统导论.md ch4 节列表（v1 契约）
+# 所属章节：Book6 ch4 §4.4；设计书=plan/Book6-推理系统导论.md ch4 节列表（v1 契约）
 # 运行：cd <workspace> && source env.sh && npu-smi info 挑卡后
 #      ASCEND_RT_VISIBLE_DEVICES=<卡> python code/Book6-推理系统导论/ch04/engine_v1.py \
 #        [--batch 8 --smoke --out-name s1]
