@@ -1,58 +1,79 @@
 # Book5《前沿混合架构：稀疏、线性注意力与 2026 旗舰》
 
-> 《从模型到 vLLM》丛书第五册 · 定稿于 2026-10 · 前置：Book1《Transformer 原典》+ Book2《预训练革命》+ Book3《现代开源骨架》+ Book4《规模与效率》
-> 论文锚定见各章证据等级标注（调研期 arXiv ID 勘误六组：lost-in-the-middle=2307.03172、FWP=2102.11174、LLaVA=2304.08485、NoPE=2305.19466、Kimi K3=2607.24653（双锚+本地 PDF 页码）、GLM-5 有论文 2602.15763；NSA 记号正字 cmp/slc/win）
+> 《从模型到 vLLM》丛书第 5 册 · 前置：Book4《规模与效率：MoE、MLA 与旗舰世代》——两刀机 409M 与 gpt-oss 精拆是本册直接底座（演化线：FFN 换 MoE + GQA 换 MLA → 注意力换 3:1 混合）· 论文锚：Kimi K3 官方技术报告 arXiv:2607.24653（「报告+本地 PDF 页码」双锚）· 实现对照锚 transformers 5.18.0 · 时间冻结于 2026 旗舰世代；实验口径 Apple Silicon（MPS），定稿历史事实
+
+## 这册书写什么
+
+上一册合上时留了一句重话：注意力本体还在 O(n²) 里等着动手术。本册把手术台转正：满注意力（full attention）从「唯一解」变成「选型题」，全册题眼一句话——满注意力不再是唯一解，但也没有唯一的替代。三把刀按「改动多少」排好次序：第一刀改视野，滑窗注意力（sliding-window attention，SWA）与注意力汇聚元（attention sink），两行 config 字段就够；第二刀改参与集合，从原生稀疏注意力（Native Sparse Attention，NSA）到 DeepSeek 稀疏注意力（DSA）的可学习稀疏，再到 DSV4 与 GLM-5 的 1M 上下文现场验收；第三刀换算子，线性注意力（linear attention）从 kernel、delta rule 一路走到门控 Delta 网络（Gated DeltaNet，GDN）。三刀过后，逐节精读 Kimi K3 的 47 页官方报告，看 Kimi Delta Attention（KDA）与门控多头潜在注意力（Gated MLA）如何装进 93 层机身，再把长上下文的外推与状态压缩两条哲学收拢成对表，拼出 2026 混合配方谱系。
+
+要造的东西血统写在 import 语句里：一台 43.9M 的 K3 玩具（[KDA×3, MLA]×2，把 Book3 的 RMSNorm/RoPE、Book4 的 MLA 与 DeepSeekMoE、本册的 KDA 四代组件装进 8 层机身），加选做的等总参三刀机 409M（[GDN×3, MLA]×3）——与 Book3 的 207M、Book4 的 409M 组成同预算三代架构对照链。三条路线各配一件与官方实现逐位对拍的 mini 件：GDN 双形态对拍达 1e-8 级，scaling 实测斜率 1.00 对 1.85——线性对二次的肉眼证据。
+
+带走三样：三条路线的选型判断力、一本分类型的 KV/状态账本——杀手数字是 K3 线性层的固定状态只有 MLA 层 1M 账的 0.75%——以及一套读厂商自报数字的五步法。时间冻结在 2026 旗舰世代，冻结线后的对象只入悬案框与脚注，2026 旗舰 benchmark 一律厂商自报明示。全册实验在一台 Apple Silicon 笔记本上完成（MPS 口径：模块级分钟、短训半小时，为定稿历史事实）。本册承接 Book4 的两刀机，引出 Book6 推理系统——新账本的服务侧读法，正是下一册的正题。
+
+## 为谁而写
+
+默认读者已读过 Book1-4：O(n²) 账与点积消融（Book1）、KV 账本与 GQA、外推链 PI/NTK/YaRN、config 逆向五步法（Book3）、MoE 全链与 MLA、FP8/MXFP4/MTP、两刀机 409M（Book4）。也适合正盯着 2026 旗舰（Kimi K3、DeepSeek-V4、GLM-5/5.2、Qwen3.5/Qwen3-Next）的一线工程师——本册的 config 逆向与厂商自报核验方法可直接搬用到下一个新机型。
+
+体量 12 章 ≈ 一学期课程。快速通道：ch01 立完地图后按路线直取 ch02/ch03/ch05 三把刀，再进 ch06-07 的 K3 报告精读，ch09 收谱系。全部实验单机可复现，模块级分钟、短训半小时。
 
 ## 目录
 
-- 导览：注意力躺在手术台上
-- 第 1 章 满注意力仍是唯一解吗——三笔旧账、三条路线与一本新账
-- 第 2 章 路线一：滑窗与汇聚——SWA 与 attention sink
-- 第 3 章 路线二：可学习稀疏——NSA 到 DSA
-- 第 4 章 路线二续：DSV4 与 GLM-5 的 1M 上下文
-- 第 5 章 路线三：线性注意力——kernel、delta rule 与 Gated DeltaNet
-- 第 6 章 Kimi K3 报告精读·上：注意力侧
-- 第 7 章 Kimi K3 报告精读·下：Stable LatentMoE、MXFP4 QAT 与原生多模态
-- 第 8 章 长上下文收束论：外推与状态压缩两条哲学
-- 第 9 章 2026 混合配方谱系与三刀机
-- 第 10 章 能力扩展专题：多模态与推理范式
-- 第 11 章 方法论：如何读厂商自报与预览版时代的模型
-- 第 12 章 收束：满注意力不再是唯一解
+| 章 | 标题 | 一句话导读 |
+|---|---|---|
+| 0 | [导览：注意力躺在手术台上](ch00-导览.md) | 注意力本体上手术台，三把刀排好队 |
+| 1 | [第 1 章 满注意力仍是唯一解吗——三笔旧账、三条路线与一本新账](ch01-三条突围路线.md) | 三笔旧账开题，三条路线立地图 |
+| 2 | [第 2 章 路线一：滑窗与汇聚——SWA 与 attention sink](ch02-滑窗与汇聚.md) | 第一刀裁视野：窄窗不塌靠 sink |
+| 3 | [第 3 章 路线二：可学习稀疏——NSA 到 DSA](ch03-可学习稀疏.md) | 第二刀：让「看谁」变成可学的 |
+| 4 | [第 4 章 路线二续：DSV4 与 GLM-5 的 1M 上下文](ch04-DSV4与GLM5.md) | 两台 1M 真机，证据等级实战场 |
+| 5 | [第 5 章 路线三：线性注意力——kernel、delta rule 与 Gated DeltaNet](ch05-线性注意力与GDN.md) | 第三刀换算子：固定状态上岗 |
+| 6 | [第 6 章 Kimi K3 报告精读·上：注意力侧](ch06-K3精读上.md) | K3 精读上：KDA 与门控 MLA |
+| 7 | [第 7 章 Kimi K3 报告精读·下：Stable LatentMoE、MXFP4 QAT 与原生多模态](ch07-K3精读下.md) | K3 精读下：三处方/QAT/多模态 |
+| 8 | [第 8 章 长上下文收束论：外推与状态压缩两条哲学](ch08-长上下文收束论.md) | 位置住址之争：外推对状态压缩 |
+| 9 | [第 9 章 2026 混合配方谱系与三刀机](ch09-混合配方谱系与三刀机.md) | 2026 谱系总表与选做三刀机 |
+| 10 | [第 10 章 能力扩展专题：多模态与推理范式](ch10-能力扩展专题.md) | 多模态三步曲与后训练链地图 |
+| 11 | [第 11 章 方法论：如何读厂商自报与预览版时代的模型](ch11-读厂商自报.md) | 读厂商自报数字的五步法 |
+| 12 | [第 12 章 收束：满注意力不再是唯一解](ch12-收束.md) | 判决：没有唯一解与唯一替代 |
 
-## 本册结构
+## 编年史
 
-- `chNN-*.md`——各章书稿（ch0 为导览，ch12 为收束章含册末术语表与十一钩+次级六钩总决算+B5-1~8 新钩地图）
-- `figures/`——全部插图（300dpi，自绘重制/自产，图注含来源与证据等级；K3 报告与 Kimi Linear 图源 CC BY-NC-ND 禁用，机制主图全部从零原创）
-- `code/chNN/`——**随书代码快照**（正文已升级为行级链接，可直接点击跳转）；`code/00-feasibility/` 为调研期探针底座；`code/ch09/DESIGN-3TO1.md` 为三刀机（3:1 选做整机）设计文档/重启手册（**凭它可在高算力机器直接重启全量训练**——作者决策：全量长训暂缓，本册交付整合代码+冒烟+整合短训+设计文档）
+本书涉及的内容，按提出时间从早到晚（时间口径：论文取 arXiv v1 提交月；无 arXiv 者取会议/官方发布月；模型/系统取官方首次发布月；时间列括注与表下注为双时点裁定与证据口径）：
 
-## 运行环境与依赖
+| 时间 | 名称 | 贡献 | 详见 |
+|---|---|---|---|
+| 2017-06 | Transformer（《Attention Is All You Need》，Vaswani et al.） | 以自注意力取代循环与卷积，序列建模全面并行、长程依赖一步直达，翻译质量比肩当时最优 | [ch01](ch01-三条突围路线.md) |
+| 2020-06 | 线性注意力（Linear Attention，Katharopoulos 等） | 用 kernel 特征映射替换 softmax，注意力矩阵无需显式成形，复杂度 O(n²) 降为 O(n)、解码像 RNN 常量更新 | [ch05](ch05-线性注意力与GDN.md) |
+| 2020-10 | ViT（Vision Transformer，Dosovitskiy 等） | 把图像切块当 token 喂进标准 Transformer，大数据下无需卷积归纳偏置，视觉全面转入注意力范式 | [ch10](ch10-能力扩展专题.md) |
+| 2021-02 | 快速权重编程器（Fast Weight Programmers，delta rule 正身） | 揭示线性注意力等价于快速权重编程，引入 delta rule 先删旧再写新，固定容量学会覆写、关联召回大增 | [ch05](ch05-线性注意力与GDN.md) |
+| 2021-02（v1 提交 02-26、滚入 3 月编号；模型 2021-01 先行） | CLIP（对比图文预训练） | 以对比学习对齐图文双编码器，4 亿网络图文对零标注预训练，零样本图像分类比肩全监督 | [ch10](ch10-能力扩展专题.md) |
+| 2021-10（v1 提交 10-31、滚入 11 月编号） | S4（结构化状态空间模型） | 以结构化参数化驯服状态空间模型，序列线性训练、推理常数状态，长程基准 LRA 全面领先 | [ch05](ch05-线性注意力与GDN.md) |
+| 2022-03 | InstructGPT（基于人类反馈的指令对齐） | 以 SFT+奖励模型+PPO 三步对齐，1.3B 模型的人类偏好胜率超 175B 原版，RLHF 成为后训练标配 | [ch10](ch10-能力扩展专题.md) |
+| 2023-04 | LLaVA（视觉指令微调） | 用 GPT-4 生成图文指令数据、只训一个投影层接上视觉编码器，开源多模态对话以最小改动起步 | [ch10](ch10-能力扩展专题.md) |
+| 2023-05 | DPO（直接偏好优化） | 把 RLHF 目标推成偏好对上的闭式损失，省去奖励模型与采样循环，偏好对齐像监督训练一样稳定 | [ch10](ch10-能力扩展专题.md) |
+| 2023-05 | NoPE（无位置编码） | 发现深层因果掩码自带隐式位置信息，位置编码可以整个拿掉，K3 全机无显式位置编码由此落地 | [ch06](ch06-K3精读上.md) |
+| 2023-07 | Lost in the Middle（长上下文中部迷失） | 以受控评测定位长上下文盲区：中段信息系统性丢失、性能呈 U 形，窗口大不等于用得好 | [ch02](ch02-滑窗与汇聚.md) |
+| 2023-09 | StreamingLLM（注意力汇聚元） | 抓住开头 token 充当注意力汇聚元（sink），保 sink 加滑窗即可无限流式解码，KV 不随长度爆显存 | [ch02](ch02-滑窗与汇聚.md) |
+| 2023-12 | Mamba（选择性状态空间模型） | 让状态空间参数随输入选择性变化，线性复杂度下匹配同规模 Transformer，长序列与 DNA 建模领先 | [ch05](ch05-线性注意力与GDN.md) |
+| 2023-12 | Zoology（MQAR 多查询关联召回基准） | 提出 MQAR 基准量化关联召回，暴露固定状态模型的检索短板，为注意力与 SSM 混搭提供选型起点 | [ch05](ch05-线性注意力与GDN.md) |
+| 2024-02 | Repeat After Me（固定状态模型复制能力负结论） | 以复制任务对照判边界：固定状态无法逐字复述长串，逐字拷贝必须回上下文查询，为混合架构背书 | [ch05](ch05-线性注意力与GDN.md) |
+| 2024-02 | DeepSeekMath（GRPO 组相对策略优化） | 把优势基线换成组内相对比较，免掉 critic 价值网络、以采样开销换显存与训练开销，数学推理的强化训练更轻 | [ch10](ch10-能力扩展专题.md) |
+| 2024-05 | Mamba-2（SSD 结构半可分对偶） | 以 SSD 对偶揭示状态空间与线性注意力的统一，参数化简化、状态可扩容，训练吞吐大增 | [ch05](ch05-线性注意力与GDN.md) |
+| 2024-06 | DeltaNet 并行化（WY 表示，序列维并行） | 以 WY 表示把 delta rule 改写成分块并行形式，序列维可训，线性注意力家族获得实用训练算法 | [ch05](ch05-线性注意力与GDN.md) |
+| 2024-06 | NVIDIA Mamba 混合语言模型实证（8B） | 在 8B 规模系统对照纯 Mamba 与混合配比，少量注意力层即补齐召回短板，混合配方首次定量成表 | [ch05](ch05-线性注意力与GDN.md) |
+| 2024-08（权重 2024-06 先行） | Gemma 2（滑窗与全局注意力 1:1 交替） | 把滑窗与全局注意力逐层 1:1 交替带进主流开源模型，窗口裁剪不伤长程，KV 账随窗宽钉死 | [ch02](ch02-滑窗与汇聚.md) |
+| 2024-12 | GDN（Gated DeltaNet） | 给 delta rule 装时间与内容双门控遗忘，配 chunkwise 并行训得动，召回较 Mamba-2 大幅回升、入列 Qwen3-Next | [ch05](ch05-线性注意力与GDN.md) |
+| 2025-01 | DeepSeek-R1（RLVR 纯强化学习激发推理） | 仅凭可验证奖励的强化学习就激发长链思考，反思与验证行为自发涌现，开源推理对齐闭源标杆 | [ch10](ch10-能力扩展专题.md) |
+| 2025-02 | NSA（原生稀疏注意力） | 让稀疏注意力从头端到端可训，粗粒度块选择对齐硬件，长上下文预训练与解码同时降本 | [ch03](ch03-可学习稀疏.md) |
+| 2025-03 | Gemma 3（5:1 滑窗混合架构） | 以 5:1 滑窗/全局混合加双轨 RoPE base，官方消融显示比例不敏感，128K 上下文低成本落地 | [ch02](ch02-滑窗与汇聚.md) |
+| 2025-08 | gpt-oss（20b/120b，OpenAI 开源推理模型） | 128 宽滑窗与稠密层 1:1 交替，配 MoE、MXFP4 与可调推理档位，120b 单张 80GB 显存卡可跑（厂商自报） | [ch02](ch02-滑窗与汇聚.md) |
+| 2025-09 | Qwen3-Next-80B-A3B（GDN 3:1 混合架构首发） | GDN 与全注意力 3:1 混合配 MoE 的首发量产机（80B 激活 3B），线性层正式进入旗舰序列 | [ch05](ch05-线性注意力与GDN.md) |
+| 2025-10 | Kimi Linear（KDA，Kimi Delta Attention） | 提出 KDA：遗忘门细到每键通道，48B 整机对照实验验证 3:1 配方，为 K3 旗舰铺好线性层 | [ch05](ch05-线性注意力与GDN.md) |
+| 2025-12（机制 2025-09 先行） | DSA（DeepSeek Sparse Attention，DeepSeek 稀疏注意力） | 以闪电索引器为每个 token 挑关键前缀，注意力计算降到 O(Lk)，长上下文成本大降并进入 DeepSeek 主力机型 | [ch03](ch03-可学习稀疏.md) |
+| 2026-02 | GLM-5（智谱 MoE 旗舰，MLA+DSA） | MLA 压缩与 DSA 稀疏全层组合的 744B/40B 激活旗舰，正式论文+开源权重，原生 198K、1M 版由 GLM-5.2 接棒 | [ch04](ch04-DSV4与GLM5.md) |
+| 2026-02 | Qwen3.5（阿里混合注意力家族，GDN 3:1） | GDN 3:1 家族化铺开（262K 原生/1.01M 托管双口径），config 与 checkpoint 互证的无论文机型样板 | [ch09](ch09-混合配方谱系与三刀机.md) |
+| 2026-03 | IndexCache（索引缓存复用，GLM-5.2 IndexShare 机制正身） | 测出相邻层稀疏索引高度重叠，让共享层复用全配层 top-k，索引器时延从反客为主砍回配角 | [ch04](ch04-DSV4与GLM5.md) |
+| 2026-03 | AttnRes（Attention Residuals，注意力残差） | 以注意力残差在深度维搭跨块通路，K3 按 12 层一块把它编进 93 层主干 | [ch06](ch06-K3精读上.md) |
+| 2026-04（v1 提交月；预览版，编号前缀 2606 特例） | DeepSeek-V4（Flash/Pro，CSA+HCA 预览版） | 以压缩稀疏 CSA 与重压缩 HCA 约 1:1 混编，「会选的层」与「看得粗的层」分层组合冲 1M | [ch04](ch04-DSV4与GLM5.md) |
+| 2026-06 | GLM-5.2（IndexShare 索引共享，1M 上下文版） | 把索引复用做成权重级承诺：57 个共享层物理删除索引器（534M 差值分毫不差），索引共享进 1M | [ch04](ch04-DSV4与GLM5.md) |
+| 2026-07 | Kimi K3（月之暗面旗舰，KDA+Gated MLA） | 69 层 KDA 配 24 层门控 MLA 的 3:1 旗舰（2.8T/104.2B 激活），线性层固定状态仅 MLA 层 1M 账的 0.75% | [ch06](ch06-K3精读上.md) |
 
-代码在写作与实验期运行于：Apple Silicon（MPS，bf16 autocast）+ CPU 数值对拍，Python 3.12 / PyTorch 2.13 / transformers 5.18 / numpy / sentencepiece / matplotlib。
-随书复现要点：
-1. 最简路径——在**本丛书书仓根**（from-models-to-vllm/，含 book3/book4 兄弟册）或配套工作区内运行：`source env.sh`（缓存红线：一切数据/权重产物落 log/，书仓零数据零权重零图像）；
-2. 跨册依赖=三候选 bootstrap（REPO_ROOT 三级上溯：工作区=workspace 根、书仓=书仓根）：ch05 gdn 件、ch06 K3 玩具、ch09 三刀机 import Book3 四插槽+Book4 两刀件+本册新件——「三刀改装史写在 import 语句里」；
-3. 语料复用前册遗产：模块实验 `log/book2-ch08/tokens.bin`（sp-8k）；整机档 `log/book3-ch10/tokens32k.bin`（sp-32k）；needle/recall 任务为固定种子合成语料；
-4. 实验档位（M5 Pro 实测）：秒级（对拍/性质验证）～ 分钟级（模块消融）～ 晚间档（recall 三臂 6000-10000 步/三刀机整合短训降档 100 步一窗）。
-
-## 说明
-
-- 纪律换血：正文知识冻结在 2026 旗舰世代（K3/DSV4/GLM-5/Qwen3.5 进正文主线）；推理系统侧概念（Book6+）只在七处白名单最小披露。
-- 本册全部关键实验数字为真实运行所得（M5 Pro，2026-10）：ch2 needle 四档（full 六位全 1.0 vs 滑窗臂二跳中继界 cliff）、ch3 块稀疏对拍 5.4e-07+账本公式本机复现、ch5 GDN 三方互证 <1e-6+scaling 斜率 1.00 vs 1.85、ch6 K3 玩具 43.9M（KDA 对拍 2.98e-08/门粒度双臂/g 分布分化实测）、ch7 三处方 ablation（QB 治负载塌缩 642→2.7 强复现）+QAT 双臂、ch9 三刀机 409,000,736 逐位 assert+等参 recall 三臂负结论如实报、ch10 LLaVA mini 340 图微调。
-- 大项目处置（作者决策 2026-10-05）：三刀机（两刀机 9 层注意力插槽换 GDN）全量长训暂缓；重启手册=code/ch09/DESIGN-3TO1.md；Book6 mini 引擎默认服务对象仍为 Book3 终态稠密+GQA 小模型（三刀机登记为 Book7-8 混合 KV 布局账本算例与选做扩展）。
-
-## 代码索引
-
-- `code/00-feasibility/`：01_probe_base.py、02_probe_swa_sink.py、03_probe_nsa.py、04_probe_gdn.py、05_probe_hybrid.py、06_probe_k3toy.py、07_probe_recall.py、08_probe_parity.py
-- `code/ch00/`：make_figures.py
-- `code/ch01/`：context_account.py、make_figures.py
-- `code/ch02/`：fig_ch02.py、gptoss_sinks_dump.py、needle_probe.py、swa_sink.py
-- `code/ch03/`：make_figures.py、nsa_block.py
-- `code/ch04/`：dsv4_glm5_reverse.py
-- `code/ch05/`：fig_ch05.py、gdn.py、qwen3next_mini.py
-- `code/ch06/`：k3_toy.py、kda.py、make_figures.py、train_k3toy.py
-- `code/ch07/`：fig_ch07.py、latentmoe_parts.py、qat_sim.py
-- `code/ch08/`：make_figures.py
-- `code/ch09/`：DESIGN-3TO1.md、fig_ch09.py、hybrid409.py、hybrid_recall.py、qwen35_consume.py、train_hybrid.py
-- `code/ch10/`：fig_ch10.py、llava_mini.py
-- `code/ch11/`：fig_ch11.py、params_audit.py
-- `code/ch12/`：make_figures.py
+（详见 = 本册讲解该对象的主讲章。表下注——① 时间列括注为「论文月为主行、先行时点括注」口径：Gemma 2 权重 2024-06 先行，DSA 机制已随 DSV3.2-Exp（2025-09 官方新闻）生产先行；② 月末提交边界按「v1 提交月」口径裁定：CLIP v1 提交 2021-02-26、S4 v1 提交 2021-10-31，均于月末截止后滚入次月编号（前缀 2103/2111），时间取提交月；③ Qwen3-Next（config/源码/官方 README 三方拼证）、Qwen3.5（config+checkpoint+模型卡；官方博客 SPA 不可直核，记家族首发月——家族首发=HF API createdAt 2026-02-16（397B-A17B），35B/27B/122B 开源批次 2026-02-24）、GLM-5.2（仅 config+官方博客）均无论文正身；④ DSV4 为预览版（论文自述 preview version）：v1 提交 2026-04-26（abs 直核、双核一致），编号前缀 2606 与提交月不一致系预览版特例；书内表格「2026-06 预览」为发布口径、照旧不回改，引用一律带「预览版」；⑤ 快速权重编程器正身 arXiv:2102.11174（2102.11194 为 Cantor 集论文，勘误在册）；Kimi Linear 仓内曾误记 2025-09，成稿已正为 2025-10；AttnRes 的 arXiv ID 由 K3 报告无编号引文检索补定；GLM-5 精读正身为 v2；K3 引用页码锚本地官方 PDF（生成于 2026-08-06，晚于 arXiv v1）；⑥ 2026 旗舰 benchmark 数字一律厂商自报，读法见第 11 章五步法。）

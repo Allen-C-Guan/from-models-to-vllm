@@ -1,58 +1,67 @@
 # Book4《规模与效率：MoE、MLA 与旗舰世代》
 
-> 《从模型到 vLLM》丛书第四册 · 定稿于 2026-10-04 · 前置：Book1《Transformer 原典》+ Book2《预训练革命》+ Book3《现代开源骨架》
-> 论文锚定见各章证据等级标注（调研期 arXiv ID 勘误四处：FP8 格式=2209.05433、QK-Norm=2010.04245、FP8-LM=2310.18313、ViT-22B=2302.05442；MLA 记号以 DSV2 v5 正字 d_c/d_c'/d_h^R）
+> 《从模型到 vLLM》丛书第 4 册 · 前置：Book3《现代开源骨架：LLaMA 与组件化时代》（207M 四插槽整机 + config 逆向五步法）· 论文版本锚：各章证据标注均锁定所引 arXiv 版本号 · 实现对照锚 transformers 5.18.0
+
+## 这册书写什么
+
+第三册收官时，读者手里已经有一台 207M 的 LLaMA 式整机；本册站上这副骨架，只动两个插槽：把前馈插槽换成专家群——混合专家（Mixture-of-Experts，MoE），把注意力插槽做低秩折叠——多头潜在注意力（Multi-head Latent Attention，MLA）。刀口还是插槽，用的还是 Book3 那张组件清单养出的判断力；要回答的问题只有一个：同一副骨架、只动两个插槽，「容量」与「每个 token 的成本」如何分开涨落。
+
+旅程分四段。第 1 章先立三口径账本——总参数、激活参数、每 token FLOPs——把效率悖论算成公式，此后一切设计都对着这本账说话；第 2-5 章动第一刀：从路由器、top-k 与容量的基本机构，进到负载崩塌现场与四代药方，Mixtral 与 DeepSeekMoE 两代开源实证；第 6-8 章动第二刀并补齐训练侧的件：MLA 把 KV 装进小箱子，FP8/MXFP4 给出低精度处方，多 token 预测（Multi-Token Prediction，MTP）充当第二目标；第 9-12 章拆机整合：DSV2→DSV3 的演进账与 409M 两刀机组装，gpt-oss 上演无论文旗舰的 config 逆向五步法主场，LatentMoE 支线收束。
+
+读者带走一台 409M 两刀机（参数逐位 409,115,648、KV 较 GQA 省 68.8%）、一份「重启即可执行」的全量长训设计文档，以及三本新账——双口径参数账、KV 元素账、预算账：它们是读旗舰发布新闻的解毒剂。训练侧的余量榨到这一步，瓶颈移交给注意力本身与推理系统，Book5《前沿混合架构》与 Book6《推理系统导论》从那里接棒。
+
+写作口径：时间冻结在旗舰世代 2025；本册为 Mac 定稿历史口径，实验读数一律出自 Apple Silicon/MPS（Book6 起丛书才切换昇腾 NPU 主线）。
+
+## 为谁而写
+
+面向具备 AI 基础的计算机本科生（线代/矩阵/反传/PyTorch 在手）。先修是完整读过 Book1-3：能徒手写出 2017 Transformer（注意力三角色、因果掩码、FFN 数据流），从零造出并训过 GPT-2 124M，再把它逐插槽改装成 LLaMA 式 207M。MoE 与 MLA 不假设见过——本册自包含，教到「能凭书稿画出它」为止。
+
+体量 13 章，约一学期课程。一台普通 Apple Silicon 笔记本可复现全部实验：模块实验分钟级、整机短训半小时级，一律 fast/full 两档。快速通道：先读第 0 章导览与第 12 章收束把握主线，再按「账本 → 第一刀 → 第二刀与补件 → 拆机整合」四段顺序进入。
 
 ## 目录
 
-- 导览：在好骨架上动两刀
-- 第 1 章 效率悖论——三本账分开记
-- 第 2 章 MoE 基本机构：路由器、top-k 与容量
-- 第 3 章 MoE 训练难题：负载、不稳定与辅助损失家族
-- 第 4 章 Mixtral：开源 MoE 组装术的实证
-- 第 5 章 DeepSeekMoE：细粒度、共享专家与免损失的均衡
-- 第 6 章 MLA：把 KV 装进小箱子
-- 第 7 章 训练侧工程：低精度处方与不 spike 的组件
-- 第 8 章 MTP：让模型多想一步棋
-- 第 9 章 DSV2→DSV3 整机拆解与两刀整合（大项目·设计文档版）
-- 第 10 章 旗舰整机拆解：gpt-oss 精拆与速览表
-- 第 11 章 LatentMoE 支线：把专家搬进更小的空间
-- 第 12 章 收束：训练侧效率的极限与瓶颈转移
+| 章 | 标题 | 一句话导读 |
+|---|---|---|
+| 0 | [导览：在好骨架上动两刀](ch00-导览.md) | 在好骨架上动两刀：MoE 与 MLA |
+| 1 | [第 1 章 效率悖论——三本账分开记](ch01-效率悖论.md) | 容量与通行费分成两本账 |
+| 2 | [第 2 章 MoE 基本机构：路由器、top-k 与容量](ch02-MoE基本机构.md) | 路由器、top-k 与容量的机构 |
+| 3 | [第 3 章 MoE 训练难题：负载、不稳定与辅助损失家族](ch03-MoE训练难题.md) | 负载崩塌现场与四代药方 |
+| 4 | [第 4 章 Mixtral：开源 MoE 组装术的实证](ch04-Mixtral.md) | 第一台全开源旗舰 MoE 验货 |
+| 5 | [第 5 章 DeepSeekMoE：细粒度、共享专家与免损失的均衡](ch05-DeepSeekMoE.md) | 细粒度、共享与免损失均衡 |
+| 6 | [第 6 章 MLA：把 KV 装进小箱子](ch06-MLA.md) | KV 联合低秩压缩与权重吸收 |
+| 7 | [第 7 章 训练侧工程：低精度处方与不 spike 的组件](ch07-训练侧工程.md) | 低精度处方与稳定化组件 |
+| 8 | [第 8 章 MTP：让模型多想一步棋](ch08-MTP.md) | 多 token 预测与规模反转 |
+| 9 | [第 9 章 DSV2→DSV3 整机拆解与两刀整合（大项目·设计文档版）](ch09-两刀整机与大项目.md) | 拆 DSV2/V3、装 409M 两刀机 |
+| 10 | [第 10 章 旗舰整机拆解：gpt-oss 精拆与速览表](ch10-旗舰拆解.md) | 无论文旗舰的五步法主场 |
+| 11 | [第 11 章 LatentMoE 支线：把专家搬进更小的空间](ch11-LatentMoE支线.md) | 专家搬进潜空间的支线 |
+| 12 | [第 12 章 收束：训练侧效率的极限与瓶颈转移](ch12-收束.md) | 简化史收口与瓶颈移交 |
 
-## 本册结构
+## 编年史
 
-- `chNN-*.md`——各章书稿（ch0 为导览，ch12 为收束章含册末术语表与 F/N/B3 十钩总决算+B4-1~7 新钩地图）
-- `figures/`——全部插图（300dpi，自绘重制/自产，图注含来源与证据等级）
-- `code/chNN/`——**随书代码快照**（正文已升级为行级链接，可直接点击跳转）；`code/00-feasibility/` 为调研期探针底座（含 moe_mla_slots 组件库正身与 parity_all 聚合对拍）；`code/ch09/DESIGN-409M.md` 为大项目设计文档/重启手册（**凭它可在高算力机器直接重启两刀机全量训练**——作者决策：全量长训暂缓，本册交付整合代码+冒烟+整合短训+设计文档）
+本书涉及的内容，按提出时间从早到晚（时间口径：论文取 arXiv v1 提交月；无 arXiv 者取会议/官方发布月；模型/系统取官方首次发布月；※ 者见表下注）：
 
-## 运行环境与依赖
+| 时间 | 名称 | 贡献 | 详见 |
+|---|---|---|---|
+| 2017-01 | 稀疏门控 MoE（Sparsely-Gated Mixture-of-Experts，Shazeer） | 用可训练门控在数千专家间稀疏选路，把参数容量与单 token 计算量解耦，LSTM 语言模型扩到千亿级参数仍保持损失下降 | [ch02](ch02-MoE基本机构.md) |
+| 2020-06 | GShard（条件计算规模化 MoE） | 把 MoE 装进 Transformer 前馈插槽，配辅助损失与随机路由稳住多卡负载，翻译模型扩到 600B 仍可训 | [ch02](ch02-MoE基本机构.md) |
+| 2020-10 | QK-Norm（查询键归一化，Henry 等；正身 arXiv:2010.04245，常误引 2002.04745） | 在注意力打分前对查询与键分别归一化，掐住 logits 尖峰这一训练发散源，日后成为旗舰模型的常驻稳定件 | [ch07](ch07-训练侧工程.md) |
+| 2021-01 | Switch Transformers（Top-1 稀疏 MoE；按 v1 月计，引用取 v3 JMLR 定稿版） | 选路砍到 top-1、每 token 只走一个专家，路由更简训练更稳，同算力下参数较同档 T5 放大约 35 倍 | [ch02](ch02-MoE基本机构.md) |
+| 2022-02 | ST-MoE（稳定可迁移稀疏专家，router z-loss 首发） | 首发对路由器 logits 规模直接加罚的 z-loss，驯服稀疏训练的不稳定，稀疏模型训得稳也迁移得好 | [ch03](ch03-MoE训练难题.md) |
+| 2022-09 | FP8 格式（E4M3/E5M2，Micikevicius 等；正身 arXiv:2209.05433，非 2209.12924） | 定下 E4M3/E5M2 两种 8 位浮点格式并给出数值与缩放的完整处方，让大模型显存与通信近乎减半而精度可守 | [ch07](ch07-训练侧工程.md) |
+| 2023-10（规范 2023-09 先行） | Microscaling 数据格式（MX/MXFP4，OCP 联盟） | 以 32 元素共享指数的块缩放格式统一低位数域，为 4 位训练推理立下硬件级标准，旗舰以 MXFP4 落地 | [ch07](ch07-训练侧工程.md) |
+| 2023-12（官方首发；论文 v1 2024-01） | Mixtral 8x7B（开源稀疏 MoE） | 在 LLaMA 式骨架上装 8 专家选 2 的标准机构，近 13B 激活参数打平 70B 级稠密旗舰 | [ch04](ch04-Mixtral.md) |
+| 2024-01 | DeepSeekMoE（细粒度专家分割+共享专家） | 把专家切细并另设常驻共享专家，令知识既专精又复用，以更小总参对齐同档 MoE 与稠密模型 | [ch05](ch05-DeepSeekMoE.md) |
+| 2024-04（论文 2024-07） | Llama 3（The Llama 3 Herd of Models） | 以训练稳定性为由在论文里公开拒绝 MoE 的稠密旗舰，拒绝书成 MoE 训练难题第一手证词，也为速览表立起稠密对标行 | [ch03](ch03-MoE训练难题.md) |
+| 2024-04 | MTP（多 token 预测，Gloeckle 等） | 让一次前向同时预测多个未来 token，以更密的自监督信号逼出深层表示，小模型更差、规模上去才反超，推理期可整体拆下 | [ch08](ch08-MTP.md) |
+| 2024-05 | MLA（多头潜在注意力，DeepSeek-V2；按 v1 月计，引用取 v5） | 把多头 KV 联合低秩压缩、推理时权重吸收进上投影，KV cache 大幅瘦身而效果不损，成 DeepSeek 招牌 | [ch06](ch06-MLA.md) |
+| 2024-08 | 免辅助损失负载均衡（auxiliary-loss-free，Wang 等） | 给路由分加只用于均衡、不进梯度的可学偏置，免掉辅助损失与主目标的互相拉扯，均衡与性能终得兼得 | [ch05](ch05-DeepSeekMoE.md) |
+| 2024-12 | DeepSeek-V3（671B MoE；v1 与模型发布同月，引用取 v2） | 细粒度 MoE、MLA、免损失均衡、FP8 集大成，671B 总参 37B 激活，预训练 2.788M H800 卡时 | [ch09](ch09-两刀整机与大项目.md) |
+| 2024-12※ | Muon 优化器（Newton-Schulz 正交化，Keller Jordan 等） | 对优化器更新做 Newton-Schulz 正交化、令参数更新方向彼此正交，小模型速刷训练纪录后经规模化验证进入工业配方 | [ch07](ch07-训练侧工程.md) |
+| 2025-02 | Moonlight（Muon 规模化验证，Moonshot） | 补权重衰减与更新幅度对齐两件工程件，与 AdamW 一比一对照验证 Muon 可上大规模预训练（约 2×，厂商自报） | [ch07](ch07-训练侧工程.md) |
+| 2025-07 | Kimi K2（MuonClip/QK-Clip；按 v1 月计，引用取 v2） | 以 MuonClip 治好万亿参数 MoE 的注意力尖峰，全程无 loss spike 完成大规模训练后开源 | [ch07](ch07-训练侧工程.md) |
+| 2025-08 | gpt-oss（20b/120b，OpenAI 开源推理模型） | 用 MXFP4 量化与稀疏 MoE 把 120B（激活约 5B）模型塞进单张 80G 显卡，除模型卡论文外无架构论文 | [ch10](ch10-旗舰拆解.md) |
+| 2025-12 | LatentMoE（Nemotron 3 潜空间专家路由） | 把专家选路搬进低秩潜空间、在压缩表示上完成稀疏分发，以更小的路由与通信开销续写 MoE 谱系 | [ch11](ch11-LatentMoE支线.md) |
 
-代码在写作与实验期运行于：Apple Silicon（MPS，bf16 autocast）+ CPU 数值对拍，Python 3.12 / PyTorch 2.13 / transformers 5.18 / numpy / sentencepiece。
-随书复现要点：
-1. 最简路径——在**本丛书书仓根**（from-models-to-vllm/，含 book3）或配套工作区内运行：`source env.sh`（缓存红线：一切数据/权重产物落 log/，书仓零数据零权重）；
-2. ch02/ch05/ch06 为插槽教学件（与 00-feasibility 正身逐位一致）；**ch09 两刀整机 import Book3 四插槽（ch02 RMSNorm/ch03 SwiGLU/ch04 RoPE）+ 本册 ch05 DeepSeekMoE + ch06 MLA**——脚本内 bootstrap 对工作区与书仓两种布局自适应（书仓布局解析到 `../book3-modern-open-source-skeleton/code/…`）；
-3. 语料复用前册遗产：模块实验 `log/book2-ch08/tokens.bin`（sp-8k）；整机档 `log/book3-ch10/tokens32k.bin`（sp-32k，56.3M token——`code/Book3…/ch10/prep_sp32k.py` 可重切）；
-4. 实验档位（M5 Pro 实测）：秒级（对拍/性质验证）～ 分钟级（模块消融 fast 300-1000 步）～ 晚间档（full 2000-5000 步/臂；ch9 整合短训 540/512 步双窗）。
+（详见 = 本册讲解该对象的主讲章。）
 
-## 说明
-
-- 纪律换血：正文知识冻结在旗舰世代 2025（DeepSeek 谱系+gpt-oss+Qwen3/Gemma3/K2）；2026 对象（K3/DSV4 等）只在边界注记与欠账框出现（白名单七处）；SWA/sink 只作 gpt-oss/Gemma 的 config 事实。
-- 本册全部关键实验数字为真实运行所得（M5 Pro，2026-10）：ch5 四臂消融（细粒度+共享最优、noaux 以 <0.05 nat 换掉损失项、signflip 反向对照）、ch6 MLA 显式 vs 吸收等价 9.3e-11 与多几何 KV 账本、ch8 挂 MTP 主支路反优 0.129 nat、ch9 两刀机（参数逐位 409,115,648/207,064,064；HF 对拍 7.6e-06；冒烟 10.5910≈ln 32000+d·σ²/2；整合短训双臂曲线）、ch10 gpt-oss 三方逐位 20,914,757,184+十机型速览表。
-- 大项目处置（作者决策 2026-10-04）：两刀机（FFN→MoE+GQA→MLA）全量长训暂缓；重启手册=code/ch09/DESIGN-409M.md（A100/H100 MFU 档位估算含内）；Book6 mini 引擎默认服务对象仍为 Book3 终态稠密+GQA 小模型（两刀机登记为账本算例与选做扩展）。
-
-## 代码索引
-
-- `code/00-feasibility/`：01_probe_a_base.py、02_probe_b_moe.py、03_probe_c_mla.py、04_probe_d_dense_vmoe.py、05_probe_e_fp8sim.py、06_probe_f_config.py、07_probe_g_parity.py、moe_mla_slots.py、parity_all.py
-- `code/ch00/`：make_fig0.py
-- `code/ch01/`：account.py、make_figures.py
-- `code/ch02/`：ablation_moe.py、fig_ch02.py、moe.py
-- `code/ch03/`：ablation_balance.py、make_figures.py
-- `code/ch04/`：fig_ch04.py、mixtral_infer.py、route_analysis.py
-- `code/ch05/`：ablation_granularity.py、deepseek_moe.py、fig_ch05.py
-- `code/ch06/`：fig_ch06.py、kv_probe_mla.py、mla.py
-- `code/ch07/`：fp8_sim.py、make_figures.py
-- `code/ch08/`：fig_ch08.py、mtp.py、smoke_mtp.py
-- `code/ch09/`：DESIGN-409M.md、fig_ch09.py、llama409.py、train_409.py
-- `code/ch10/`：gptoss_reverse.py
-- `code/ch11/`：fig_ch11.py
-- `code/ch12/`：make_figures.py
+※ 月份不可考/存疑：Muon 为社区配方级成果、无 arXiv，2024-12 取作者博客发布月（单源外查）；其实现更早随 modded-nanogpt speedrun 公开，但月份无权威锚。

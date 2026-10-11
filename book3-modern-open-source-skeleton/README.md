@@ -1,56 +1,69 @@
 # Book3《现代开源骨架：LLaMA 与组件化时代》
 
-> 《从模型到 vLLM》丛书第三册 · 定稿于 2026-10-04 · 前置：Book1《Transformer 原典》+ Book2《预训练革命》
-> 论文锚定见各章证据等级标注（RMSNorm=1910.07467/GQA=2305.13245/YaRN=2309.00071/Code Llama=2308.12950——四处调研期勘误；RoPE=2104.09864 v5；NTK-aware=社区配方级）
+> 《从模型到 vLLM》丛书第 3 册 · 前置：Book2《预训练革命：BERT、GPT 与 Scaling Laws》（Book1《Transformer 原典》为共同前置）· 关键锚：LLaMA 1 论文 arXiv:2302.13971（v1 2023-02-27，唯一版本）；时间冻结 2024-07（Llama 3 时代，2025 年的 Llama 4 仅以第 9 章 config 白名单身份现身）；实验口径为一台 MacBook（MPS/CPU），属丛书定稿历史事实
+
+## 这册书写什么
+
+八册旅程行至第三站：Book1 教你 Transformer 这台机器本身是什么，Book2 教这台机器怎么被语料与算力喂饱，本册回答下一问——从你亲手造出的那台 GPT-2 124M，到今天的开源模型，中间隔着哪些改动。时钟从 2023-02-27 LLaMA 1 发布起算：它没有发明任何一个零件（RMSNorm（均方根层归一化）是 2019 年的、SwiGLU（门控前馈）是 2020 年的、RoPE（旋转位置编码）是 2021 年的），却第一次把三件别人的零件组装进一个公开权重的大模型。造模型这件事，从此从「发明架构」变成「组装架构」——这就是书名副题「组件化时代」的确切含义。
+
+全书是一间改装车间：Transformer 骨架一寸不动，四个插槽——归一化、前馈、位置、注意力——逐一换上新款零件，外加出入口解绑（untied embeddings）一刀，改装史最终直接写在第 10 章的 import 语句里。终态是一台参数逐位锁死 207,119,360 的 LLaMA 式 207M：冒烟点火、半小时整合短训、与 TinyLlama 1.1B 真权重对拍，另附一份重启即可执行的设计文档——全量长训不在本机跑，10.3 天与 98.8 年两档预算在文档里自证。
+
+每一刀都配单变量消融，给换装标价：拆回 SwiGLU 旧件退化 0.195 nat，拆回 RoPE 旧件退化 0.411 nat，GQA（分组查询注意力）则是花 0.109 nat 买下 KV 显存账的大头削减。第二招牌实验是「免重训租窗」：一个 2k 窗模型外推时 +1.14 nat 的软墙，被位置插值（PI）、NTK-aware 缩放（NTK＝神经正切核）、YaRN 三代配方依次压到 +0.44、+0.28、+0.24——一条工程线的三代进化，在一张对照表里走完。
+
+读完带走三样资产：组件选型的判断力（哪类零件动的是哪本账）、一本算到字节的 KV 显存账、一门「无论文读 config」的模型逆向手艺。时间冻结在 2024-07（Llama 3 时代），Llama 4 只在第 9 章以 config 逆向案例的白名单身份出现；全部实验数字来自一台普通 MacBook（MPS 与 CPU）——本册定稿时的历史口径。
+
+## 为谁而写
+
+**读者画像**：具备 AI 基础的本科生或自学者——线代、矩阵、微积分、反向传播与 PyTorch 已在假定之列；本册数学工具只需要泰勒展开，复数与欧拉公式在第 4 章现补一堂最小课，不设暗门槛。
+
+**先修**：显式锚定两册——Book1 第 3-7 章（多头注意力与三种角色、因果掩码、post-LN 数据流、正弦位置编码、参数账本）；Book2 第 2、4、8、9、10-11 章（分词器与词表、GPT-2 四手术、Scaling Laws、工程账本、GPT-2 124M 从零实现与训练）。
+
+**体量与读法**：12 章约一学期课程；一条代码线单向依赖，后面的章只引用前面的章——读到任何一站，手里都是一台当下完整、能跑的机器；全部实验一台普通笔记本可复现，模块实验分 fast/full 两档（分钟级到半小时级），计时实验独占窗口。全书四段旅程：为什么（第 1 章）→ 逐插槽改装（第 2-6 章）→ 工程与谱系（第 7-9 章）→ 整合与收束（第 10-11 章）；迷路时回第 0 章的旅程地图与表 0.1 契约表。
 
 ## 目录
 
-- 导览：把这台机器升级到今天
-- 第 1 章 开源的最优配方：更少参数、更多数据
-- 第 2 章 pre-RMSNorm：归一化零件的演化
-- 第 3 章 SwiGLU：前馈插槽的门控化
-- 第 4 章 RoPE 深剖：把位置转进注意力里
-- 第 5 章 untied 与词表：出入口的账
-- 第 6 章 KV cache 正式登场：从 MQA 到 GQA
-- 第 7 章 长上下文工程线：外推的三代配方
-- 第 8 章 LLaMA1/2/3：组装与代际
-- 第 9 章 无论文模型怎么读：Llama 4 与线终局
-- 第 10 章 大项目：单轨整机整合（设计文档版）
-- 第 11 章 收束：组件化时代的判断力
+| 章 | 标题 | 一句话导读 |
+|---|---|---|
+| 0 | [导览：把这台机器升级到今天](ch00-导览.md) | 改装总图：五刀四段与三条线索 |
+| 1 | [第 1 章 开源的最优配方：更少参数、更多数据](ch01-开源的最优配方.md) | 照新处方重算开源的第一单 |
+| 2 | [第 2 章 pre-RMSNorm：归一化零件的演化](ch02-preRMSNorm.md) | 第一刀：砍重中心化，等价买简 |
+| 3 | [第 3 章 SwiGLU：前馈插槽的门控化](ch03-SwiGLU.md) | 第二刀：门控三矩阵，同预算买性能 |
+| 4 | [第 4 章 RoPE 深剖：把位置转进注意力里](ch04-RoPE深剖.md) | 第三刀：位置转成角度，数学最重 |
+| 5 | [第 5 章 untied 与词表：出入口的账](ch05-词表与config反推.md) | 附加一刀：解绑账与 config 反推法 |
+| 6 | [第 6 章 KV cache 正式登场：从 MQA 到 GQA](ch06-KVcache与GQA.md) | 第四刀：KV 账本开立与 GQA 换装 |
+| 7 | [第 7 章 长上下文工程线：外推的三代配方](ch07-外推工程线.md) | 免重训租窗：PI→NTK→YaRN 对照 |
+| 8 | [第 8 章 LLaMA1/2/3：组装与代际](ch08-LLaMA谱系.md) | 三代对表：架构冻结，配方翻代 |
+| 9 | [第 9 章 无论文模型怎么读：Llama 4 与线终局](ch09-无论文模型怎么读.md) | config 逆向：论文退场后的读法 |
+| 10 | [第 10 章 大项目：单轨整机整合（设计文档版）](ch10-大项目.md) | 四插槽 import 成 207M 整机 |
+| 11 | [第 11 章 收束：组件化时代的判断力](ch11-收束.md) | 判决与清点：每个零件都有出处 |
 
-## 本册结构
+## 编年史
 
-- `chNN-*.md`——各章书稿（ch0 为导览，ch11 为收束章含册末术语表与 F/N 十四行总决算）
-- `figures/`——全部插图（300dpi，自绘重制/自产，图注含来源与证据等级）
-- `code/chNN/`——**随书代码快照**（正文已升级为行级链接，可直接点击跳转）；`code/00-feasibility/` 为调研期探针底座；`code/ch10/DESIGN-215M.md` 为大项目设计文档/重启手册（**凭它可在高算力机器直接重启 215M 档全量训练**——作者决策：全量长训暂缓，本册交付整合代码+冒烟+整合短训+设计文档）
+本书涉及的内容，按提出时间从早到晚（时间口径：论文取 arXiv v1 提交月；无 arXiv 者取会议/官方发布月；模型/系统取官方首次发布月；括注为口径说明）：
 
-## 运行环境与依赖
+| 时间 | 名称 | 贡献 | 详见 |
+|---|---|---|---|
+| 2016-07 | LayerNorm（层归一化，Ba et al.） | 按特征维做均值-方差重定标、摆脱批统计依赖，驯服深层网络训练期的分布漂移，成为原版 Transformer 的出厂标配 | [ch02](ch02-preRMSNorm.md) |
+| 2016-12（按 v1=2016-12-23） | GLU（门控线性单元，Dauphin 等） | 把 LSTM 的门控思想搬进前馈：sigmoid 旁门逐元素调制主通路，语言建模上以四分之一硬件追平乃至超过同量级 LSTM | [ch03](ch03-SwiGLU.md) |
+| 2019-02（官方年表与正文差 1 个月，取首发月） | GPT-2（Language Models are Unsupervised Multitask Learners，Radford 等） | 仅用网络语料下一词预测、不加任务微调，零样本（zero-shot）直答多项任务，把生成式预训练推上通用学习器候选之位 | [ch00](ch00-导览.md) |
+| 2019-10 | RMSNorm（均方根层归一化） | 砍掉均值中心化、只按均方根逐维缩放，计算更省而精度不掉，后来被 LLaMA 系选定为归一化插槽的正装 | [ch02](ch02-preRMSNorm.md) |
+| 2019-11 | MQA（多查询注意力，Shazeer） | 让所有查询头共享一组键值投影，KV cache 按头数等比瘦身，解码带宽与显存骤降，代价是一档随规模放大的质量税 | [ch06](ch06-KVcache与GQA.md) |
+| 2019-11 | KV cache（键值缓存；首见同文 §2.4 incremental decoding） | 缓存已算的键值向量、免逐 token 重算前文，自回归解码从平方复杂度降为线性，推理侧一切账本的起点 | [ch06](ch06-KVcache与GQA.md) |
+| 2020-02 | SwiGLU（GLU 变体改进 Transformer，Shazeer） | 以 Swish 激活的门控三矩阵替换 ReLU 线性前馈，同参数预算下稳定小赚，成为新一代 FFN 插槽的默认件 | [ch03](ch03-SwiGLU.md) |
+| 2020-05（按 v1=2020-05-28；API 商用与 v4 不作口径） | GPT-3（Language Models are Few-Shot Learners，Brown 等） | 参数堆到 1750 亿、权重一概不更新，仅凭上下文示例解题，确立上下文学习（in-context learning）范式 | [ch01](ch01-开源的最优配方.md) |
+| 2021-02（博客先行论文：首篇 02-03 首草、成文篇 03-23；arXiv v1 04-20 晚成文 28 天、晚首草 76 天，多源快照口径） | RoPE 博客三部曲（苏剑林，kexue.fm） | 从复数相乘的旋转视角推出「以绝对形式实现相对位置」，先于论文两个多月（76 天）在中文社区首公开，是 RoPE 的原始出处 | [ch04](ch04-RoPE深剖.md) |
+| 2021-04（按 v1 提交月；书稿数学与实验引 v5 canonical） | RoPE（旋转位置编码，RoFormer） | 把位置变成查询键向量的旋转角，注意力内积自带相对位置、零可学参数，成为长序列外推的天然底座 | [ch04](ch04-RoPE深剖.md) |
+| 2021-08 | ALiBi（线性偏置注意力，Train Short Test Long） | 给注意力分数加随距离线性增长的负偏置，不学任何位置参数即可短训长测，一条省算力的外推路线 | [ch07](ch07-外推工程线.md) |
+| 2022-03 | Chinchilla（Training Compute-Optimal LLMs，Hoffmann 等） | 用受控训练扫描重标算力在参数与数据间的分配，证得同算力下小模型喂更多数据更优，开源小基座从此照此抓药 | [ch01](ch01-开源的最优配方.md) |
+| 2023-02 | LLaMA 1（Meta 开源基座第一代） | 以更多数据喂小基座并开放权重，首次把 RMSNorm/SwiGLU/RoPE 组装进公开权重大模型，开源进入组件化时代 | [ch01](ch01-开源的最优配方.md) |
+| 2023-05（正身 arXiv:2305.13245） | GQA（分组查询注意力，Ainslie 等） | 查询头分组、每组共用一组键值，用轻微质量差价买 KV cache 大幅缩减，Llama 2-70B 起的开源标配 | [ch06](ch06-KVcache与GQA.md) |
+| 2023-06 | PI（位置插值，Position Interpolation） | 把位置索引按扩展倍率线性压缩回训练窗内，免重训只微调千步级即把上下文租出数倍，租窗经济学的起点 | [ch07](ch07-外推工程线.md) |
+| 2023-06（社区配方，无论文；经 YaRN 论文转述） | NTK-aware 缩放（bloc97 社区配方） | 按 NTK（神经正切核）视角对 RoPE 高低频分量区别缩放，零微调零训练直接换更长窗，社区智慧后被 YaRN 论文收编转述 | [ch07](ch07-外推工程线.md) |
+| 2023-07（论文与权重同日发布） | Llama 2（Meta 开源基座第二代） | 数据与上下文翻倍并附对话微调版，架构基本冻结（仅 70B 换装 GQA）、代际升级全靠配方翻新，70B 首次对标闭源旗舰 | [ch08](ch08-LLaMA谱系.md) |
+| 2023-07（宣布推文未直核，仅仓创建为一手旁证） | llama2.c（Karpathy 教学复刻） | 以千行级 C 单文件从零训跑小参数 baby LLaMA，示范最小骨架的教育价值，本册 import 式组装的反面参照 | [ch10](ch10-大项目.md) |
+| 2023-08（按 v1 提交月；公告因劳动节顺延至 09-05 可见） | YaRN（Yet another RoPE extensioN） | 分段插值（NTK-by-parts）加注意力温度补偿，把免重训外推的质量损耗再压一档，租窗配方三代收敛的完成态 | [ch07](ch07-外推工程线.md) |
+| 2024-04（模型 2024-04 首发；论文 v1 为 2024-07） | Llama 3（The Llama 3 Herd of Models） | 架构连续三代冻结，代际差距主要由数据规模、词表与后训练制造，开源追平闭源的时点坐标，本册知识冻结于此 | [ch08](ch08-LLaMA谱系.md) |
+| 2024-09（本册冻结点外白名单级引用） | Llama 3.2（轻量与多模态系列） | 补轻量 1B 档并把词表嵌入回绑（tied），小模型的出口账重新对齐，本册对照表的白名单级条目 | [ch05](ch05-词表与config反推.md) |
+| 2025-04（无论文；按官方许可生效日锚定） | Llama 4（Scout/Maverick） | 只发 config 与权重、不发论文，读模型从读论文变成读配置，本册第 9 章 config 逆向手艺的现成靶标 | [ch09](ch09-无论文模型怎么读.md) |
 
-代码在写作与实验期运行于：Apple Silicon（MPS，bf16 autocast）+ CPU 数值对拍，Python 3.12 / PyTorch 2.13 / transformers 5.18 / sentencepiece / numpy。
-随书复现要点：
-1. 最简路径——在**本丛书书仓根**（from-models-to-vllm/，含 book2）或配套工作区内运行：`source env.sh`（缓存红线：一切数据/权重产物落 log/，书仓零数据零权重）；
-2. ch02/ch03/ch04/ch06 的消融脚本 import **Book2 ch10 的 GPT-2 三插槽底座**（`from model import GPT2, GPT2Config`）——脚本内 bootstrap 对工作区与书仓两种布局自适应（书仓布局解析到 `../book2-pretraining-revolution/code/ch10`）；
-3. 语料复用 Book2 遗产（log/book2-ch08/tokens.bin 等）；ch10 需 sp-32k 重切（`code/ch10/prep_sp32k.py`，分钟级）；
-4. 实验档位（M5 Pro 实测）：秒级（对拍/性质验证）～ 分钟级（模块消融 fast 1000 步≈5 min/臂）～ 晚间档（full 5000 步≈27 min/臂；外推全案≈40 min；ch10 整合短训 1000 步≈12-17 min）。
-
-## 说明
-
-- 纪律换血：正文知识冻结在 2024-07（LLaMA3 时代）；Llama 4（2025+）仅 ch9 以 config 逆向案例身份出现；Book4+ 概念只在六处白名单位置最小披露。
-- 本册全部关键实验数字为真实运行所得（M5 Pro，2026-10）：四插槽模块消融（判据预注册）、KV 账本手算=实测 0.00%、外推四干预对照（直接外推 +1.14 nat 被 YaRN-lite 压回 +0.24）、207M 整机（参数逐位 207,119,360；HF 结构对拍 max|Δlogits|=6.9e-6；TinyLlama v1.1 实权重对拍 max|Δ|=4.9e-5；整合短训 1000 步 loss 10.56→5.72）。
-- 大项目处置（作者决策 2026-10-03）：215M 档全量长训暂缓（本机 Chinchilla 配方需 10.34 天、15T 口径 98.8 年——量化论证见 ch10）；重启手册=code/ch10/DESIGN-215M.md（4×A100 半天/8×H100 一小时内档位估算含内）。
-
-## 代码索引
-
-- `code/00-feasibility/`：01_probe_a_base.py、02_probe_b_module.py、03_probe_c_215m.py、04_probe_d_longwin.py、05_probe_e_parity.py、06_probe_f_kv.py、07_probe_g_extrap.py、llama_slots.py
-- `code/ch00/`：make_fig_0_1.py
-- `code/ch01/`：handcalc.py、make_fig_1_1.py
-- `code/ch02/`：ablation_norm.py、make_figures.py、preregistered.md、rmsnorm.py
-- `code/ch03/`：ablation_ffn.py、make_figures.py、preregistered.md、swiglu.py
-- `code/ch04/`：ablation_pe.py、make_figures.py、preregistered.md、rope.py
-- `code/ch05/`：config_infer.py、make_figures.py、preregistered.md、vocab_scan.py
-- `code/ch06/`：ablation_gqa.py、gqa.py、kv_probe.py、make_figures.py、preregistered.md
-- `code/ch07/`：extrapolate.py、make_figures.py、passkey.py、preregistered.md
-- `code/ch08/`：make_figures.py
-- `code/ch09/`：config_reverse.py
-- `code/ch10/`：DESIGN-215M.md、llama215.py、make_figures.py、prep_sp32k.py、train_215.py
-- `code/ch11/`：make_figures.py
+注：KV cache 无单一原始论文——2017 原论文未描述缓存机制；首见 Shazeer 2019（arXiv:1911.02150 §2.4 incremental decoding，与 MQA 同文，属首次正式描述而非首创），fairseq/Tensor2Tensor 工程实现更早且无文献可考，时间取 2019-11。

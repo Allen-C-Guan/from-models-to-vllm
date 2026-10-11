@@ -1,54 +1,79 @@
 # Book2《预训练革命：BERT、GPT 与 Scaling Laws》
 
-> 《从模型到 vLLM》丛书第二册 · 定稿于 2026-10-03 · 前置：Book1《Transformer 原典》
-> 论文锚定见各章证据等级标注（GPT-1/2 以 OpenAI PDF 为 canonical；BERT=arXiv v2；T5=v4 JMLR；Kaplan/Chinchilla 仅 v1；Wei v2/Schaeffer v2 为涌现之争白名单）
+> 《从模型到 vLLM》丛书第 2 册 · 前置：Book1《Transformer 原典：2017 原架构完全拆解》（多头注意力/因果掩码/post-LN 与 warmup 等直接指回不重教）· 论文锚：BERT arXiv:1810.04805v2 / T5 arXiv:1910.10683v4 / GPT-3 arXiv:2005.14165v4；对拍正身 = HF transformers 5.18.0 + tiktoken gpt2
+
+## 这册书写什么
+
+Book1 造出了一台 2017 年的翻译机，本册要回答的问题是：这台机器怎么被喂饱。真正翻天覆地的不是架构——原典零件九成完好，本册只动四刀手术——单塔折叠、pre-LN、学习式位置查表（learned positional embedding）、绑定嵌入（weight tying）——就把它改装成 GPT-2；换血的是训练范式（paradigm）：喂什么数据、用什么目标、训完怎么用，全部重写。这就是预训练（pre-training）革命的纲领：先灌互联网，再谈任务。
+
+旅程四段。先论证为什么必须预训练——监督数据不够了，一条五环因果链把读者推到范式转移的门口。再造范式三物种：BERT 以双向掩码建模做理解、GPT 单塔因果做生成、T5 双塔回环把任务统一成文本进出，RoBERTa 再证「配方 ≥ 架构」。第三段把『花更多钱买多少智能』写成定律：Kaplan 幂律对垒 Chinchilla 等比，Scaling Laws（规模定律）从此是军备竞赛的预算表。最后亲手造机兑现：大项目两章从零实现 GPT-2 124M，真数据真权重，把自家损失-算力曲线画进论文坐标系。
+
+这是八册旅程的第二站：Book1 教机器是什么，本册教机器怎么被喂饱；造出的 124M 每个部件都做成插槽，留给 Book3 换新。读完带走三样资产——参数逐位对上官方 124,439,808 的手写 GPT-2（与 Hugging Face 实现对拍逐位一致）；自己训出的损失-算力曲线（15 点 iso-FLOP 等算力网格）；一张带边界的范式判决书：免微调（fine-tune-free）用法上 decoder-only 胜出。
+
+三条线索贯穿全程，把十三章读成一个故事。一条代码线是丛书级卖点：第 2 章自写 BPE 分词器、第 4 章把模型块写成参数可配、第 8 章拿它当工厂训一族 scaling 小模型、第 10-11 章定版复用——单轨演化、依赖方向永远单向，旅程停在任何一站，手里都是一台当下完整能跑的机器。一条伏笔线：Book1 离场留下的十八笔欠账，本册接走七笔逐一回收、再埋七笔新钩交后册，每笔都有显式地址。还有一本账：参数、数据、算力手算贯穿——参数从 63.1M 到 124M 再到 175B，数据从几百万句对到 40GB WebText，算力从一张卡到以 PF-days 记账，第 9 章集中清算。
+
+写作口径：时间冻结在 2022——RoPE/RMSNorm/GQA/MoE/KV cache 等后续部件一律只点名并给去向；唯一越过冻结点的是涌现（emergence）之争的对方论文（2023-04）。实验为 MacBook MPS/CPU 口径的定稿历史事实（Book1-5 存量不改）。
+
+## 为谁而写
+
+具备 AI 基础的计算机本科生。先修只需一本 Book1：会手写 2017 年 Transformer（多头注意力、因果掩码、post-LN、Adam/warmup 配方、BLEU 与口径课）；线代/矩阵/反向传播/PyTorch 为丛书公共基线，不需数学前导册，每章自含最小背景栏。
+
+一台普通笔记本电脑即可复现全部实验；大项目分 fast/full 两档，从分钟级到过夜级；随书仓库零数据零权重，语料与权重运行时下载。体量约一学期课程。读法：全册按四段旅程推进，宜按序读；迷路时回看每章开头的「从全书到这里」定位点——上一章走到哪、本章回答什么。代码线的依赖方向永远单向——后面的章只引用前面的章——因此旅程停在任何一站，手里都是一台当下完整、能跑的机器。
 
 ## 目录
 
-- 导览：把互联网灌进这台机器
-- 第 1 章 范式转移：监督数据不够了
-- 第 2 章 分词器：BPE 从零讲透
-- 第 3 章 BERT：双向理解与微调生态
-- 第 4 章 GPT-1/2：单塔、因果与架构差异清单
-- 第 5 章 T5：text-to-text 与系统性消融
-- 第 6 章 RoBERTa：配方 ≥ 架构
-- 第 7 章 GPT-3 与涌现之争
-- 第 8 章 Scaling Laws：从幂律到等比
-- 第 9 章 预训练工程账本：显存、算力与不稳定性
-- 第 10 章 大项目 I：从零实现 GPT-2 124M
-- 第 11 章 大项目 II：数据、权重与损失-算力曲线
-- 第 12 章 收束：decoder-only 的胜出与本册欠账
+| 章 | 标题 | 一句话导读 |
+|---|---|---|
+| 0 | [导览：把互联网灌进这台机器](ch00-导览.md) | 本册地图：四段旅程与三条贯穿线索 |
+| 1 | [第 1 章 范式转移：监督数据不够了](ch01-范式转移.md) | 五环因果链走到预训练门口 |
+| 2 | [第 2 章 分词器：BPE 从零讲透](ch02-分词器.md) | 自写 BPE，四个欠条数字亲手钉死 |
+| 3 | [第 3 章 BERT：双向理解与微调生态](ch03-BERT.md) | 半塔加遮词填空，理解物种成型 |
+| 4 | [第 4 章 GPT-1/2：单塔、因果与架构差异清单](ch04-GPT单塔与差异清单.md) | 四刀手术改装原典，单塔立骨架 |
+| 5 | [第 5 章 T5：text-to-text 与系统性消融](ch05-T5.md) | 任务统一成文本进出，消融立碑 |
+| 6 | [第 6 章 RoBERTa：配方 ≥ 架构](ch06-RoBERTa.md) | 架构不动只拧配方，顺手翻案 NSP |
+| 7 | [第 7 章 GPT-3 与涌现之争](ch07-GPT3与涌现.md) | 175B 与上下文学习，涌现对垒 |
+| 8 | [第 8 章 Scaling Laws：从幂律到等比](ch08-ScalingLaws.md) | 幂律对垒等比，自家曲线显形 |
+| 9 | [第 9 章 预训练工程账本：显存、算力与不稳定性](ch09-工程账本.md) | 显存算力稳定性三本账与病历 |
+| 10 | [第 10 章 大项目 I：从零实现 GPT-2 124M](ch10-大项目I.md) | 三条验收造机，参数逐位对官方 |
+| 11 | [第 11 章 大项目 II：数据、权重与损失-算力曲线](ch11-大项目II.md) | 真数据真权重，画进论文坐标系 |
+| 12 | [第 12 章 收束：decoder-only 的胜出与本册欠账](ch12-收束.md) | 带边界的判决书与欠账登记 |
 
-## 本册结构
+## 编年史
 
-- `chNN-*.md`——各章书稿（ch00 为导览，ch12 为收束章含册末术语表与 F/N 伏笔总决算）
-- `figures/`——全部插图（300dpi，自绘重制/自产，图注含来源与证据等级）
-- `code/chNN/`——**随书代码快照**（正文中已升级为行级链接，可直接点击跳转到对应函数/类）；`code/00-feasibility/` 为调研期探针底座（ch10/ch11 引用）
+本书涉及的内容，按提出时间从早到晚（时间口径：论文取 arXiv v1 提交月；无 arXiv 者取会议/官方发布月；模型/系统取官方首次发布月；时间格内括注为口径说明）：
 
-## 运行环境
+| 时间 | 名称 | 贡献 | 详见 |
+|---|---|---|---|
+| 2012-03（IEEE ICASSP 会议月；原文付费墙，准则经 GNMT 转述） | WordPiece（似然增益子词分词，Schuster & Nakajima） | 以似然增益准则在候选切分中挑子词，化解语音识别的未登录词与词表膨胀，日后成为 BERT 的分词底座 | [ch02](ch02-分词器.md) |
+| 2013-01 | word2vec（skip-gram/CBOW，Mikolov et al.） | 用浅层网络在滑动窗口内学词向量，把「词义」变成可廉价大规模训练的稠密向量，词间类比可直接做向量运算 | [ch01](ch01-范式转移.md) |
+| 2013-10 | word2vec 负采样与子采样（Mikolov et al.） | 以负采样绕开整词表 softmax、子采样压高频词，训练大幅提速而质量不降，词向量从此可喂海量语料 | [ch01](ch01-范式转移.md) |
+| 2014-10 | GloVe（全局词向量，Pennington et al.） | 对全局共现矩阵做加权最小二乘拟合，把计数法的全局观与预测法的训练效率合流，词向量任务全面夺魁 | [ch01](ch01-范式转移.md) |
+| 2015-08 | BPE 子词切分（字节对编码，Sennrich et al.） | 把数据压缩的字节对合并搬进分词，小词表开放拼出任意新词，机器翻译未登录词几近归零 | [ch02](ch02-分词器.md) |
+| 2016-04（正身 1604.06174，勘误销项） | 梯度检查点（Training Deep Nets with Sublinear Memory Cost，Chen 等） | 反向时重算层内激活、只存层边界，以一遍额外前向换激活显存从线性降为亚线性，深网不再被显存卡死 | [ch09](ch09-工程账本.md) |
+| 2017-10 | 混合精度训练（Mixed Precision Training，Micikevicius 等） | FP16 算、FP32 存权重主副本、损失缩放保数值，三件套让显存与带宽减半，成为大模型训练的省显存标配 | [ch09](ch09-工程账本.md) |
+| 2018-01 | ULMFiT（通用语言模型微调，Howard & Ruder） | 把 CV 的迁移学习剧本引入 NLP：语言模型预训练＋逐层解冻微调，小数据任务吃到迁移红利，微调方法论定型 | [ch01](ch01-范式转移.md) |
+| 2018-02 | ELMo（深度上下文相关词表示，Peters 等） | 双向 LSTM 语言模型取各层隐状态加权叠加，词向量从静态查表变上下文相关，六大 NLP 任务齐涨点 | [ch01](ch01-范式转移.md) |
+| 2018-04（Unigram LM 正身在此篇，非 SentencePiece） | 子词正则化与 Unigram LM（Subword Regularization，Kudo） | 以 Unigram 语言模型给分词以概率多重假设、训练时采样扰动，分词从工程技巧升级为有统计定义的组件，翻译小幅涨点 | [ch02](ch02-分词器.md) |
+| 2018-06（无 arXiv，按官方论文署名月） | GPT-1（生成式预训练 Transformer，Radford 等） | 生成式预训练加任务头微调两段式，证明无标注语料学到的语言知识可迁移到十余项任务，「预训练-微调」范式开门 | [ch04](ch04-GPT单塔与差异清单.md) |
+| 2018-07（Ruder 博客，二手转述级） | 「NLP 的 ImageNet 时刻」 | 点破并命名拐点：多套预训练方案数月内齐发，业界按 CV 迁移学习剧本改造 NLP，范式转移被公众看见 | [ch01](ch01-范式转移.md) |
+| 2018-08（SentencePiece 论文正身在此篇） | SentencePiece（语言无关无损子词分词器，Kudo & Richardson） | 把句子当原始字符流、空格转特殊符号，实现语言无关、无损可逆的分词，不分词的中日文即插即用 | [ch02](ch02-分词器.md) |
+| 2018-10（v1 口径；书稿锚 v2） | BERT（Devlin 等） | 以双向掩码建模在无标注语料上学通用表示，让预训练从特定任务定制走向一次预训练处处微调，十一项下游任务齐刷新 | [ch03](ch03-BERT.md) |
+| 2018-11（按首版 PyPI 月；前称 pytorch-pretrained-bert） | HF Transformers 库 | 把各家预训练模型收进统一 API 与权重仓库，模型即插即用，成为预训练生态事实标准、也是本册大项目的对拍基准 | [ch03](ch03-BERT.md) |
+| 2019-02（首发月为准；官方博客年表有月级出入） | GPT-2（Language Models are Unsupervised Multitask Learners，Radford 等） | 架构几乎不动、规模与网页语料放大，零样本多任务解题能力显形，「语言模型是无监督多任务学习器」宣言立起 | [ch04](ch04-GPT单塔与差异清单.md) |
+| 2019-02（非独立论文，随 GPT-2 首发计） | byte-level BPE（字节级 BPE，GPT-2 §2.2） | 分词下沉到字节级，任意 Unicode 文本都可编码、预处理歧义清零，词表从此覆盖一切字符串 | [ch02](ch02-分词器.md) |
+| 2019-04（官宣页无日期，以承载仓创建日锚定） | OpenWebText（WebText 开源复刻语料） | 社区按 WebText 配方开源复刻语料，闭源 GPT-2 的数据面被外界复现，此后开源训练有了公共数据底料 | [ch11](ch11-大项目II.md) |
+| 2019-07 | RoBERTa（Liu 等） | 架构原封不动，只放大数据、批次与步数并弃 NSP，GLUE 全面超越 BERT——训练配方与架构同等重要成案 | [ch06](ch06-RoBERTa.md) |
+| 2019-10（v1 口径；书稿引 v2） | Transformers without Tears（pre-Norm+小初始化免 warm-up，Nguyen & Salazar） | pre-Norm 配小初始化让深层 Transformer 免 warm-up 也稳，pre-LN 工程转向自此开局 | [ch04](ch04-GPT单塔与差异清单.md) |
+| 2019-10 | ZeRO（零冗余优化器，Rajbhandari 等） | 把优化器状态、梯度、参数的显存跨卡切分去冗余，同群硬件可训模型大一个量级，千亿参数可及 | [ch09](ch09-工程账本.md) |
+| 2019-10（v1 口径；书稿锚 v4/JMLR） | T5（Text-to-Text Transfer Transformer，Raffel 等） | 把翻译、分类等一切任务统一成文本进文本出，再以系统性消融给迁移学习各要素逐一定价，路线图定型 | [ch05](ch05-T5.md) |
+| 2020-01 | Kaplan 规模定律（Scaling Laws for Neural Language Models，Kaplan 等） | 跨六个数量级拟合损失随参数、数据、算力的幂律，模型规模竞赛第一次拿到可外推的预算表 | [ch08](ch08-ScalingLaws.md) |
+| 2020-02 | post-LN/pre-LN 梯度分析（Xiong 等） | 理论证明 post-LN 的梯度需 warm-up 护航而 pre-LN 平稳，给 GPT 式 pre-LN 选择补上数学依据 | [ch04](ch04-GPT单塔与差异清单.md) |
+| 2020-05（v1 口径；书稿锚 v4，API 商用发布 2020-06） | GPT-3（Language Models are Few-Shot Learners，Brown 等） | 1750 亿参数下不更新梯度、靠上下文学习（in-context learning）直接解题，API 商用开启大模型时代 | [ch07](ch07-GPT3与涌现.md) |
+| 2022-03 | Chinchilla（Training Compute-Optimal LLMs，Hoffmann 等） | 用数百模型的等算力受控实验推翻「参数优先」：同算力下小模型配更多数据更优，数据参数等比成新配方 | [ch08](ch08-ScalingLaws.md) |
+| 2022-04 | PaLM（Scaling Language Modeling with Pathways，Chowdhery 等） | 5400 亿参数训练实录公开：loss spike 处方、硬件故障恢复，超大规模训练的一手工程账本 | [ch09](ch09-工程账本.md) |
+| 2022-04 | 架构×预训练目标受控对照（Wang 等，BigScience） | 多组架构与预训练目标同算力对拍，decoder-only 配因果目标零样本最优，为单塔胜出补受控证据 | [ch12](ch12-收束.md) |
+| 2022-05（Logbook 所载为训练病程时间，非发布） | OPT-175B（Open Pre-trained Transformer，含逐日 Logbook） | 复刻 GPT-3 全配方并连权重带训练日志开源，loss 曲线与重启病程全公开，大模型训练从黑箱变可审计 | [ch09](ch09-工程账本.md) |
+| 2022-06（v1 口径；书稿引 v2 措辞） | 涌现能力（Emergent Abilities，Wei 等） | 观测到小模型近随机、规模过阈后能力陡然成形的现象并给出定义，「规模换质变」立为待解议题 | [ch07](ch07-GPT3与涌现.md) |
+| 2023-04 | 涌现是幻象吗（Are Emergent Abilities a Mirage?，Schaeffer 等） | 指出陡跳多源于不连续评测指标，换线性指标后能力平滑增长，为规模叙事泼冷水、促度量反思 | [ch07](ch07-GPT3与涌现.md) |
 
-代码在写作与实验期运行于：Apple Silicon（MPS，bf16 autocast）+ CPU 数值对拍，Python 3.12 / PyTorch 2.13 / transformers 5.18 / sentencepiece / tiktoken / datasets。
-随书复现：把本目录放入配套工作区后 `source env.sh`（缓存红线：一切数据/权重产物落 log/，书仓零数据零权重），按各章末「动手验证」的命令运行。
-实验档位（M5 Pro 实测）：秒级（ch2 BPE/ch9 探针）～ 分钟级（ch3 mini-GLUE fast/ch10 热身）～ 小时级（ch8 族 47min/ch11 iso-FLOP 216min/124M 79min——过夜档，均有 fast 档可缩）。
-
-## 代码索引
-
-- `code/ch00/`：make_fig_0_1.py
-- `code/ch01/`：make_figures.py
-- `code/ch02/`：bpe.py、make_figs.py
-- `code/ch03/`：glue_finetune.py、make_figs.py
-- `code/ch04/`：make_figures.py、surgery.py、warmup_ablation.py
-- `code/ch05/`：make_figures.py
-- `code/ch06/`：make_figures.py
-- `code/ch07/`：handcalc.py、make_figures.py
-- `code/ch08/`：data_prep.py、fit_scaling.py、make_figures.py、run_family.py
-- `code/ch09/`：make_figures.py、memory_probe.py
-- `code/ch10/`：make_figures.py、model.py、shakespeare.py、train.py
-- `code/ch11/`：data.py、iso_flop.py、official_gpt2.py、sample.py、scaling_curve.py、train_124m.py
-- `code/ch12/`：make_figures.py
-
-## 说明
-
-- 纪律换血：正文知识冻结在 2022（GPT-3/Chinchilla 时代）；后册架构概念只在章末欠账框与 ch12 地图中以「最小披露」出现。
-- 本册全部关键实验数字为真实运行所得（M5 Pro，2026-10）：停药实验、Kaplan 五点族（α=0.0413）、iso-FLOP 15 点网格、GPT-2 124M 从零训练与官方权重逐位对拍（max|Δlogits|=0.0，6/7 prompt 逐位一致）。
-- 诚实条款：本机 124M 训练为 compute-limited 演示口径（≈6 TFLOPs 有效算力）；scaling 结论由 1M-20M 自训族与 iso-FLOP 网格承担，且一律带区间与不确定度（γ∈[0.85,1.01] band）。
+（详见 = 本册讲解该对象的主讲章；末行为本册唯一越过 2022 冻结点的对象——涌现之争的对方论文。）
