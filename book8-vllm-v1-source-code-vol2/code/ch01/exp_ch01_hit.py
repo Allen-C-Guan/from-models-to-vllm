@@ -1,5 +1,5 @@
 # exp_ch01_hit.py —— ch1 实验 B：hybrid 变身命中率实测（Book7 ch06 例 6.4 workload 续账）
-# 所属章节：Book8 ch1（§1.6）；设计书=notes/13 §四 实验 B（判据三分支预注册：主 32.0%/分支②56.0%/分支③偏离查粒度）
+# 所属章节：Book8 ch1（§1.8）；设计书=notes/13 §四 实验 B（判据三分支预注册：主 32.0%/分支②56.0%/分支③偏离查粒度）
 # workload：4 前缀×4 请求、prefix 1000 tok（不整除 128）、suffix 200 tok/请求、输出 32、请求率 2/s；
 #           prompt 以 token id 数组下发（精确 token 数控制）。
 # 两臂各一进程：python .../exp_ch01_hit.py --arm hybrid --sliding-window 512 [--out-name hit_hybrid_w512]

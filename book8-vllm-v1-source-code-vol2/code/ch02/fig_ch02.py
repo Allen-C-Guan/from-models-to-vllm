@@ -1,7 +1,7 @@
 # fig_ch02.py —— Book8 ch02 制图：图 2.1 draft-verify 时序 / 图 2.2 ngram 扫描（数据到位后渲染）
 # 用途：图 2.1=一步 draft-propose-verify-accept/reject 的三泳道时序（站 8/12/13 坐标+形状标注+回滚边界+bonus）；
 #       图 2.2=实验 A 的 k×窗口→τ/加速比 读数面（读 log/book8-ch02 底档）。
-# 所属章节：Book8 ch2（§2.2/§2.5）；设计书=notes/11 §三 例 2.1/§四 实验 A。
+# 所属章节：Book8 ch2（§2.2/§2.6）；设计书=notes/11 §三 例 2.1/§四 实验 A（勘误 1 修正口径）。
 # 运行：cd <workspace> && source env.sh && python code/Book8-vLLM源码剖析下/ch02/fig_ch02.py [--only fig1|fig2]
 # 产物：drafts/Book8-vLLM源码剖析下/figures/fig-2-1-draft-verify.png / fig-2-2-ngram-sweep.png
 # 图规：300dpi 白底；蓝#2a78d6 橙#eb6834 青#1baf7a 黄#eda100；图内英文图注中文；自绘+版本锚。
@@ -66,7 +66,7 @@ def fig_draft_verify():
         "workload of one step (example 2.1): B=2, n=10, k=3\n"
         "req A: accept pos 1-2, reject pos 3 -> 3 tokens out (2 accepted + 1 resampled)\n"
         "req B: all 3 accepted + bonus -> 4 tokens out (cap k+1)\n"
-        "metrics: drafts=2, draft_tokens=6, accepted=4 -> mean acc len = 1+4/2 = 3.0 (bonus-inclusive), per-pos=[1.0,1.0,0.0]",
+        "metrics: drafts=2, draft_tokens=6, accepted=5 -> mean acc len = 1+5/2 = 3.5 (bonus-inclusive), per-pos=[1.0,1.0,0.5]",
         ec=INK, fs=6.2)
     box(ax, 1.2, 0.6, 7.4, 1.5, "bonus token: sampled from target dist\nafter a full hit; NOT in num_accepted\n(it is the +1 in mean acceptance length)", ec=YELLOW, fc="#fdf0d2", fs=6.0)
     box(ax, 9.3, 0.6, 7.4, 1.5, "NPU fact: both runnable routes (ngram, draft_model)\nare MRV1-only at v0.30.0 (config/vllm.py #L2839-2849);\nverify-side math identical across runners", ec=TEAL, fc="#d9f2e7", fs=6.0)

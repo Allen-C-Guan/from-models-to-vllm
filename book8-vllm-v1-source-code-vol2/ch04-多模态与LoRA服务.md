@@ -1,116 +1,206 @@
-# 第 4 章 多模态与 LoRA 服务：请求变胖的两条路
+# 第 4 章 多模态与 LoRA 服务
 
-> 站段坐标：站 1-3（入口与输入处理）+站 5-7（mm 预处理与 encoder）+站 12（LoRA 算子注入）。记号契约首现：**adapter（适配器）专指 LoRA 外挂权重件**——与 connector（KV 传输器，ch7）、backend（文法引擎，ch3）同名不同物。B7-5 的欠账句在此开箱：「多模态与 LoRA 服务路径 → Book8 第 4 章」。
+> 站段坐标：多模态线=站 2/3（HTTP 图文输入）→站 5（预处理与预算）→站 9（mm 哈希入前缀链）→站 12（编码器 runner+缓存）；LoRA 线=站 3（LoRARequest 随请求进）→站 8（调度约束）→站 12（punica 执行）→站 15（LoRAStats）。B7-5 后半句与 B5-6（一张图=16,384 词元）双钩并门。
 
-## 4.1 两个「请求变胖」的专题
+## 4.1 开篇：两个「请求变胖」的方向
 
-上一章结束时采样被文法裁成窄门——那是约束把输出变窄；本章反过来，把镜头摇回入口：**请求本身在变胖**。Book7 走主链路时请求始终是「一段文本 token」；从本章起这个假设两次被打破。两条路：多模态（VLM）把「一段 token」变成「一段 token 加一张图」，入口层与执行层同时被拉长；LoRA 把「一套权重」变成「一套权重加一个外挂」，算子层被插了一刀。两条路一个共同点：**都是「请求级/模型级」的增量**——不需要换基模型、不重启服务，按请求路由——这也是它们能凑成一章的深层原因：引擎为此发展出的是同一套「增量与基座分离」的服务哲学。三段定位：专题=多模态与 LoRA 服务；站段=1-3 入口+5-7 预处理+12 算子；模块=`vllm/multimodal/`（6137 行地界）+`vllm/lora/`（2907 行）+vllm-ascend 侧 punica 接入。本章产出：mm 管线走查+LoRA 全链接线（4.2/4.3）、VLM 本机首验与组合矩阵两组读数（4.4）、塔连接器一瞥（4.5）。到站时图景：一张图值多少词元有了公式与实测的双重答案、四个服务开关有了第一份组合价目单；新问题留给后面——LoRA×VLM 的挂起机制（ch9 回账）与容量规划里的 mm 因子（ch11）。
+上一章把「输出的形」钉进了采样器；Book7 ch11 的同一只欠账框还挂着后半句：「多模态与 LoRA 服务路径 → Book8 第 4 章」【Book7 ch11-OpenAI兼容层.md#L163，B7-5】。再往前，Book5 第 10 章在能力扩展专题里立过一笔服务侧的账：「一张图=一万六千词元的预填充（K3 口径），原生 VLM 的请求形态与多模态、LoRA 的服务路径 → Book8 第 4 章」【Book5 ch10-能力扩展专题.md#L178，B5-6】。本章的问题成对：**图片进请求后，引擎的哪几站要改账？一个外挂 adapter 又怎么不重载权重地改变行为？**——一个把请求变胖（输入侧），一个把行为变道（权重侧），两条线在站 5 与站 12 汇合。
 
-> **最小背景栏**：CLIP/ViT 的图像编码与视觉词元概念是 Book5 已教内容（ch05 多模态节），指回不重教；LoRA 的低秩分解数学（$W' = W + BA$，$B\in\mathbb{R}^{d\times r}$、$A\in\mathbb{R}^{r\times k}$、$r\ll d$——旁路两小矩阵的乘积逼近权重增量，训练只动 $B,A$ 冻结 $W$）在前七册只有散点提及（Book3 ch06/Book4 ch01+ch06+ch09），无专节——本栏即最小自建：读者凭这句应能画出旁路图（输入 $x$ 分两路，上路过冻结的 $W$、下路过 $B{\to}A$ 小矩阵串，两路输出相加）。
+三段定位：专题=多模态与 LoRA 服务；站段=上述双挂站行；模块=`vllm/multimodal/`（12 文件 6137 行——registry/处理/预算/哈希四族）+`vllm/v1/worker/gpu/mm/`（MRV2 编码器镜像）+`vllm/config/lora.py` 与 `vllm/lora/`（LoRA 配置与层）+`vllm_ascend/lora/`（NPU punica 执行）。产出：mm 输入管线全景（图 4.1）、视觉词元的手算账与实测对拍、LoRA 参数面与组合矩阵（表 4.1/4.2）、VLM 首跑与七臂组合实测。本章双主读轨照册级纪律：上游一律 MRV2 路径（`worker/gpu/mm/`+`gpu/lora_utils.py`），MRV1 只作演进对照。
 
-## 4.2 多模态输入路径：一张图的旅程
+> **最小背景栏**：LoRA 的低秩旁路机制前七册没有专节（Book3/4/5 仅散点提及；Book6 ch06 附加哈希处半句「附加位容纳 LoRA 标识、多模态输入哈希等」——正好是本章 LoRA×APC 交叉的指回锚），此处自建到能画的程度。冻结基座权重 $W_0$，在旁边加一条低秩旁路：
 
-一张图从进请求到进前向，走五步——每步都是引擎为「请求不只是一段文本」付出的结构代价。①**协议进入**（站 1-3）：chat 请求的 `content` 数组里混排 `image_url` 与 `text`（0.27.1 协议正身 `entrypoints/openai/chat_completion/protocol.py#L1008-1009` 的 image_url 分支）——多模态把「prompt 是字符串」的假设第一次打破。请求实物（4.4 实测件原文）：
+$$y = W_0 x + \frac{\alpha}{r} BAx \tag{4.1}$$
 
-```json
-{"messages": [{"role": "user", "content": [
-  {"type": "image_url", "image_url": {"url": "data:image/png;base64,<...>"}},
-  {"type": "text", "text": "Describe this image in one sentence."}]}]}
-```
+| 符号 | 含义 | 形状/取值例 |
+|---|---|---|
+| $x$ | 该层输入激活 | $(d,)$ 单 token 视角；d=1024（Qwen3-0.6B） |
+| $W_0$ | 冻结的基座权重 | $(d', d)$，如 q_proj 1024×1024 |
+| $A$ | 降维件（可训练） | $(r, d)$，rank-8 时 8×1024 |
+| $B$ | 升维件（可训练，初始化为零） | $(d', r)$，1024×8 |
+| $\alpha/r$ | 缩放（α=lora_alpha） | 标量；例 16/8=2 |
 
-指名看什么：`content` 是**数组**、每个元素自带 `type`——文本请求是它的退化特例（单元素数组）；协议层的向后兼容就是这样兼容出来的（老客户端发字符串、新客户端发数组，入口归一化后都是「多模态内容序列」）。②**输入处理**（站 5-7）：`vllm/multimodal/` 的 processor 按 modality 分发（registry 维护模型→processor 映射，新模型接 mm 就是注册一个 processor）；图像经 resize/normalize 变张量，音视频各有自己的 processor 分支——**mm 的「多」住在 processor 层**：引擎主干只认「词元+多模态占位」的统一抽象，具体怎么从图/音/视频变成张量是 processor 的可插拔知识。③**视觉编码**（站 7-12 之间）：ViT encoder 把像素变**视觉词元（visual tokens）**——这是 mm 的核心账本。encoder 的输出不是直接进 decoder 的词表空间，而是经投影层（vision-language projector）映射到语言塔的 hidden 维度——「图变成一段假词元嵌入」比「图变成词」更准确，decoder 对它们的注意力与对普通词元无异。执行侧两个 NPU 特有的褶皱：encoder 前向有自己的图捕获管理（`EncoderAclGraphManager`——encoder 序列长度离散档位少，图捕获比 decoder 更划算）；ViT 注意力的 NPU 接入是 `AscendMMEncoderAttention`（vllm-ascend 侧四差异之二）——**encoder 与 decoder 是两台小引擎**：各自有 runner（`MMEncoderModelRunner`）、各自的缓存（encoder cache）、各自的算子路径，只有词元序列把它们缝在一起。④**拼接**：视觉词元与文本词元按 chat 模板拼成统一序列，送 decoder。编码还有个调度前提：`encoder_budget.py::MultiModalBudget`#L45——**每步允许编码多少视觉词元**有预算上限（与 chunked prefill 的 token 预算并轨）：一张 1024×1024 的图 ≈1024 视觉词元，超预算的图要么等下一步要么被拒——mm 请求的调度比纯文本多一层「编码预算」的闸。mm 输入的哈希也有个小实物（`multimodal/hasher.py`）：
+用人话说：**大路不动，旁边修一条窄匝道**——车流（梯度）只走匝道（A/B 两小件），匝道宽度由秩 r 定、流量由 α/r 这只旋钮定；「外挂」=匝道随请求装载，基座一字不动。多模态侧：一张图=多少词元的架构账是 Book5 ch10 已立（196/576/2304/16,384 阶梯），本章只换服务侧口径，严禁重教架构。
+
+## 4.2 多模态输入路径：从 image_url 到视觉词元
+
+先看全景（图 4.1）——一张图从 HTTP 进门到变成计算，要过四站。
+
+![图 4.1](figures/fig-4-1-mm-input-pipeline.png)
+
+图 4.1 mm 输入管线（按 v0.30.0 源码自绘，示意级）：上带=站 2/3 请求进门（image_url 分支与 LoRARequest 同门，共享 SamplingParams 出口）；中带=站 5 输入处理（processor 预处理、占位符展开、预算与哈希）；下带=站 9/12（mm 哈希入前缀链、编码器 runner 与缓存、LoRA punica 路径）——两条「变胖」线在站 5 与站 12 汇合。
+
+地界四族（mm=multimodal 多模态，`vllm/multimodal/`，12 文件 6137 行）：**注册表**（`registry.py#L103 MultiModalRegistry`——模型↔处理器工厂绑定）；**处理器**（`processing/processor.py`：`PromptReplacement`#L381/`PlaceholderFeaturesInfo`#L588/`BaseMultiModalProcessor`#L1030——占位符机制正身）；**预算**（`encoder_budget.py#L45 MultiModalBudget`——每步编码量上限，chunked prefill 的多模态前提）；**哈希**（`hasher.py`——mm 输入哈希进前缀缓存链；Tensor 与 ndarray 都按 `.nbytes` 计）。v1 侧挂点在站 5 一屏看完：
 
 ```python
-# vllm/multimodal/hasher.py#L103-110（骨架摘录）【源码：阅读锚 v0.30.0】
-        if isinstance(obj, torch.Tensor):
-            tensor_obj: torch.Tensor = obj.cpu()
-            tensor_dtype = tensor_obj.dtype
-            tensor_shape = tensor_obj.shape
-            # NumPy does not support bfloat16.
-            # Workaround: View the tensor as a contiguous 1D array of bytes
-            if tensor_dtype == torch.bfloat16:
-                tensor_obj = tensor_obj.contiguous()
-                tensor_obj = tensor_obj.view((tensor_obj.numel(),)).view(torch.uint8)
-                …
+# vllm/v1/engine/input_processor.py#L19-21【源码：阅读锚 v0.30.0（ced6857）】
+from vllm.multimodal import MULTIMODAL_REGISTRY, MultiModalRegistry
+from vllm.multimodal.encoder_budget import MultiModalBudget
+from vllm.multimodal.inputs import MultiModalFeatureSpec
 ```
 
-指名看什么：mm 哈希的键=**形状+dtype+原始字节**（不是文件路径、更不是 URL），连 bfloat16 都要特判转 uint8 字节流再哈希（NumPy 不认 bf16——一个真实工程褶皱）；同图不同文件名同哈希（正确）、同文件名不同内容不同哈希（也正确）——「哈希什么」决定了 mm 缓存与 APC 的语义边界。
+指名看什么：输入处理期（站 5）就完成 mm 的装载与预算构造（同文件 #L63 `mm_budget = MultiModalBudget(...)`）——**图文请求的「胖」在进调度器之前就已经成形**。MRV2 的编码器镜像在 `worker/gpu/mm/`（encoder_cache/encoder_runner/lora/rope 四件——`mm/lora.py` 是 mm×LoRA 交叉的正身，4.8 回收）。
 
-⑤**调度与 KV**：mm 请求的 prompt_tokens 含视觉词元——**视觉词元与文本词元在 KV 账本上同价**（都占块、都进 APC 哈希链：同图多轮对话的第二轮能命中第一轮的视觉 KV——多模态多轮场景 APC 命中率比纯文本更可观）；encoder 中间结果另有独立缓存（`--mm-processor-cache-gb`，默认 4G——config/multimodal.py#L138，缓存的是 resize 后的输入张量与 ViT 输出，同图复用免编码——4.4 的同图二发 180ms 就是它）。两层缓存的分工：processor cache 免**编码**（同图）、APC 免**重算 KV**（同前缀）——一个是像素到词元的账、一个是词元到 KV 的账。多轮对话的复合收益值得心算：三轮同图对话，第一轮付编码+全量 prefill，第二三轮 APC 命中视觉+文本的公共前缀（图的 KV 不重算）、processor 缓存命中编码（ViT 不重跑）——mm 的多轮服务比首轮便宜一个数量级，这是「VLM 客服看图」类应用的成本结构。
+预算与哈希两族值得多看两眼：**预算**（`encoder_budget.py#L45 MultiModalBudget`——每步编码量上限：多图请求的视觉词元会被切进多个 chunked prefill 步，**没有这本预算账，一张 16,384 词元的图就能独占一步把长文本请求全部挤出去**——「图片也可以切着付入场费」是 chunked prefill 的多模态前提）；**哈希**（`hasher.py`——mm 输入哈希进前缀缓存链：Tensor 与 ndarray 都按 `.nbytes` 进摘要、bfloat16 有字节流特判——**同一张图编出同一个哈希**，这是 4.7「同图二发免重编码」的机制根）。
 
-v1 侧的挂点在输入处理站（`vllm/v1/engine/input_processor.py#L19-22`——三行 mm import；#L63 构造 `MultiModalBudget`）——**装载与预算都在站 5 完成**，EngineCore 主干只接「带占位的词元序列」。MRV2 侧还有整套 mm worker 镜像（`v1/worker/gpu/mm/{__init__,encoder_cache,encoder_runner,lora,rope}.py`——其中 `mm/lora.py` 是 mm×LoRA 交叉的 MRV2 正身，4.5 用）。
+Qwen3-VL-2B 的配置实物（本地快照 config.json 摘录——架构账的一手凭据）：
 
-多模态机的判定与 ch1 的混合判定链同构：config 声明（`architectures` 带 ForConditionalGeneration+processor 配置）→ 入口层识别 content 里的非文本 modality → InputPreprocessor 分发 processor → InputProcessor 产出「词元+多模态占位（multi_modal_placeholders）」——引擎主干看到的是普通 token 序列加一份占位映射，mm 的全部复杂性被封装在入口三站。vllm-ascend 的**绿名单**是模型级的：supported_models.md 逐模型标注（Qwen3-VL ✅ 核心支持、InternVL 全族 ❌——不是「架构不支持」就是「没适配」的区分要看这份名单，VLM 选型的第一步是查绿名单而非看架构）。
+```json
+// log/huggingface/hub/models--Qwen--Qwen3-VL-2B-Instruct/snapshots/<hash>/config.json
+"architectures": ["Qwen3VLForConditionalGeneration"], "model_type": "qwen3_vl",
+"vision_config": {"deepstack_visual_indexes": [5, 11, 17], "depth": 24, "hidden_size": 1024,
+  "num_heads": 16, "out_hidden_size": 2048, "patch_size": 16, "spatial_merge_size": 2},
+"text_config": {"hidden_size": 2048, "num_hidden_layers": 28,
+  "num_attention_heads": 16, "num_key_value_heads": 8, "head_dim": 128}
+```
 
-绿名单之外，mm 选型还有一问要在进入管线前回答：**你的图的词元预算是多少**——这决定了 max_model_len、encoder budget、HBM 三层配置的联动（4.4 例 4.1 的三档账单）。三层递进：架构在不在绿名单（能不能跑）→ 词元预算多大（跑得动几 K 的图）→ encoder cache 给多少（多轮同图场景的收益）——**mm 部署的容量规划是「图的三问」，纯文本部署只有「序列一问」**。
+指名看什么：视觉塔（24 层 ViT、patch 16、2×2 空间合并）与文本塔（28 层、2048 维）是两套超参——词元公式由**视觉塔**的那三个数决定：
 
-**视觉词元的预算公式**（Qwen3-VL 的 config 声明——`image_token_factor` 等字段进 processor 参数）：
+$$N_v=\left\lfloor \frac{H}{16}\right\rfloor\cdot\left\lfloor \frac{W}{16}\right\rfloor \Big/ 2^2 \tag{4.2}$$
 
-$$N_{vis} = \Big\lceil \frac{H}{28} \Big\rceil \times \Big\lceil \frac{W}{28} \Big\rceil \div 4 \tag{4.1}$$
+用人话说：图片先切成 16×16 的小格、四格并一格，**格子的总数就是这张图的「词数」**——服务引擎眼里图片不是像素、是一队排好队的视觉词元。**例 4.1（视觉词元账与占位符走查）** 构造：按式 (4.2) 逐图算账。输入三步：
+①逐图算账：96×96→⌊96/16⌋²/4=9；640×640→400；4096×4096→**16,384**（恰是 B5-6 的 K3 口径数——不同 ViT 参数=不同架构账，服务侧只认「占位符数=预填充预算」）；
+②占位符走查：prompt 里的 `<image_pad>` 序列被 processor 展开成 400 个特征位（`PlaceholderFeaturesInfo` 的替换机制），文本「描述这张图」拼在后面——进 batch 的形状是 $(400+T_{\text{text}}, d)$；
+③预算判定：400 个视觉词元的编码在 `MultiModalBudget` 的每步上限内排队——一张 640×640 的图在调度器眼里就是一个 400 token 的预填充账单。
+输出读法：**视觉词元账=图片的入场费**，付在站 9 的 prefill；实测对拍见 4.7（640×640 实测 402=400+模板 2，逐位闭合）。（位置：Qwen3-VL-2B config 实物=本地快照（vision_config depth 24/hidden 1024、text_config 28 层 hidden 2048）；公式推导与 Book5 阶梯对拍一句收拢。）
 
-| 符号 | 含义 | 量纲 |
+## 4.3 NPU 侧：同一抽象、两个后端的四差异点
+
+机制层（registry/占位符/预算）是平台无关的；NPU 的活全在「同一抽象的另一个后端」——四差异点逐个看（vllm-ascend）。
+
+**①ViT 编码器注意力**：`ops/mm_encoder_attention.py` 的 `AscendMMEncoderAttention`（继承上游抽象），docstring 自述 eager 与图捕获都走 `npu_fused_infer_attention_score` 加 `graph_task_group_begin/end`——与 LLM 全图模式同一套融合路径；填充常量 `MIN_PAD_SIZE=64/MAX_PAD_SIZE=128/FIA_BLOCK_SIZE=128`（#L41-44——MIN_PAD_SIZE 在 #L41）。注意力有了自己的融合路径，图管理器自然也要一份——
+
+**②编码器独立图**：`worker/encoder_acl_graph.py#L256 EncoderAclGraphManager`（改名继承上游 CudaGraphManager）——编码器自己有一套图管理器，与主模型图并行（ViT 的批形态与 LLM 不同步：图片到齐就编、不必等文本批，分开捕图才互不牵扯）。编码一次贵（ViT 前向几亿 flop），缓存也就有了两个层次——
+
+**③编码缓存双层化**：`model_runner_v1.py#L587-591`——tmp 设备层+cpu 主存层+异步搬运队列（`_pending_encoder_cache_copies`）：设备层快而小（热数据）、主存层大而慢（冷数据），按调度输出异步搬运/逐出——「热缓存住显存、冷缓存搬主存」的两级存储微缩版。
+
+**④模型级补丁**：`patch/worker/patch_qwen3vl.py`（105 行）——deepstack 输入嵌入的 TP 分块、`triton_split_qkv_rmsnorm_mrope` 融合核、ViT interpolate 的 CPU 兜底——「一个 VLM 家族一串 patch」（视觉侧算子生态不如文本侧成熟，逐模型补齐是现状）。
+
+选型红线两面（官方文档级）：绿名单 `supported_models.md`#L132-133——**Qwen3-VL 系 ✅**【证据等级：官方文档（vllm-ascend docs）】（dense 与 30B-A3B/235B-A22B 均在）；**InternVL 2.0/2.5/3.0 全族 ❌**（issue #2064）——本章实验只走 Qwen3-VL。特性交叉（feature_matrix）：mm×W8A8 ✅、mm×W4A4/W4A8 ❌、mm×ACLGraph 双模式 ✅——这张交叉表是 ch8 部署矩阵的多模态行：**VLM 服务目前只能配 W8A8 或不量化**，4 位权重的 VLM 部署在 NPU 上是空格（选型时先查交叉表再谈容量）。
+
+> **【版本差异框注】mm 缓存漂移的重试机制运行栈没有**（#21，A 级）：v0.30.0 的 `MultiModalCacheMissError`（`multimodal/cache.py#L42-52`）处理 P0/P1 双进程 mm 缓存的漂移——前端持影子副本、两进程更新顺序不同会漂移，漂移时抛错并让引擎返回**可重试响应**、前端丢弃过期条目自愈（`engine/core.py#L1763-1766` 捕获+`_handle_mm_cache_miss`#L1858）；运行栈全仓零命中（grep 复核）——书里画有的层、跑着的栈没有，与 ch3 #15 同处置。
+
+## 4.4 LoRA 服务：配置、调度与热交换
+
+换第二条线。结构账先立（谁持有什么）——配置面一张表读全：
+
+**表 4.1 LoRA 参数面**（`vllm/config/lora.py`【源码：阅读锚 v0.30.0（ced6857）；运行栈同文件基本零漂移】）
+
+| 参数 | 默认 | 语义与量级 |
 |---|---|---|
-| $H, W$ | 图高/宽 | 像素 |
-| 28 | merge 格边长（4 个 14×14 patch 合一） | 像素 |
-| $N_{vis}$ | 视觉词元数 | token |
+| `enable_lora` | False | 总开关（serve 侧 `--enable-lora`；EngineArgs#L629） |
+| `max_loras` | 1 | 批内同时活跃 adapter 上限——**调度约束**（每步分派进批元数据的件数） |
+| `max_lora_rank` | 16 | 预算上限（Literal 九档 1-512（1/8/16/32/64/128/256/320/512））；≥128 时 punica 走回退路（4.5） |
+| `lora_dtype` | auto | 旁路精度（默认随基座） |
+| `enable_tower_connector_lora` | False | 视觉塔/连接器挂件开关（4.8；实验特性） |
+| `default_mm_loras` | None | 按模态默认挂件（「该模态出现即激活」的第三路线，仅单 adapter） |
 
-用人话说：图先切成 28×28 的 merge 格，每格出 4 个 14×14 patch 词元后再 2×2 合并——**每 28×28 像素摊一个词元**。
+读法：第一行的开关决定「有没有」，二三行的两个 max 决定「多大」——一个管并发分时、一个管秩预算；后三行是多模态族的路由件。请求面：`lora/request.py#L8 LoRARequest`（lora_name/lora_int_id/lora_path 三字段随请求进门——OpenAI 层把请求的 `model` 字段当 adapter 名路由，这正是 4.7 矩阵实验「换 model 名=换 adapter」的机制）。调度面的硬约束值得看断言正身：
 
-**例 4.1（一张图的账单三档）** 用式 (4.1) 心算三档：①640×640：$\lceil 640/28\rceil=23$，$23^2\div4\approx400$ 词元（本册实测档）；②1024×1024（1K 屏截图）：$37^2\div4\approx1024$——**恰好一屏一千词元**，mm 请求的 prompt 长度从「几十」跳到「上千」就是这一档；③4096×4096（4K 图）：$147^2\div4\approx16384$ 词元——超过 encoder 预算（16384）的门槛就在这档，「4K 图直接进请求」在预算上已经顶格。KV 成本同步三档跳（每词元每层 2048B：400 词元×24 层≈19MiB、16384 词元×24 层≈768MiB——一张 4K 图的 KV 就吃掉大半张卡的预算余量）。这张账单决定了 mm 请求的 KV 成本、APC 键与调度预算——**图像分辨率的争论，本质是词元预算的争论**。
+```python
+# vllm/v1/core/sched/scheduler.py#L845-852（骨架摘录）【源码：阅读锚 v0.30.0（ced6857）】
+        scheduled_loras: set[int] = set()
+        if self.lora_config:
+            scheduled_loras = set(...)
+            assert len(scheduled_loras) <= self.lora_config.max_loras
+```
 
-mm 的模态面不只有图：协议层的 `type` 还认 `video_url`/`audio_url`，v0.30.0 新增了 `multimodal/video_decoders/` 四解码后端子包（#22）——但**本机 av/decord 均未装**，视频与音频在本册一律阅读面；图像是本机唯一可实测模态，也是绝大多数生产 VLM 的主模态，本册 mm 的实测口径由此定界。
+指名看什么：超了不是 OOM、是**本轮不排**——LoRA 并发度的物理形态是「调度分轮」（例 4.3）。运行栈同逻辑在 #L675-681。
 
-vllm-ascend 侧的 mm 面以 ViT 四差异落地：`AscendMMEncoderAttention`（ViT 注意力的 NPU 接入）、`EncoderAclGraphManager`（encoder 图捕获）、双层 encoder cache、模型级补丁（`patch/worker/patch_qwen3vl.py`——deepstack 输入嵌入与 PP 边界暴露）。**绿名单**：Qwen3-VL 系官方 ✅（核心支持）；InternVL 全族 ❌。本机首验读数见 4.4。
+层类还有一次系统性「换血」：`vllm_ascend/lora/utils.py#L202 refresh_all_lora_classes()` 把六个 Ascend 版线性层类（RowParallel/ColumnParallel/MergedColumnParallel/MergedQKVParallel/FusedMoE/FusedMoE3D）插进 `_all_lora_classes` 头部——**模型代码一行不改，线性层的 LoRA 化实现被整族替换**（与 Book7 见过的「平台插件换 worker_cls」同一手法在层粒度的重演）。这是「外挂不改基座」在代码组织上的对应物：基座类的接口不动、可替换的实现清单挂在旁边。
 
-> **【版本差异框注】#21：mm cache-miss 重试**——v0.30.0 有三件套（`MultiModalCacheMissError`（cache.py#L42-52）+EngineCore 捕获（core.py#L1763-1766 的 `except MultiModalCacheMissError`）+`_handle_mm_cache_miss`（#L1858，docstring 自述 P0/P1 cache-drift miss…retryable…self-healing））；运行栈 0.27.1 **机制整体不存在**（grep 零命中）。背景是双进程各有 mm 处理缓存的影子副本（前端算一份哈希、EngineCore 持一份缓存），更新顺序不同会漂移——v0.30.0 把漂移做成「可重试响应」的闭环（请求带 hash 回前端、前端重算后重发），运行栈遇漂移只能直接重算。与 ch3 的 #15 同处置：**书里画有的层，运行栈没有——框注即边界**。
+**例 4.2（LoRA 无操作判据：B=0 的数学）** 构造：缩小版 rank-2——$x\in\mathbb{R}^{4}$、$A\in\mathbb{R}^{2\times4}$、$B=\mathbf{0}\in\mathbb{R}^{4\times2}$、α/r=1。输入三步：①$x\to A$ 得 $\mathbb{R}^{2}$（降维）；②$\to B$ 得 $\mathbb{0}\in\mathbb{R}^{4}$（零矩阵吃掉一切）；③$\frac{\alpha}{r}\cdot\mathbf{0}+W_0x=W_0x$——输出逐位不变。输出读法：**B=0 ⇒ 旁路恒零 ⇒ 装了等于没装**——这就是「无操作判据」（4.7 实测的 J2 数学根：同一个引擎、同一个请求，挂 noop adapter 的输出必须与裸模型逐位一致；不一致=装载路径有副作用）。真实尺寸一行注记：Qwen3-0.6B 的 q_proj 1024×1024、rank-8 旁路 A 是 8×1024、B 是 1024×8——A 件占基座的 0.8%、A+B 两件合计 1.6%。（位置：实测=4.7 的 pre2 底档三判据。）
 
-## 4.3 LoRA 服务：外挂的算子链
+**例 4.3（max_loras 的调度分轮）** 构造：3 个请求挂 2 个 adapter、`max_loras=1`。输入两轮：①第 1 轮调度器只排 adapter#1 的请求（scheduled_loras 集合={#1}，断言不破），adapter#2 的请求在 `LoRAStats` 的 waiting 集合里等；②第 2 轮换件——#1 的请求走完、#2 上场。输出读法：**换 adapter=换一轮调度**，不是并行三头——「多 LoRA 服务」的并发模型是分时制；LoRAStats（`v1/metrics/stats.py#L587`）的 waiting/running 两本集合就是分时制的账面。（位置：断言锚=scheduler.py#L852；观测面=ch9 指标字典的 LoRA 行。）
 
-LoRA 在推理侧的问题不是数学（Book4 已教），是工程。设想一个服务平台：底座是一个基模型，上面跑着一百个客户的定制 adapter——客户 A 的法律风格、客户 B 的代码风格、客户 C 的客服话术。**任何时刻一个批里可能混着三个客户的请求**，每个请求要用自己的 $BA$ 旁路。引擎要解的是：基权重常驻一份、adapter 按请求路由、批内混排时各算各的——「**一套基模型权重上，按请求热切换外挂件**」。接线三级：①**配置面**：`--enable-lora --max-lora-rank 8 --lora-modules name=path`（0.27.1 只认 name=path 或 JSON dict 格式——cli_args.py#L49；list 格式被拒，这是我们踩过的第四个 CLI 陷阱）。②**平台接入**：`vllm_ascend/platform.py#L190-192` 的 `get_punica_wrapper` 分派到 `vllm_ascend/lora/punica_npu.py::PunicaWrapperNPU`#L31。③**算子面**：punica（**PUnctual INference of Adapters**——vLLM 的 LoRA 算子族名，源自 Punica 项目：首篇系统化研究「单基模型多 adapter 服务」的批处理算子工作）在 NPU 的实现走 **AscendC 自定义算子 bgmv/sgmv**（`ascend_jit.py#L30` 注册图捕获 custom_op、#L460 分派）。两条核路径的分工：**bgmv**=批内全同 adapter（batched gemv——基权重是大 GEMM、LoRA 旁路是小矩阵乘向量，逐请求算 $BAx$ 再加到基输出上）；**sgmv**=批内混排多 adapter（shared-gemv——按 adapter 分段收集，一段一次核调用）。六层 LoRA 层类在 NPU 侧重写接入 vLLM 的层抽象——「**类换血、接口不动**」：Linear/RoutedLayer/Embedding 等六类各把 forward 里的 punica 调用指向 NPU 实现，上层零感知。这个移植模式与 ch1 见过的「类换血」、ch2 的「ngram 零成本继承」构成移植策略的光谱：**全继承**（无需设备假设→不改）/ **换壳继承**（改 dummy_run 等设备假设点）/ **类换血**（forward 里算子全换、类名接口保留）——按「设备假设渗入多深」选档，是给任何平台移植者的三件套。热切换语义：请求带 `model: <adapter名>` 路由，引擎在同一进程内换刀——基权重不动，adapter 权重在请求到达时按需加载进显存（多个 adapter 可同时驻留——`max_loras` 控制驻留数、LRU 逐出；每个 adapter 的 MB 级体量让「驻留几十个」在 HBM 上无压力——例 4.2 的参数账在服务端兑现）；批内可混排不同 adapter 的请求（sgmv 核的用武之地——4.3 的 sgmv 就是「一批里多个 adapter 各自的 $BA$ 同时算」）。图模式下 `force_has_lora` 分派键（#L3699）让引擎多捕一份「带 LoRA 槽位」的计算图变体——LoRA 与非 LoRA 请求共存时两图切换，这正是 4.4 里 LoRA 基础税的一部分来源。
+热交换（hot-swap——源码注释原话 "Hot-Swap lora model"）的执行面在 model runner：`model_runner_v1.py#L1541-1543` 每步 `set_active_loras(self.input_batch, ...)`——把本批请求的 adapter 映射进批元数据（三字段 `npu_input_batch.py#L198-201`：request_lora_mapping/lora_id_to_request_ids/lora_id_to_lora_request）；装载/卸载/枚举走 worker 的 add_lora/remove_lora/list_loras/pin_lora 四接口（#L1083-1093，OpenAI 层 `/v1/load_lora_adapter` 路由可达——**运行中加件也是服务面操作**，不必重启）。还有一个图模式的深层耦合：**LoRA 状态是图分派键的一部分**——`model_runner_v1.py#L3699-3703` 捕图时显式注入 `force_has_lora/force_num_active_loras`（注释原话：LoRA 在上下文管理器里才激活，但捕图时就要知道批描述符的 LoRA 状态）。用人话说：回放一张图前必须先回答「这批挂没挂件、挂几件」——答案不同的批走不同的图，所以 LoRA 状态和批大小一样是选图的钥匙；官方口径「You can run LoRA with ACLGraph mode now.」【证据等级：官方文档（lora.md#L9）】。
 
-组合守卫三面（vllm-ascend 平台层）值得各记一笔：①spec 的量化强制继承主模型（ch2 已见——LoRA×spec 时 adapter 也按主模型的量化口径走）；②LoRA×某些量化路径有检查（W4A16 基座挂 adapter 的组合面在白名单制下是窄门）；③mm 处理器缓存与 tower connector 互斥（4.5 的 CI 守卫——两个缓存都动视觉路径时互踩）。守卫的存在本身说明：**组合面是平台层的真实焦虑**——这正是 4.4 实验②「自建矩阵」的动机，也解释了为什么官方宁可收紧也不背组合矩阵的测试债。**例 4.2（toy adapter 的参数账）** 手写 rank-8 件（4.3 预跑件）：Qwen3-0.6B 全部 28 层的 q_proj（$1024\times1024$）与 v_proj（$1024\times512$）各挂 $A\in\mathbb{R}^{8\times d_{in}}$、$B\in\mathbb{R}^{d_{out}\times 8}$——$28\times(8\times1024+1024\times8+8\times512+512\times8)=28\times24576=688{,}128$ 参数，**fp32 下 2.6MB**——对比基模型 0.6B（bf16 1.2G）：**adapter 是基模型的 0.1%**。工业 rank 常用 16-64，adapter 也不过十 MB 级——「热切换不改基权重」的经济学根基就在这个数量级差上（换基模型要搬 GB 级权重、换 adapter 只要 MB 级）。
+两轨稳定性在此值得一提（与 ch2/ch3 的「读的链跑的链分离」对照）：LoRA 的**算法主体两轨极稳**——lora_model.py/request.py/resolver.py/peft_helper.py/torch_ops 等七件逐字节一致（正面清单），漂移集中在 runner 集成面（mixin 的 `reset_lora_state`——基权重被替换后摘除全部 adapter，与 sleep/wake 场景联动——运行栈无此件）。两条脚注级考据顺手收下：运行栈 `lora/layers/` 里有个 `vocal_parallel_embedding.py`（v0.30.0 已改正为 `vocab_parallel_embedding.py`——一个跨版本 typo 的化石）；MoE-LoRA 的 scaling 有 α/rank 与 α/√r（rsLoRA）两派（`lora_weights.py` 两轨各一型——v0.30.0 #L204-206 per-adapter scaling 注释明示 rsLoRA）。视频与音频模态：`multimodal/video_decoders/` 的四解码后端为 opencv/torchcodec/pynvvideocodec/deepstream（本机均未装）——**视频/音频=阅读面**，本机实测止于图像。
 
-**官方 feature_matrix 对 LoRA×23 特性交叉零表态**——这个空白正是 4.4 实验②的自建实测动机。
+## 4.5 punica 三级接线与内核
 
-## 4.4 实验：VLM 首验与组合矩阵
+NPU 的 LoRA 执行路径是三级接线（与 attention 后端、平台插件同构——「平台插件改哪里」的第三个标本）：**平台挂钩**（`platform.py#L190-192`）→**包装类**（`lora/punica_npu.py#L16 PunicaWrapperNPU`）→**内核**（`lora/lora_ops.py` 的 AscendC 六函数）。挂钩正身三行：
 
-**实验①：VLM 本机首验**（Qwen3-VL-2B-Instruct，4.26G——绿名单核心档的本机第一次起服）【本机实测（Atlas 910B3，CANN 9.1.0，运行栈 0.27.1+vllm-ascend 0.27.1rc1）：底档 `log/book8-ch04/vlm_first_run.json`+`vlm_serve2.log`】：serve 92 秒就绪——启动日志给两个 mm 专属的实物：`Encoder cache will be initialized with a budget of 16384 tokens, and profiled with 1 image`（encoder 中间缓存的词元预算与 profiling 方式——mm 引擎的启动多一道 encoder 预算账）与 ViT 权重的分段装载；640×640 三色测试图+「描述这张图」请求 → 回复 `"A solid, uniform red color fills the entire image."`（图文正确）；**视觉词元差分=417−15=402**（图文 prompt_tokens 减纯文本同问句）——式 (4.1) 的 400 加模板 2，**分支 (a) 命中：公式账逐位闭合**。同图二发 180ms（J4——mm 处理器缓存热：首发的 ViT 编码被缓存，二发只重算 decoder；对照纯文本二发的~200ms 量级，mm 缓存在多轮同图场景的收益是「免编码」而非「免推理」，收益幅度取决于图在请求里的词元占比）。附带守卫观测（J5）：带 LoRA 启动的 serve **装载成功**（`Loaded new LoRA adapter` 行在档——装载期不查维度）但首个请求挂起 >300s——0.6B 的 adapter（hidden 1024）对 VL-2B 语言塔（hidden 2048）的维度不匹配走的是**运行期挂**而非装载报错。这笔观测本身是教材：与 ch3 的「报错优于静默」对偶，这里是「装载成功≠能用」——**懒加载范式下（请求到达才真装载权重），装载日志只是第一道门，维度匹配在第一道真实计算处才炸**；部署多租户 adapter 时的运维含义：上线前每个 adapter 都要发一条冒烟请求，装载行绿灯不算数。
+```python
+# vllm_ascend/platform.py#L190-192【源码：运行栈 vllm-ascend 0.27.1rc1】
+    @classmethod
+    def get_punica_wrapper(cls) -> str:
+        return "vllm_ascend.lora.punica_npu.PunicaWrapperNPU"
+```
 
-**实验②：LoRA×APC×图模式×spec 四元组合矩阵**（Qwen3-0.6B+手写 toy 件，7 臂）【本机实测（Atlas 910B3，运行栈 0.27.1+vllm-ascend 0.27.1rc1）：底档 `log/book8-ch04/combo_matrix/combo_matrix_summary.json`】——官方 feature_matrix 对这四个开关的交叉只给了单因子行，组合面零表态；本矩阵用 $2^4$ 里的 7 个代表臂（锚+四单因子+noop 判锚+全组合）自建首笔数据。工程侧四个坑如实入册（本册方法学档案有全记录）：lora-modules 只认 name=path 格式、bench 客户端要 HF_HUB_OFFLINE（否则 SSL 断连崩）、残留 serve 会劫持 readiness（端口清场行进脚本）、kill -9 后 HBM 慢释放与孤儿 EngineCore 要手杀+等待——**多臂 serve 实验的工程纪律本身是本章方法学贡献的一半**，六跑才全绿的过程比结果更有教学价值：
+包装类的内核选择分支（#L31-34）藏着两条回退路：硬件无 `LORA_CUSTOM_OPS` 能力位、或 `max_lora_rank≥128`——回退上游 torch 原生实现；否则走 AscendC 内核（csrc 四文件 bgmv_shrink/bgmv_expand/sgmv_shrink/sgmv_expand）。另有**单 LoRA 槽优化**（#L57-63：A2/A3——昇腾硬件代际枚举的两档、本机 910B3 属 A2——且 max_loras==1 时免内核调度直连 matmul——4.7 的 rank-8 toy 实验正落此分支）；图捕获期另有 triton 融合核支路（`_try_lora_linear_triton`#L334——捕获中+bf16 时走 triton 融合，与 AscendC 内核是「捕图内/捕图外」的分工）。
 
-**表 4.2 LoRA 组合矩阵读数**（16 请求×64 token echo workload、贪心、同卡同 seed；加速比=各臂/M0）
+**例 4.4（bgmv/sgmv 的分组账）** 构造：4-token 批=请求 1（2 token，adapter#1）+请求 2（2 token，adapter#2）。输入两算：**bgmv**（b=batched）——逐 token 查 index 直算：每个 token 的 x 过自己请求的 A、B（decode 形：批里每请求 1 token，天然逐个）；**sgmv**（s=segmented）——按 adapter 把批切成连续段，段内一次分组 GEMM（prefill 形：同 adapter 的长段摊薄启动开销）。输出读法：**同一旁路两种打包**——名字里的 b/s 就是批形态；rank-8 旁路一次 shrink（x→xA，1024→8）一次 expand（→B 加回，8→1024），中间秩空间只有 8——旁路计算量被秩压到可忽略，成本全在访存与调度。（位置：内核注册正身=`lora_ops.py#L30-40`（`torch.ops._C_ascend.bgmv_shrink`）；图捕获感知 `_lora_is_capturing()`#L327+`custom_op("_vllm_ascend_lora::lora_linear")`#L460——注册为 custom op 是图可捕的前提。）
 
-| 臂 | 配置 | 吞吐（req/s） | vs M0 | ITL（ms） | TTFT（ms） |
-|---|---|---|---|---|---|
-| M0 锚 | 全关 | 0.82 | 1.00× | 60.3 | 118 |
-| M1 | LoRA(perturb) | 0.71 | 0.86× | 72.2 | 137 |
-| M1n | LoRA(noop) | 0.77 | 0.93× | 66.1 | 144 |
-| M2 | APC | 0.84 | 1.02× | 59.3 | 114 |
-| M3 | 图模式 | **2.57** | **3.13×** | **8.9** | 47 |
-| M4 | spec ngram k=5 | 0.85 | 1.04× | 60.6 | 904 |
-| M5 | **全组合** | 0.74 | 0.90× | 72.6 | 1016 |
+## 4.6 组合守卫与七臂实测
 
-读表 4.2 的导引：第四列（vs M0）是各因子单开的「净价」，第五六列（ITL/TTFT）把「贵在哪一步」拆开——ITL 贵是 decode 每步的税（LoRA/图模式）、TTFT 贵是首 token 前的固定成本（spec 装配、图捕获摊销）。
+组合守卫（combination guard）＝两特性同开时引擎的互斥/回退行为——本章把它当作 LoRA×其余特性交叉的观测对象（ch5 将见它的平台禁用版）。LoRA 与其他特性的交叉是官方证据的稀疏带：**量化×MoE×LoRA**——`lora/quant_moe.py` docstring 自述「preserve floating-point LoRA boundaries around quantized base expert matmuls」（量化基座周围保持浮点 LoRA 边界）；官方 MoE 表：非量化+W8A8 dynamic 支持、其余 MoE 量化/Fused MC2/动态 EPLB 不兼容【证据等级：官方文档（lora.md#L30-37）】。**spec×LoRA**——无配置层硬禁（两轨 grep 零命中）；机制层有接线证据：draft 批次分派带 LoRA 状态（`vllm_ascend/spec_decode/llm_base_proposer.py#L894-895`——`has_lora = len(...lora_id_to_lora_request) > 0`，草稿批的批描述符同 LR 请求一样携带 adapter 身份）；CI 有 eagle3×LoRA 先例（官方 adapter `vllm-ascend/Qwen3-1.7B_eagle3` 参数化测试）。**spec×LoRA 的账因此是三本的**：旁路路径成本（M1 列）、spec 自身的 TTFT 扫描费（M4 列）、两者的组合叠加（M5 列）——M5 的 ITL 72.6ms ≈ M1 的 72.2ms（旁路主导、spec 的稳态贡献在 echo workload 下被 τ 抵消），而 TTFT 1016ms ≈ M4 的 904ms+装载与旁路初始化——**组合矩阵的单因子归因法在这里显出用法：先读单因子臂，再验组合臂是否≈单因子之和**。**官方未表态面**——feature_matrix 没有 LoRA 行（grep 零命中）：LoRA×其余 23 特性交叉官方不背书。处置：自建组合矩阵实测（表 4.2）。
 
-五笔判读。**其一，J1 全绿：7/7 臂起服**——M5（LoRA+APC+图模式+ngram 同时开）在官方未表态面**本机首验通过**：四路开关不互斥，组合面存在。**其二，图模式是唯一的量级因子**：M3 的 ITL 从 60.3ms 砍到 8.9ms（**6.8×**）、吞吐 3.13×——与 Book7 ch8 的 ACLGraph 6.15× 同量级互证，也再次框定了 eager 口径下其他因子的读数天花板。**其三，LoRA 的税**：先过 J2 判锚——M1n（noop adapter，$B=0$）的输出与 M0 逐位一致（零矩阵在数学上是恒等——ch2 已证的判据第四次复用）；然后 M1/M1n 比 M0 慢 7-14%——外挂算子链（bgmv 注入+图分派键 force_has_lora 多捕变体）的固定代价；noop 臂比 perturb 臂略快（0.93 vs 0.86——零矩阵跳过部分核内计算）但都交了「装了 LoRA 系统就在」的基础税。**其四，spec 在小批量+长 TTFT 下持平**：M4 的 τ=5.01（serve 日志 SpecDecoding 行——echo 臂 k=5 几乎全收，图模式关掉的口径下 drafter 装配开销相对突出）但吞吐只 1.04×、ITL 与 M0 持平（60.6 vs 60.3ms）——**接受长度高不等于赚到**：τ=5 意味着平均一步出 5 个 token，但 ITL 没降，说明验证前向的宽度把这 5 个 token 的成本吃回去了（$\hat c pprox1$ 的恶劣工况——ch2 式 (10.3) 的另一侧印证）。TTFT 涨到 904ms 是 ngram 装配+首请求开销在小批量下摊不平；与 ch2 表 2.2 的 k=3 档 1.40× 相比是**批量与图模式双口径的差**（32 vs 16 请求、eager 两处同但本章 M4 的 drafter 槽位更多）。**其五（J5 APC×LoRA 交叉）**：M2 的 APC 开着但 echo workload 的前缀哈希链与 M5 的组合里 APC 微正——LoRA 请求参与 APC 时 Book6 ch06:49-51 的「附加位容纳 LoRA 标识」旧账兑现：adapter 身份进哈希、不同 adapter 的同前缀互不污染（交叉正确性的机制根，本矩阵只作观测级记录、不展开）。
+**表 4.2 LoRA×APC×图模式×spec 七臂组合矩阵**（Qwen3-0.6B+lora_toy 双件；echo workload 16 请求同 seed 温度 0 全 eager 除图臂；【本机实测（Atlas 910B3，运行栈 0.27.1+vllm-ascend 0.27.1rc1，卡 3；底档 `log/book8-ch04/combo_matrix/`，第六跑清场版】）
 
-**其六，全组合不叠加**：M5（0.90×）的账可以拆：LoRA 税（M1 的 −14%）+spec 开销（TTFT 1016ms≈M4 的 904ms+LoRA 装载增量）+APC 微正（M2 的 +2%）——**乘法世界的因子在算术世界各自记账**。要害结论：**「全开」不是「全赚」**——图模式（唯一的量级因子）没进 M5（eager 基线下组合矩阵隔离了图模式变量），而 LoRA 与 spec 的组合在服务面是兼容的、代价是可加的；生产部署的「开哪些开关」是笔逐因子的成本收益账，本矩阵给了第一份本机价目单。方法学注脚：矩阵设计的三个原则——**锚臂先立**（M0 定基线，一切比值有根）、**判锚臂护航**（noop 的恒等性验证装了 adapter 的测量系统本身没偏）、**全组合臂压轴**（官方空白格的直测）——读者可把这套骨架搬到任何「多开关引擎」的组合面测量上。
+| 臂 | LoRA | APC | 图 | spec | 吞吐相对 M0 | ITL ms | TTFT ms | 判读 |
+|---|---|---|---|---|---|---|---|---|
+| M0 锚 | off | off | eager | off | 1.000 | 60.3 | 118 | 参照 |
+| M1 | perturb | off | eager | off | 0.863 | 72.2 | 137 | LoRA 单因子：−14% |
+| M1n | noop | off | eager | off | 0.930 | 66.1 | 144 | 判锚臂：noop 也付 7% 路径成本 |
+| M2 | off | on | eager | off | 1.015 | 59.3 | 114 | APC：+1.5%（echo 前缀复用） |
+| M3 | off | off | ACLGraph | off | **3.126** | **8.9** | **46.8** | 图模式：本矩阵最大收益（ITL 6.7×） |
+| M4 | off | off | eager | ngram k=5 | 1.038 | 60.6 | **904** | spec：吞吐平、TTFT 膨胀 7.6×（prompt-lookup 扫描计在首 token） |
+| M5 | perturb | on | ACLGraph | on | 0.896 | 72.6 | 1016 | **全组合可行**——官方未表态面的自建答案 |
 
-## 4.5 mm-LoRA 塔连接器：一瞥
+读法两句话。正向读：**M5 全组合跑通了**——LoRA×APC×图×spec 四特性同开不炸（吞吐 0.896× 近锚），「未表态」≠「不可用」；反向读：每行最右列的判读比数字本身值钱——LoRA 的 −14% 是旁路路径成本（noop 臂证明 7% 是纯路径开销）、spec 的 TTFT 膨胀把「扫描费计在首 token」变成了读数、图模式一骑绝尘但与 LoRA 同开时收益被部分吃掉（3.126→组合内 ITL 8.9→72.6 的表观矛盾源于 M5 的 spec+LoRA 叠加开销——单因子归因法在组合矩阵里的用法注记）。
 
-mm 与 LoRA 各自成线，交叉处才见工程想象力。第一层交叉是**给 VLM 挂普通 LoRA**（4.4 实验①的守卫观测位——语言塔的 $BA$ 旁路照挂，视觉塔不动）；第二层交叉就是本节的主角：**塔连接器 LoRA**（`enable_tower_connector_lora`——config/lora.py#L53/#L63 两轨同有）——不止给语言塔挂 adapter，连**视觉塔的连接层**也挂（LoRAMappingType 的 TOWER/CONNECTOR 两型）。vllm-ascend 的 conftest 里有官方塔件先例（qwen3-4b-vl-lora-vision-connector）与一条守卫：**tower connector 与 mm 处理器缓存互斥**（CI verbatim 在档）。本机 2B 模型与官方 4B 塔件不匹配——按 CI 证据+源码走查口径写，实测留 ch13 终账的候选位。塔连接器为什么值得单独一节名字？因为它把 LoRA 的「外挂」语义推到了极限：**不改基模型的任何一层，只调视觉塔到语言塔的信息桥**——微调成本最低、知识遗忘最小的多模态适配路径，工业上给同一个底座配不同视觉风格（文档/图表/照片）的多面手做法。
+实验设计的两条增补纪律也值得留档（沿 ch2 八条混淆源之上的 ch4 特有项）：**mm 图字节确定性**——PIL 造图不带时间戳元数据（PNG 确定性编码），保证 mm 哈希稳定、缓存行为可断言；**adapter 两态**——「已装载」（load_lora）与「已激活」（请求带 model 名）是两步，判锚用 noop 件在**同臂内**对比、不跨臂。CI 覆盖面是官方证据的最后一块：one_card/lora/ 七测试覆盖了 LoRA×{ilama/llama32/**spec_decode**/olmoe(MoE)/多 adapter/reranker(pooling)/**qwenvl(VLM)**}+two_card 四测试（TP2 面）——**官方用 CI 把「未表态」的交叉悄悄表态了大半**，自建矩阵补的是 CI 没覆盖的组合（APC×图×spec×LoRA 四元）。
 
-## 4.6 本章小结
+## 4.7 实验：VLM 首跑与判据三件
 
-回扣开篇的两条「变胖」：mm 把请求变胖——五步管线（协议/输入处理/视觉编码/拼接/调度）各站为「请求里有图」付出结构代价，核心账本是视觉词元（式 (4.1) 的 400 预测 vs 402 实测闭合），KV/APC/调度三层同价；LoRA 把模型变胖——三级接线（配置面/平台接入/算子面）在 NPU 走 AscendC bgmv/sgmv 核，基础税 7-14%、边际换装零成本。两者都按请求路由、不动基模型——「增量服务」是共同的形态学。组合矩阵把官方空白面填上了本机读数：四开关可同开、图模式独占量级、每因子各付各账。
+LoRA 线的读数落定，mm 线的本机首验现在补上。**VLM 首跑**（Qwen3-VL-2B-Instruct，4.26G 在位——A2——910B3 所在硬件代际——绿名单模型的本机首验）：J1 起服 92s 全绿；J2 图文请求 200 且描述合理（640×640 纯红图→「A solid, uniform red color fills the entire image.」）；**J3 视觉词元预算账逐位闭合**：`usage.prompt_tokens` 图文 417 − 纯文本 15 = **402 = 400（公式值）+2（模板开销）**——例 4.1 的手算在真机上兑现【本机实测，底档 `log/book8-ch04/vlm_first_run.json`】。J4 同图二发延迟 180ms（mm 处理缓存热的观测级读数）。**J5 守卫观测**（LoRA×VLM 交叉）：serve 带 toy adapter 起得来（装载行在档），但首个请求**运行期挂起 >300s** 而非装载报错——疑似 adapter 维度（1024）对不上 VL 文本塔（2048）的懒加载挂法（底档留归因、serve 日志无维度报错行——归因候选口径）；守卫行为=「晚失败」，如实登记（工程四坑之一：**adapter↔基模型的维度匹配是使用者的责任**，引擎不替你查到装载期）。晚失败的路径值得走查两步：装载期 load_lora 只核键名与文件完整性（toy 件的 q/v_proj 键在 VL 文本塔里同名存在——键名关过了）；真正的维度比对发生在**首次前向的 punica 分派**（A 矩阵 8×1024 要右乘 2048 维激活——形状错位在这一刻才暴露），而请求已进调度队列、无超时兜底时表现为挂起。**「键名关早、形状关晚」**是懒加载类插件系统的通病——排查这类挂起，先 diff 两边的模块名表与维度表。
 
-**带走的心智**：其一，**mm 的账本在词元不在字节**——一张 640² 的图是 400 个词元的预算（KV/APC/调度三处同价），图像压缩率的争论本质是词元数的争论，4K 图≈16384 词元≈大半张卡的 KV 余量——先算词元再谈分辨率；其二，**LoRA 的经济学=基础税+边际零**——装了 adapter 系统就在付 7-14% 的固定税，但换 adapter 是零边际成本的（热切换不换权重、adapter 只有基模型的 0.1% 大小）——「多租户共享底座」这个商业模式在算术上成立；其三，**组合面是测出来的不是推出来的**——官方矩阵的空白格，本机 7 臂矩阵就是第一笔权威数据；其四，**因子各自记账**——图模式的收益住 ITL、spec 的开销住 TTFT、LoRA 的税住全程——读组合矩阵先看「贵在哪一步」的分解列，不看单一吞吐数。
+**noop/perturb 判据三件**（pre2 预跑底档引用不重跑）：J1 装载 ✓、J2 noop 输出与基线**逐位一致** ✓（例 4.2 的 B=0 数学）、J3 perturb 输出分叉 ✓（第二条 prompt 基线「…five **seven nine**…」变「…five **six seven eight**…」——旁路生效的肉眼证据）【本机实测（2026-10-12，卡 3），底档 `log/book8-00/pre2_lora_format.json`】。adapter 的构造法也是件教具：toy 件按 peft 格式手写——28 层 q/v_proj、112 张量（28×2×A/B 两件）、键名 `base_model.model.<module>.lora_{A,B}.weight`、`adapter_config.json` 九键（peft_type/task_type/r=8/lora_alpha=16/lora_dropout/bias/target_modules=["q_proj","v_proj"]/base_model_name_or_path——peft 格式约定）——**LoRA adapter 就是一个目录几 MB 的小包裹**，不碰基座一个字节（脚本 `pre2_lora_format.py` 可复跑）。
 
-下一章把「请求」变成「重叠的时间线」：async scheduling 让调度与执行并行，ubatching 把一步切两半——时间维度的省钱法。本章的入口变胖与下一章的时间重叠在生产部署里是乘法：mm 请求的长 prefill 最吃重叠调度，LoRA 的多 adapter 混批最吃 sgmv 的批内并行——两章的读数在 ch11 的容量规划里合账。
+工程四坑收拢：①adapter 与基模型维度/键名匹配自查（J5 的晚失败——引擎不在装载期替你查维度）；②`max_loras` 默认 1——多 adapter 并发要显式调（例 4.3 的分时制）；③spec 与 LoRA 同开时 ngram 的扫描费全计 TTFT（M4/M5 列）；④mm 处理缓存与 APC（multimodal） 是**两本账**——图重复省的是处理器缓存（ViT 编码与预处理，J4 的 180ms），文本前缀重复省的是 token 级 APC；一本按 `--mm-processor-cache-gb`（默认 4GB）预算、一本按块池走，混称即混账。
 
-> **【欠账】** ①LoRA×VLM 守卫的挂起机制归因（懒加载路径）→ 第 9 章回账清单；②塔连接器实测（需 4B 级模型）→ 第 13 章终账候选。
+## 4.8 mm-LoRA：语言塔之外的另外两本账
 
-**动手验证**（三件；选卡纪律照 CLAUDE.md、serve 纪律照 4.4）：
-① VLM 视觉词元账：起 serve（4.4 命令）后同问句图文/纯文本两发，`usage.prompt_tokens` 差应 ≈400+2；
-② 组合矩阵单臂复跑：`bash code/Book8-vLLM源码剖析下/ch04/combo_matrix.sh`（内含端口清场）后读 `combo_matrix_summary.json`；
-③ noop 判锚：M1n 臂输出与 M0 逐位一致（`grep` 两臂 bench 输出对照——贪心判据第四次复用）。
+LoRA 不止能挂语言塔——`config/lora.py` 的一个开关打开第二路线：`enable_tower_connector_lora`（#L63，两轨同字段同行号零漂移），docstring 自述「LoRA support for the tower (vision encoder) and connector of multimodal models…experimental…only supports some MM models such as the Qwen VL series」。类型面正身：
+
+```python
+# vllm/lora/layers/utils.py#L27-31【源码：阅读锚 v0.30.0（ced6857）】
+class LoRAMappingType(Enum):
+    LANGUAGE = 1
+    TOWER = 2
+    CONNECTOR = 3
+```
+
+指名看什么：**同一引擎里语言塔/视觉塔（vision tower）/连接器（connector，与第 7 章 KV 传输 connector 同名不同物）三本 LoRA 账分开记**（`LoRAMapping.type` 默认 LANGUAGE）——视觉也能被旁路改造（比如微调视觉风格敏感度）。request 级路线（语言塔随请求换件）与 tower 级路线（启动期开关+视觉侧权重）的对照由此立起。组合守卫在此又现一例——CI 测试里的显式互斥（`test_qwenvl_lora.py#L264-268`）：
+
+```python
+# repos/vllm-ascend/tests/e2e/pull_request/one_card/lora/test_qwenvl_lora.py#L264-268
+# 【源码：运行栈 vllm-ascend 0.27.1rc1（tests，repo 内）】
+        # Currently, tower_connector_lora is incompatible with
+        # the multi-modal processor cache.
+        # TODO: Remove this restriction
+        mm_processor_cache_gb=0,
+        enable_tower_connector_lora=True,
+```
+
+指名看什么：**tower connector LoRA 与 mm 处理器缓存互斥**——CI 里显式把缓存置 0 并留 TODO（「组合守卫」家族的 mm 版，与 ch5 将见的 ubatching 守卫同族）。执行件的位置补一句（兑现 4.2 的伏笔）：mm×LoRA 交叉的 MRV2 执行正身在 `vllm/v1/worker/gpu/mm/lora.py`——编码器 runner 侧的 LoRA 挂点（视觉塔的前向也过 punica 式的旁路分派），与表 4.1 的语言塔路线共用 adapter 生态、各挂各的塔。
+
+两条路线的对照至此完整：**request 级**=语言塔随请求换件（OpenAI 层把 model 名当 adapter 名路由——4.6 矩阵实验的机制；粒度=每请求、零重启）；**tower 级**=启动期开关+视觉侧权重（官方件锚 4B 模型；粒度=整实例、管视觉行为）；外加 **`default_mm_loras`**（#L53，按模态默认挂件——「该模态出现即激活」的第三条配置路线，docstring 自注仅支持单 adapter）。本机边界如实：官方 tower 件与 2B 不匹配——**tower 路线本机=CI 证据+源码阅读面**，登记 ch13 终账。
+
+## 4.9 本章小结
+
+回扣开篇：两条「变胖」线各有完整账目——**mm 线**：图从站 2 进门（image_url）、站 5 成形（占位符 400 个视觉词元=预填充账单，图 4.1）、站 9 入前缀链（mm 哈希）、站 12 过编码器（NPU 四差异点+双层缓存）；实测 402=400+2 逐位闭合、同图二发 180ms。**LoRA 线**：旁路 $W_0x+\frac{\alpha}{r}BAx$ 随请求进门（LoRARequest）、调度分轮（max_loras 是调度约束，例 4.3）、每步热交换、punica 三级接线到 AscendC 内核（bgmv/sgmv 两种打包，例 4.4）；noop 判据的 B=0 数学（例 4.2）与七臂矩阵（M5 全组合可行 0.896×、图模式 3.126×、LoRA 路径成本 7-14%）把官方未表态面补成了自建证据。
+
+**带走的心智**：两幅画。**其一，mm 的经济学=「图片付入场费」**——视觉词元账在 prefill 一次付清（640×640=400 token、4096²=16,384——B5-6 的一万六千词元在此落地为公式与实测），编码器缓存让同图免二次付（180ms 的观测面）、预算账让大图可以切着付；读 VLM 服务的容量，先算三件事：每图入场费、图片构成（图文比）、缓存命中率。**其二，LoRA 的经济学=「行为按需变道、成本全在路径」**——旁路计算被秩压到可忽略（A+B 合计 1.6% 参数、几 MB 包裹），但路径成本真实存在（noop 也付 7%）；多 adapter 是分时制不是并行制（max_loras 的调度本质）；与图/spec 的组合可行但各有隐性账单（M5 的 TTFT=两笔单因子账之和）——**官方没表态的交叉，自己动手测一臂最便宜**，这是本章方法论层面最想留下的动作习惯。
+
+镜头拉回全书：请求的胖与行为的变道都伺候完了；下一章回到时间轴——调度与执行的重叠（async scheduler 与 ubatching：把等待变成计算的两把刀）。mm-LoRA 的 tower 件与四元对拍结果进 ch13 终账。
+
+> **【欠账】** ①mm-LoRA tower 路线（官方件锚 4B、本机 2B 不匹配——CI 证据+阅读面口径）与 LoRA×spec 全组合的深描（M5 可行但 TTFT 膨胀机制未拆）→ 第 13 章终账登记；②工程四坑的第三坑（spec×LoRA 的 TTFT 账）→ 第 5 章调度章展开复账。
+
+**动手验证**（Atlas 910B3；选卡纪律照 CLAUDE.md；serve 纪律全套）：
+① VLM 首跑：`ASCEND_RT_VISIBLE_DEVICES=<卡> vllm serve log/huggingface/hub/models--Qwen--Qwen3-VL-2B-Instruct/snapshots/<hash> --host 127.0.0.1 --port 18434 --served-model-name qwen3-vl-2b --max-model-len 4096 --gpu-memory-utilization 0.5`，发 640×640 图文请求——验收行=prompt_tokens 差分 402=400+2（底档 `vlm_first_run.json`）；
+② 组合矩阵单臂复跑：骨架=`code/Book8-vLLM源码剖析下/ch04/combo_matrix.sh`（七臂循环；M5 臂加 `--enable-lora --lora-modules '{"name":"toy_perturb","path":"log/book8-00/lora_toy/toy_perturb"}' --speculative-config '{"method":"ngram","num_speculative_tokens":5,"prompt_lookup_max":10,"prompt_lookup_min":5}'`）——验收行=M5 起服+吞吐≈0.9×M0（底档 `combo_matrix/`）；
+③ noop 判据：`ASCEND_RT_VISIBLE_DEVICES=<卡> python log/book8-00/pre2_lora_format.py`——验收行=三判据全 true；
+④ 源码三锚：`sed -n '190,192p' repos/vllm-ascend/vllm_ascend/platform.py`（punica 挂钩）、`sed -n '31,34p' repos/vllm-ascend/vllm_ascend/lora/punica_npu.py`（内核分支）、`sed -n '845,852p' repos/vllm/vllm/v1/core/sched/scheduler.py`（max_loras 断言）；
+⑤ 制图：`python code/Book8-vLLM源码剖析下/ch04/fig_ch04.py`——产物 `figures/fig-4-1-mm-input-pipeline.png`。
