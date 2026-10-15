@@ -26,7 +26,7 @@ if __name__ == "__main__":
     o = outs[0]
     m = o.metrics
     # first_token_ts=首 token（含 prefill）；last_token_ts=末 token
-    # TPOT=(last-first)/(n-1)——与 Book6 bench_vllm_tpot.py 同口径
+    # TPOT=(last-first)/(n-1)=首 token 后均摊——与 Book6 生成墙钟口径差一个 TTFT（§10.7 口径注）
     n = len(o.outputs[0].token_ids)
     tpot_ms = round((m.last_token_ts - m.first_token_ts) / (n - 1) * 1000, 3) if m else None
     ttft_ms = round(m.first_token_latency * 1000, 3) if m else None

@@ -4,15 +4,15 @@
 
 上一章结束时，请求已经变成消息、消息已经上了线；本章看它落地的那个进程。Book6 导览纪律段当年把「引擎源码里的调度器、块池、**进程模型**」点名为本册地界【Book6 ch00-导览.md#L101】——现在我们进的就是当年隔玻璃看的那间工厂。而入口层的最后一幕留了一个问题：`llm_engine.step()` 只是把「跑一步」的指令发出去等结果，为什么值得为这一步维护一层进程边界、付出通信的代价？
 
-答案分两层。**机制层是 GIL（全局解释器锁）**：Python 的全局解释器锁让同一进程内的 tokenize、detokenize、HTTP 处理与调度循环互相踩脚——调度器算一步的间隙里若插进一次 JSON 解析，那一步就晚了；fork 出去是老办法，但 CUDA/NPU 上下文一初始化，fork 就会踩坏设备状态（vLLM 的多进程文档 docs/design/multiprocessing.md#L100-124 花了整节讲这对矛盾——现行「best effort」策略：默认 fork、CLI 控制主进程时 spawn、检测到设备已初始化强制 spawn）。设计文档把这层账算得很直白：「vLLM V1 uses a multi-process architecture **to separate concerns and maximize throughput**」【官方设计文档 arch_overview.md#L69】。**工程层是开销分层**，metrics 设计文档有一段堪称 V1 宣言的文字：「**EngineCore is the inner loop. Performance is most critical here**…AsyncLLM is the outer loop. This is overlapped with GPU execution (ideally), so this is where any "overheads" should be if possible」【官方设计文档 metrics.md#L155-161】——用人话说：**性能关键路径上的每一微秒都留在引擎核（内循环），其余一切开销（tokenize/解码/指标/协议）外推到前端（外循环），因为外循环与 GPU 执行重叠、内循环不重叠**。类 docstring 只有一句自证：`EngineCore` 的第一行是「Inner loop of vLLM's Engine.」（core.py#L105-106）——设计与代码互为回声。
+本章交四样：一张进程拓扑图（图 4.1）、一张启动时序图（图 4.2）、两个实验（ps 拓扑实测、StartPlan 三连跑）、两个走查例（一步走查、七刀拆账）。答案分两层。**机制层是 GIL（全局解释器锁）**：Python 的全局解释器锁让同一进程内的 tokenize、detokenize、HTTP 处理与调度循环互相踩脚——调度器算一步的间隙里若插进一次 JSON 解析，那一步就晚了；fork 出去是老办法，但 CUDA/NPU 上下文一初始化，fork 就会踩坏设备状态（vLLM 的多进程文档 docs/design/multiprocessing.md#L100-124 花了整节讲这对矛盾——现行「best effort」策略：默认 fork、CLI 控制主进程时 spawn、检测到设备已初始化强制 spawn）。设计文档把这层账算得很直白：「vLLM V1 uses a multi-process architecture **to separate concerns and maximize throughput**」【官方设计文档 arch_overview.md#L69】。**工程层是开销分层**，metrics 设计文档有一段堪称 V1 宣言的文字：「**EngineCore is the inner loop. Performance is most critical here**…AsyncLLM is the outer loop. This is overlapped with GPU execution (ideally), so this is where any "overheads" should be if possible」【官方设计文档 metrics.md#L155-161】——用人话说：**性能关键路径上的每一微秒都留在引擎核（内循环），其余一切开销（tokenize/解码/指标/协议）外推到前端（外循环），因为外循环与 GPU 执行重叠、内循环不重叠**。类 docstring 只有一句自证：`EngineCore` 的第一行是「Inner loop of vLLM's Engine.」（core.py#L105-106）——设计与代码互为回声。
 
 「busy loop」这个词容易误导——它不是死循环烧 CPU，而是**park-and-go**：队列空时阻塞在 `input_queue.get()` 上（一微秒不烧），消息一到立刻全速处理。这个「忙」字说的是**一旦有活绝不谦让**：内循环不进任何事件调度器、不等任何回调，每一步的微秒级抖动因此可控。对照组就在身边：Book6 的 mini 引擎把调度与执行放在主线程里串行做（`engine_v1.py` 的 step 是个老实巴交的函数调用），读到 8.9 ms/token 的工业引擎把同一件事做成独立进程的忙循环——「框架开销」层的差距（Book6 ch13 的三层分解）从进程模型这层就开始拉开。
 
-> **最小背景栏**：本章需要 Book6 的三件旧资产——TP/PP/EP/DP 四字母的切分视角（ch12：静态切分换通信账——本章给同一组字母换进程拓扑视角）、Orca 章的交互协议视角（ch04 末句「引擎的聪明，一半长在协议里」——ZMQ 线协议正是它的工业形态）、8.9 ms 对 59 ms 的趋势级对照口径（ch13）。ZMQ 消息系统不需要前置——4.3 节从零教到「能画出 socket 拓扑」。
+> **最小背景栏**：本章需要 Book6 的三件旧资产——TP/PP/EP/DP 四字母的切分视角（ch12：静态切分换通信账——本章给同一组字母换进程拓扑视角）、Orca 章的交互协议视角（Book6 ch04 的句子「引擎的聪明，一半长在协议里」——ZMQ 线协议正是它的工业形态）、8.9 ms 对 59 ms 的趋势级对照口径（ch13）。ZMQ 消息系统不需要前置——4.3 节从零教到「能画出 socket 拓扑」。
 
 ## 4.2 进程拓扑：公式数角色，ps 数进程
 
-先看全景（图 4.1）。三类主角进程：**API Server**（前端——tokenize、多模态装载、输出聚合、指标；一切「不重叠也没关系」的活）、**EngineCore**（引擎核——调度器+KV 管理+执行协调，忙循环）、**Worker**（每卡一个——模型前向与 KV 张量的家）。DP>1 时再加一个 **DPCoordinator**（负载均衡）。数量公式官方一张表：「Total = `A + DP + N` (+1 if DP>1)」，其中 $N=\mathrm{DP}\times\mathrm{PP}\times\mathrm{TP}$、A 默认=DP【官方设计文档 arch_overview.md#L107-113】；两个官方算例：单机 4 卡 tp4 = 1+1+4 = **6 进程**；8 卡 tp2dp4 = 4+4+8+1 = **17 进程**【同文档 #L117/#L125】。
+先看全景（图 4.1）。三类主角进程：**API Server**（前端——tokenize、多模态装载、输出聚合、指标；一切「不重叠也没关系」的活）、**EngineCore**（引擎核——调度器+KV 管理+执行协调，忙循环）、**Worker**（每卡一个——模型前向与 KV 张量的家）。DP>1 时再加一个 **DPCoordinator**（负载均衡）。数量公式官方一张表（第 2 章文档行军时见过，这里换成进程拓扑视角再读一遍）：「Total = `A + DP + N` (+1 if DP>1)」，其中 $N=\mathrm{DP}\times\mathrm{PP}\times\mathrm{TP}$、A 默认=DP【官方设计文档 arch_overview.md#L107-113】；两个官方算例：单机 4 卡 tp4 = 1+1+4 = **6 进程**；8 卡 tp2dp4 = 4+4+8+1 = **17 进程**【同文档 #L117/#L125】。
 
 ![图 4.1](figures/fig-4-1-process-topology.png)
 
@@ -20,7 +20,7 @@
 
 但这里有一个**公式没告诉你的事实**，也是本章实验①的预注册判据：单卡起服时你 `ps` 数出来的进程比公式算出的角色少一个。源码两行是谜底：`world_size == 1` 时 `distributed_executor_backend` 自动落 `"uni"`（`vllm/config/parallel.py#L1010-1011`）——**worker 不再是独立进程，它住进 EngineCore 进程里**（driver_worker 形态）。所以「3 个角色、2 个物理进程」：公式数的是逻辑角色，ps 数的是物理进程，worker 是角色不是进程。本章实验①在 NPU 上实测印证（`code/ch04/exp_ch04.py::ps_topology`）：起服就绪后进程表里恰好两个——`vllm serve …` 主进程（前端，title 未改写）与 `VLLM::EngineCore`（引擎核，pid 是前端的子进程）【本机实测，`log/book7-ch04/exp_ch04_summary.json`】——第三个角色（worker）如判据预期被吸收。进程拓扑在**日志里**同样可数：冒烟日志里 `(EngineCore pid=` 前缀的行有 52 行、插件激活行恰好 2 次（主进程+EngineCore 各一遍）【本机实测，`log/book7-00/vllm_smoke_eager1.log` grep 计数】——第 12 章要教的「用前缀分流多进程日志」在单卡场景就已经能用：`grep "(EngineCore pid=" ` 一刀切出引擎侧说了什么。四字母在 Book6 是算力切分视角（TP 切权重、DP 切请求），本章换成进程拓扑视角——同一个 N，既是「权重切成几份」也是「几张卡各有几个 worker 进程」（multiproc 时）。
 
-进程的名字也有正身可查：四类进程出生时都 `set_process_title` 打上 `VLLM::` 前缀（`vllm/v1/utils.py#L529` 的 "APIServer"、`v1/engine/utils.py#L184-190` 的 "EngineCore"、`v1/executor/multiproc_executor.py#L1066` 的 "Worker"、`v1/engine/coordinator.py#L153` 的 "DPCoordinator"）——`ps` 实验的 grep 靶子就是这串前缀。
+进程的名字也有正身可查：四类进程出生时都 `set_process_title` 打上 `VLLM::` 前缀（`vllm/v1/utils.py#L529` 的 "APIServer"、`v1/engine/utils.py#L184-192` 的出生点+`core.py#L1301` 的打 title 处（"EngineCore"）、`v1/executor/multiproc_executor.py#L1066` 的 "Worker"、`v1/engine/coordinator.py#L153` 的 "DPCoordinator"）——`ps` 实验的 grep 靶子就是这串前缀。
 
 第四类角色 DPCoordinator 值得多看一眼，因为它是「拓扑随规模变形」的注脚：DP=1 时它不存在（公式里那个 +1 条件）；DP>1 时前端有 A=DP 个、引擎核也有 DP 个，**谁把请求派给哪个核**就成了新问题——Coordinator 就是为这件事存在的（负载均衡：把新请求发给队列最短的核；出生时也是一个带 title 的独立进程）。把三档部署并排看最直观：单卡（2 进程，worker 被吸收）→ 4 卡 tp4（6 进程，一个核带 4 个 worker）→ 8 卡 tp2dp4（17 进程，4 前端+4 核+8 worker+1 协调者，前端与核之间 many-to-many）——**同一套代码，三种舰队形状**，形状全部由公式与 executor 形态两个变量决定。官方设计文档为后两档配了拓扑原图（`docs/assets/design/arch_overview/` 下 tp4 与 tp2dp4 两张 PNG，Apache 2.0 文档资产）；本书图 4.1 的自绘版承担的是另一件事——把 socket 类型标到每条通道上（原图不画这个）。
 
@@ -90,7 +90,7 @@ socket 与主循环之间的桥是**两个 daemon 线程**（`core.py::EngineCor
 ```
 【源码：`vllm/v1/engine/core.py#L589-617`（骨架节选），阅读锚 v0.30.0】看什么：六步一台戏——①空转检查（没请求就空手而归）；②`schedule()`（**第 5 章的正门**——phase-less 决策循环就在这个调用里）；③`execute_model(non_block=True)` 返回 future（异步发射——调度器立刻去做别的）；④`future.result()` 等前向完成；⑤处理执行期间到达的中止（**步是原子单位**：执行期间新到的 ADD 要等下一轮）；⑥`update_from_output`（把结果记回账本、查完成条件）。③④两行之间的空隙就是 CPU/GPU 重叠的窗口：future 发射后 EngineCore 先把 grammar 位掩码算好（④前的 `get_grammar_bitmask`）、把观测上下文备齐，GPU 在前向、CPU 在备料——「调度器备步 N+1 时 GPU 执行步 N」的重叠（第 7 章 model runner 的正菜）在这里已经初见形态。这一步在单进程模式下的实测我们已经有底：**25 步=1 次 prefill+24 次 decode，与 max_tokens=24 精确互证**（notes/06 的本机实证——「一步=一波 token」的最小验证；prefill 一步 + 每个 decode token 一步，一步不多一步不少）。
 
-**例 4.1（构造例：两条请求的一次 step）** 设 block_size=2、预算充足；甲（prompt 4、max_tokens=3）已 prefill 完在 decode，乙（prompt 3、max_tokens=2）刚到达。走这一步：①**消息进**——input 线程的 DEALER 收到 `[b"\x00", <msgpack(乙)>]`（类型字节 \x00=ADD），还原后 `input_queue.put((ADD, 乙))`，阻塞中的 busy loop 立刻醒来；②**入队**——`preprocess_add_request` 把消息翻译成 `Request` 对象（EngineCore 进程内的翻译层，`core.py#L980`）、乙进 waiting 队列；③**step②**——`schedule()`：甲（差 1 个 token）进 running，乙首块 prefill 3 token——SchedulerOutput 说「这步共 4 个 token」；④**step③④**——worker 前向+采样，返回两个请求的新 token；⑤**step⑥**——甲乙的 `num_computed_tokens` 各自+1/+3、都未到终点、无 finished；⑥**消息出**——`EngineCoreOutputs`（信封：engine_index+两个 `EngineCoreOutput`+scheduler_stats）经 output 线程的 PUSH 发回前端。效果读法：**一步之内 prefill 与 decode 混跑**（乙的 prefill 与甲的 decode 同批）——phase-less 的第一直觉，第 5 章从这里开门；主循环全程没碰 socket、没碰 HTTP、没碰 tokenizer——queue 是唯一的门。回程也值得多说一句：前端的 `output_handler` 后台任务（AsyncLLM#L194/#L198 启动）从 PULL 收到信封后做三件事——按 request_id 分发到各请求的 `RequestOutputCollector`、把 scheduler_stats 喂给指标层、把请求完成状态通知等待者——**回程的聚合也是外循环的活**，EngineCore 发完信封就回去睡它的 queue 了。
+**例 4.1（构造例：两条请求的一次 step）** 设 block_size=2、预算充足；甲（prompt 4、max_tokens=3）已 prefill 完在 decode，乙（prompt 3、max_tokens=2）刚到达。走这一步：①**消息进**——input 线程的 DEALER 收到 `[b"\x00", <msgpack(乙)>]`（类型字节 \x00=ADD），还原后 `input_queue.put((ADD, 乙))`，阻塞中的 busy loop 立刻醒来；②**入队**——`preprocess_add_request` 把消息翻译成 `Request` 对象（EngineCore 进程内的翻译层，`core.py#L980`）、乙进 waiting 队列；③**step②**——`schedule()`：甲（差 1 个 token）进 running，乙的 3 token prompt 一次调度完——SchedulerOutput 说「这步共 4 个 token」；④**step③④**——worker 前向+采样，返回两个请求的新 token；⑤**step⑥**——甲乙的 `num_computed_tokens` 各自+1/+3、都未到终点、无 finished；⑥**消息出**——`EngineCoreOutputs`（信封：engine_index+两个 `EngineCoreOutput`+scheduler_stats）经 output 线程的 PUSH 发回前端。效果读法：**一步之内 prefill 与 decode 混跑**（乙的 prefill 与甲的 decode 同批）——phase-less 的第一直觉，第 5 章从这里开门；主循环全程没碰 socket、没碰 HTTP、没碰 tokenizer——queue 是唯一的门。回程也值得多说一句：前端的 `output_handler` 后台任务（async_llm.py#L194/#L198 启动）从 PULL 收到信封后做三件事——按 request_id 分发到各请求的 `RequestOutputCollector`、把 scheduler_stats 喂给指标层、把请求完成状态通知等待者——**回程的聚合也是外循环的活**，EngineCore 发完信封就回去睡它的 queue 了。
 
 ## 4.5 启动序列：55.1 秒去哪了
 
@@ -98,9 +98,25 @@ socket 与主循环之间的桥是**两个 daemon 线程**（`core.py::EngineCor
 
 ![图 4.2](figures/fig-4-2-startup-timeline.png)
 
-图 4.2 冷启动时序（运行栈 0.27.1 实测时间戳，Atlas 910B3，总 55.1 s）：三泳道（前端/EngineCore/worker 侧）八段；eager 模式下图捕获为空条带（第 8 章非 eager 档在此处填实）。
+图 4.2 冷启动时序（运行栈 0.27.1 实测时间戳，Atlas 910B3，总 55.1 s）：三泳道（前端/EngineCore/worker 侧），①-⑦ 七段+一条未编号的空条带（eager 下图捕获被跳过——第 8 章非 eager 档在此处填实）。
 
-启动序列里最年轻的一件机制是 **StartPlan**——「测量一次，重启复用」。先看它优化的那步有多贵：profile_run 要**真跑一次前向**（用一个 dummy 批量把模型执行一遍，量出激活显存峰值），加上图捕获的显存估计 pass——一次冷启动里这两步占了大头（55.1 s 里 init engine 段 9.7 s，NPU 上插件加载与进程 spawn 又占去 36 s 级）。而这些测量对固定组合是**确定性的**：同模型、同配置、同卡、同库，量一百次结果一样——「yet it is re-measured on every boot」，docstring 的第一段就在为这件事抱不平。StartPlan 的解法是标准的缓存键思维：把测得的 KV 预算值持久化到 `{VLLM_CACHE_ROOT}/startup_plan/`（与 torch.compile 缓存做邻居——同类状态放同一屋檐），键是「该值依赖的一切」的指纹（配置哈希+设备名+总显存+计算能力+torch 构建+rank——rank 单独进键，因为 TP/PP 下每卡的答案不同），命中且当前空闲显存不小于记录时才应用。docstring 值得整段读：
+图 4.2 的每一段都有一份可复算的账——这就是本章第二个例子的素材。
+
+**例 4.2（实测例：55.1 秒的七刀拆账）** 构造：一份冒烟日志（`log/book7-00/vllm_smoke_eager1.log`，起止 22:54:15→22:55:10）+ 一把「时间戳相减」的刀（方法本身是第 12 章的手艺，此处先用）。逐刀（输入=相邻两段边界行的时间戳，输出=段耗时）：
+
+| 段 | 边界（日志行时间戳） | 耗时 | 内容 |
+|---|---|---|---|
+| ① | 22:54:15 → 22:54:35 | ≈20 s | import 与配置解析（HF config/tokenizer 侧） |
+| ② | → 22:54:44 | ≈9 s | 平台 check_and_update_config+engine args 落定 |
+| ③ | → 22:54:52 | ≈8 s | **EngineCore spawn+重 import+插件再加载**（进程出生成本） |
+| ④ | → 22:54:57 | ≈5 s | 构造 wiring：executor 创建+hccl 初始化 |
+| ⑤ | → 22:54:59 | ≈1.6 s | load_model（权重仅 0.39 GB；runner 合计 1.61 s 有官方计时行） |
+| ⑥ | → 22:55:08 | **9.70 s** | init engine（profile→建池→warmup——运行栈 `core.py#L355` 计时行原数；v0.30.0 同段在约 #L380） |
+| ⑦ | → 22:55:10 | ≈2 s | compile_or_warm_up（eager 跳过）+chat template |
+
+效果读法：合计 ≈55 s，与 JSON 底档 `load_s=55.1` 对账闭合【本机实测，`log/book7-00/vllm_smoke_eager1.json`；段界四舍五入故合计有 ±1 s 尾差】。**大头不在权重（0.39 GB、1.6 s）而在「import+配置两遍+进程出生+探测」**——①20+②9+③8+⑥9.7 四段合计约 47 s，占全程近六分之五；这个读数直接生成两个后续：StartPlan 优化的是第⑥段（下文），第 12 章把它收成「日志时间戳相减」的方法学示范。
+
+启动序列里最年轻的一件机制是 **StartPlan**——「测量一次，重启复用」。先看它优化的那步有多贵：profile_run 要**真跑一次前向**（用一个 dummy 批量把模型执行一遍，量出激活显存峰值），加上图捕获的显存估计 pass——这两步待在 init engine 段里（9.7 s）；而 NPU 上两次插件激活行相隔 36 s（间隔大头其实是 import 与配置）——后者不在 StartPlan 的射程内，这正是本机负结果的伏笔。而这些测量对固定组合是**确定性的**：同模型、同配置、同卡、同库，量一百次结果一样——「yet it is re-measured on every boot」，docstring 的第一段就在为这件事抱不平。StartPlan 的解法是标准的缓存键思维：把测得的 KV 预算值持久化到 `{VLLM_CACHE_ROOT}/startup_plan/`（与 torch.compile 缓存做邻居——同类状态放同一屋檐），键是「该值依赖的一切」的指纹（配置哈希+设备名+总显存+计算能力+torch 构建+rank——rank 单独进键，因为 TP/PP 下每卡的答案不同），命中且当前空闲显存不小于记录时才应用。docstring 值得整段读：
 
 ```text
 On startup, vLLM measures how much GPU memory the KV cache can use and
@@ -118,7 +134,7 @@ free memory as when the plan was recorded. On any mismatch the worker
 falls back to full profiling, so a stale plan costs nothing and is never
 trusted.
 ```
-【源码：`vllm/v1/worker/startup_plan.py#L4-18` docstring，阅读锚 v0.30.0——与运行栈 0.27.1 逐字节一致（diff 实测 0 行）】看什么：缓存键思维的标准范本——确定性测量本可复用，但任何环境漂移都会让旧值危险，于是**指纹（配置+设备+版本的全哈希）+空闲显存双闸门**兜底、失配即回退。最后一句是缓存安全的金句：「a stale plan costs nothing and is never trusted」。vllm-ascend 已经接线（`worker.py#L550/#L829` 的 apply/save，`platform.py#L214-227` 为指纹放行设备查询）。
+【源码：`vllm/v1/worker/startup_plan.py#L5-18` docstring，阅读锚 v0.30.0——与运行栈 0.27.1 逐字节一致（diff 实测 0 行）】看什么：缓存键思维的标准范本——确定性测量本可复用，但任何环境漂移都会让旧值危险，于是**指纹（配置+设备+版本的全哈希）+空闲显存双闸门**兜底、失配即回退。最后一句是缓存安全的金句：「a stale plan costs nothing and is never trusted」。vllm-ascend 已经接线（`worker.py#L550/#L829` 的 apply/save，`platform.py#L214-227` 为指纹放行设备查询）。
 
 本章实验②（`exp_ch04.py` 三连跑：落 plan→用 plan→关 plan）在本机上交出的是一个**比成功更有意思的负结果**：第一跑 59.1 s 落下 plan；第二跑（`VLLM_ENABLE_STARTUP_PLAN=1`、指纹命中）日志打出——「Startup plan not applied: current free memory (60.60 GiB) is below the recorded baseline (60.60 GiB); falling back to full memory profiling」【本机实测，`log/book7-ch04/startplan_run2_reuse.log`】——**显示值相等的两个 60.60 GiB，在字节级略低**（两次启动间设备上的零头占用漂移），第二道闸门（当前空闲 ≥ 记录时）以严格不等式判定、未放行；第三跑（关 plan）55.6 s，与第二跑 56.0 s 同为噪声档。三行读数合起来是一堂「保守缓存的现场课」：机制在 NPU 上接线完好、回退路径精确按文档工作（「never trusted」不是修辞，是真的不信任到字节级）；但收益为零——双闸门的严格性加上单卡小模型的探测占比，使 reuse 在这台机器的这个场景里没有兑现。负结果按预注册纪律如实入档；plan 文件仍在缓存目录里，未来任何一次「空闲显存更充裕」的启动才会真正吃到它。
 
@@ -136,14 +152,14 @@ trusted.
 
 ## 4.8 本章小结
 
-回到开篇的问题：为什么值得为「跑一步」维护一层进程边界。因为 GIL 与开销分层——内循环独占一进程换每步抖动可控，一切不重叠的开销外推给前端；因为隔离——进程可以随时死、死了用一条 linger 保命的消息通知世界；也因为拓扑的弹性——同一颗心脏，单卡时把 worker 吸收进自己（uniproc），八卡时展开成十七个进程的舰队（A+DP+N(+1)）。线协议是边界的法律：ROUTER↔DEALER 走输入（要寻址）、PUSH→PULL 走输出（只分发）、握手协商地址、类型字节省到一位；EngineCore 主循环只认 queue 这扇门。
+回到开篇的问题：为什么值得为「跑一步」维护一层进程边界。因为 GIL 与开销分层——内循环独占一进程换每步抖动可控，一切不重叠的开销外推给前端；因为隔离——进程可以随时死、死了用一条 linger 保命的消息通知世界；也因为拓扑的弹性——同一颗心脏，单卡时把 worker 吸收进自己（实验①实测 ps=2：`vllm serve` 主进程+`VLLM::EngineCore`，第三个角色如预注册判据被吸收）、八卡时展开成十七个进程的舰队（A+DP+N(+1)）。线协议是边界的法律：ROUTER↔DEALER 走输入（要寻址）、PUSH→PULL 走输出（只分发）、握手协商地址、类型字节省到一位；EngineCore 主循环只认 queue 这扇门——例 4.1 的一步走查里，甲的 decode 与乙的 prefill 同批混跑、主循环全程没碰 socket。启动序列的账也清了：例 4.2 的七刀把 55.1 s 拆开——大头不在权重（1.6 s）而在「①②③⑥ 四段合计约 47 s」（import+配置两遍+进程出生+9.70 s 探测段）；StartPlan 想救的就是这段，而实验②交出的是负结果——指纹命中、第二道闸门以严格不等式拦下（「60.60 低于 60.60」的字节级故事），回退路径精确按文档工作、收益为零，「a stale plan costs nothing and is never trusted」在本机上成了可引用的实测注释。
 
-**带走的心智**是两幅画。**其一，三层一门**：socket 线程 ↔ queue ↔ 忙循环——读任何 EngineCore 侧代码，先问「这句在门内还是门外」；门内（调度、执行、记账）是第 5-9 章的地界，门外（收发、序列化）本章已经走完。**其二，公式数角色、ps 数进程**：worker 是角色不是进程——拿到任何部署，先算角色再问 executor 形态，才数得出物理进程。
+**带走的心智**是两幅画。**其一，三层一门**：socket 线程 ↔ queue ↔ 忙循环——读任何 EngineCore 侧代码，先问「这句在门内还是门外」；门内（调度、执行、记账）是第 5-9 章的地界，门外（收发、序列化）本章已经走完。**其二，公式数角色、ps 数进程**：worker 是角色不是进程——单卡就是现成的例子：3 个角色、ps 里只有 2 个进程，差的那一个就是被吸收的 worker；拿到任何部署，先算角色再问 executor 形态，才数得出物理进程。
 
-zoom out 回全书：消息落地、心脏跳了、一步的六拍看清了。本章还给两个后面要用的事实上了户口：其一，**步是原子单位**——执行期间到达的 ADD 等下一轮、中止走专门的队列（③④之间处理），EngineCore 的时间以步为粒度离散前进；其二，**双轨 runner 的并存**（7,664 行单体与 gpu/ 分包同层而居——第 2 章地图上的化石层，第 7 章讲它的演进与分派）。下一步（第 5 章）走进 `step()` 的第二个动词——`schedule()` 那扇门里，是 Book6 调度折中三角的工业正身：phase-less 决策循环。
+zoom out 回全书：消息落地、心脏跳了、一步的六拍看清了。本章还给两个后面要用的事实上了户口：其一，**步是原子单位**——执行期间到达的 ADD 等下一轮、中止走专门的队列（③④之间处理），EngineCore 的时间以步为粒度离散前进；其二，**双轨 runner 的并存**（第 2 章见过的 7,664 行单体 gpu_model_runner.py 与 gpu/ 分包同层而居，第 7 章讲它的演进与分派）。但本章也留一个「不够」：**一步之内的执行层仍是黑箱**——`execute_model` 那个 future 的另一端（worker 怎么组织前向、两代 runner 怎么分派）要等第 7 章；下一章先走 `step()` 的第二个动词——`schedule()` 那扇门里，是 Book6 调度折中三角的工业正身：phase-less 决策循环。
 
 **动手验证**（Atlas 910B3；选卡纪律照 CLAUDE.md）：
-① `source env.sh && ASCEND_RT_VISIBLE_DEVICES=<卡> python code/ch04/exp_ch04.py`——两实验连跑：ps 拓扑（验收：`VLLM::` 前缀进程=API server+EngineCore 两个，worker 被吸收）与 StartPlan 三连跑（验收：reuse 档 ready 快于 off 档）；
+① `source env.sh && ASCEND_RT_VISIBLE_DEVICES=<卡> python code/ch04/exp_ch04.py`——两实验连跑：ps 拓扑（验收：`VLLM::` 前缀进程=API server+EngineCore 两个，worker 被吸收）与 StartPlan 三连跑（验收：run1 落 plan 文件于 `log/vllm/startup_plan/`；run2 日志出现「Startup plan not applied…falling back」行——负结果口径，双闸门的第二道按严格不等式拦截；三跑 wall 与 `exp_ch04_summary.json` 对账）；
 ② `grep -c "Platform plugin ascend is activated" log/book7-00/vllm_smoke_eager1.log`——两个进程各交一遍插件学费的计数；
 ③ `sed -n '589,618p' repos/vllm/vllm/v1/engine/core.py`——step 六拍的原文，把例 4.1 逐行对上。
 

@@ -57,7 +57,7 @@ def fig_trio():
     arr(ax, 11.3, 7.85, 12.1, 8.85); arr(ax, 11.3, 7.85, 12.1, 7.05); arr(ax, 11.3, 7.85, 12.1, 5.25)
     # 下层：家族
     box(ax, 0.7, 2.4, 16.8, 1.4,
-        "backends/ family (43 enum entries, registry.py#L44-151):  FA family | FlashInfer | MLA line (mla/, 22 files) | ROCm | CPU/XPU |\n"
+        "backends/ family (43 enum entries, registry.py#L44-151):  FA family | FlashInfer | MLA line (mla/, 23 files) | ROCm | CPU/XPU |\n"
         "model-driven (FLASHMLA_SPARSE_DSV4 lives in vllm.models.*) | composite (runtime-synthesized, composite.py#L147) | Mamba enum separate (registry.py#L197)",
         ec=MUTED, fc="white", fs=6.2)
     for x in (3.4, 7.0, 10.6, 14.2):
@@ -80,7 +80,7 @@ def fig_matrix():
     rows = [
         ("FA family\n(flash_attn.py)", [1, 1, 0, 0, 0]),
         ("FlashInfer\n(2501.01005)", [1, 1, 1, 0, 0]),
-        ("MLA line\n(mla/, 22 files)", [0, 0, 1, 0, 0]),
+        ("MLA line\n(mla/, 23 files)", [0, 0, 1, 0, 0]),
         ("linear/gdn/mamba\n(separate enum)", [0, 0, 0, 1, 0]),
         ("composite\n(runtime-synth)", [0, 0, 0, 0, 1]),
         ("ASCEND backends\n(vllm-ascend/attention/)", [1, 0, 1, 0, 0]),

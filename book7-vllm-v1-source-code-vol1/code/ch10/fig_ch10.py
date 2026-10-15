@@ -1,6 +1,6 @@
 # fig_ch10.py —— Book7 ch10 制图：图 10.1 注册链路四门全景
 # 用途：ch10 唯一正文图——「引擎怎么认出模型」的四条门路：①内置注册表（_VLLM_MODELS）
-#       ②插件注册（general_plugins——vllm-ascend 16 项实例）③运行时外部注册（register_model/
+#       ②插件注册（general_plugins——vllm-ascend 17 项实例）③运行时外部注册（register_model/
 #       model_class_overrides——大项目 A 路正身）④trust_remote_code→transformers backend 兼容层。
 # 所属章节：Book7 ch10（§10.3）。
 # 运行：cd <workspace> && source env.sh && python code/Book7-vLLM源码剖析上/ch10/fig_ch10.py
@@ -39,9 +39,9 @@ def main() -> None:
     box(ax, 6.6, 9.5, 5.8, 0.9, "config.json: \"architectures\": [\"...\"]\n(the key the engine looks up)", ec=INK, fs=6.8)
     # 四门
     doors = [
-        ("DOOR 1  built-in table\n\n_VLLM_MODELS dict\nregistry.py #L723-733\n~396 entries (arch -> class)\nlazily imported", BLUE, "#dcebfc", 0.4),
+        ("DOOR 1  built-in table\n\n_VLLM_MODELS dict\nregistry.py #L773-783\n~396 entries (arch -> class)\nlazily imported", BLUE, "#dcebfc", 0.4),
         ("DOOR 2  plugin registration\n\nentry_points group\nvllm.general_plugins\nvllm-ascend registers 17 archs\n(models/__init__.py)", TEAL, "#d9f2e7", 5.2),
-        ("DOOR 3  runtime external\n\nModelRegistry.register_model #L1057\nmodel_class_overrides (CLI)\nchokepoint: every worker re-registers\n-> OUR PROJECT'S ROUTE", ORANGE, "#fde3d6", 10.0),
+        ("DOOR 3  runtime external\n\nModelRegistry.register_model #L1126\nmodel_class_overrides (CLI)\nchokepoint: every worker re-registers\n-> OUR PROJECT'S ROUTE", ORANGE, "#fde3d6", 10.0),
         ("DOOR 4  transformers backend\n\nmodel_impl=auto falls back silently\nwhen arch not found anywhere\n-> TransformersForCausalLM wrapper\n(the trap of door 4)", YELLOW, "#fdf0d2", 14.8),
     ]
     for label, ec, fc, x in doors:
@@ -50,7 +50,7 @@ def main() -> None:
     # 底部：权重加载链
     box(ax, 2.2, 2.6, 14.6, 1.9,
         "weight loading chain (all four doors converge here):\nDefaultModelLoader.load_model -> model.load_weights(weights)   default_loader.py #L427\n"
-        "AutoWeightsLoader groups by prefix; WeightsMapper merges .q/.k/.v -> qkv_proj, .gate/.up -> gate_up_proj   llama.py #L345-354\n"
+        "AutoWeightsLoader groups by prefix; WeightsMapper merges .q/.k/.v -> qkv_proj, .gate/.up -> gate_up_proj   llama.py #L348-354\n"
         "strict accounting: track_weights_loading raises on any missed key   #L447-471 (verified: RT=AN two-track identical)",
         ec=MUTED, fc="white", fs=6.0)
     for x in (2.5, 7.3, 12.1, 16.9):

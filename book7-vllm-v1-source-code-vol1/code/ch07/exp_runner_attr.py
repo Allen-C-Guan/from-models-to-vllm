@@ -3,7 +3,7 @@
 #   臂 A（默认）：MRV1（patch_use_v2_model_runner 未设 env→恒 False）——J1 日志 [model_runner_v1.py: 前缀行；
 #     J2 全文无「Model Runner V2」上游回退警告（判据链被 patch 旁路的负证据）；J3 config 回显含 AscendCompiler。
 #   臂 B（翻转）：VLLM_USE_V2_MODEL_RUNNER=1——J4 日志出现「npu model runner v2 is in developing」（worker.py#L492 原话）；
-#     J5 加载行前缀变 [v2/model_runner.py:。风险预注册：臂 B 若启动失败（V2 未成熟），失败栈本身入档为
+#     J5 加载行前缀变 [model_runner.py:（v2 目录相对名；旧档手工缀注为 v2/model_runner.py）。风险预注册：臂 B 若启动失败（V2 未成熟），失败栈本身入档为
 #     「opt-in 的成本」读数，J4 在失败前日志中仍可核——负结果如实。
 # 所属章节：Book7 ch07（§7.3/§7.5 实验）；设计书=notes/15 §8。
 # 运行：cd <workspace> && source env.sh && npu-smi info 选卡 && ASCEND_RT_VISIBLE_DEVICES=<卡> \
@@ -45,7 +45,7 @@ def main() -> None:
         if os.environ.get("BOOK7_RUNNER_LOG") else ""
     import re as _re
     m_v1 = _re.findall(r"\[(model_runner_v1\.py):(\d+)\]", log_lines)
-    m_v2 = _re.findall(r"\[(v2/model_runner\.py):(\d+)\]", log_lines)
+    m_v2 = _re.findall(r"\[(?:v2/)?(model_runner\.py):(\d+)\]", log_lines)
     runner_cls = "(from log prefix) " + (m_v1[0][0] if m_v1 else (m_v2[0][0] if m_v2 else "not-found"))
     res = dict(arm=a.arm, env_v2=os.environ.get("VLLM_USE_V2_MODEL_RUNNER"),
                use_v2_model_runner=bool(mc.use_v2_model_runner),

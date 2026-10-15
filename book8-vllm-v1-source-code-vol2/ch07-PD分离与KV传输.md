@@ -4,7 +4,7 @@
 
 ## 7.1 开篇：拆开部署的三个工程问题
 
-Book7 开篇立「第五个名字」时留了存照句：「但把『拆开部署』做成可运维的工程（**显存怎么传、路由怎么写、故障怎么算**）是另一回事——工程生态的完整拆解归 Book8 第 7 章，本章只立此存照」【Book7 ch01-总起.md#L19，B7-8】。三问就是本章的节骨架：显存怎么传→7.3（connector 契约与传输账）、路由怎么写→7.2（proxy 与 P/D 拓扑）、故障怎么算→7.5（失败策略与事件账）。理论母账在 Book6：DistServe 的双 SLO 约束下 **7.4× 更多请求或 12.6× 更紧 SLO**；动机侧的干净实验——同一张卡混跑两段 goodput 1.6 rps、只跑 prefill 5.6、只跑 decode 10，**分池后按 2 卡 prefill+1 卡 decode 拿到 10 rps**；传输账的论文级锚 **KV 1.13 GB/请求 ÷11 GB/s**【官方论文 2401.09670，经 Book6 ch12:118 引账——指回不重教】。
+Book7 开篇立「第五个名字」时留了存照句：「但把『拆开部署』做成可运维的工程（**显存怎么传、路由怎么写、故障怎么算**）是另一回事——工程生态的完整拆解归 Book8 第 7 章，本章只立此存照」【Book7 ch01-总起.md#L23，B7-8】。三问就是本章的节骨架：显存怎么传→7.3（connector 契约与传输账）、路由怎么写→7.2（proxy 与 P/D 拓扑）、故障怎么算→7.5（失败策略与事件账）。理论母账在 Book6：DistServe 的双 SLO 约束下 **7.4× 更多请求或 12.6× 更紧 SLO**；动机侧的干净实验——同一张卡混跑两段 goodput 1.6 rps、只跑 prefill 5.6、只跑 decode 10，**分池后按 2 卡 prefill+1 卡 decode 拿到 10 rps**；传输账的论文级锚 **KV 1.13 GB/请求 ÷11 GB/s**【官方论文 2401.09670，经 Book6 ch12:118 引账——指回不重教】。
 
 还要先立一块官方压舱石——上游文档开宗明义的自白：「Disaggregated prefill **DOES NOT improve throughput**」（`docs/features/disagg_prefill.md#L16`；两条理由=分别调 TTFT 与 ITL、控制尾部 ITL）。**PD 分离买的是 SLO 可调性，不是吞吐**——与 Book6「分池买按段独立扩缩的自由」互证；把这句立在开篇，后面所有传输账的斤斤计较才有了正确的天平（不是为了快，是为了两段 SLO 各自可调）。三段定位：专题=PD 分离与 KV 传输（connector 生态）；站段=站 8（调度侧决策）+9（块账协商）+11/12（worker 侧搬运）；模块=`vllm/distributed/kv_transfer/`（全树 37,362 行、75 个 .py——两支分节见 7.2）+`distributed/kv_transfer/kv_connector/v1/base.py`（契约正身，两轨共有）+vllm-ascend 的 `distributed/kv_transfer/`（NPU 实做）。本章问题：**KV 从 P 搬到 D 的传输带由哪些件拼成、账怎么算、坏了怎么办？**
 

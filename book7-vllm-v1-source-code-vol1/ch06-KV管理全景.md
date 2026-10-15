@@ -23,7 +23,7 @@
 ```python
 class KVCacheBlock:
     """KV-cache block metadata."""
-
+    …
     # Block ID, ranging from 0 to num_gpu_blocks - 1.
     block_id: int
     # Reference count.
@@ -31,14 +31,13 @@ class KVCacheBlock:
     …
     # The hash key (block hash + group id) of the block, only available
     # when the block is full and cached.
-    _block_hash: BlockHashWithGroupId | None = None
     …
     # Used to construct a doubly linked list for free blocks.
     # These two attributes should only be manipulated by FreeKVCacheBlockQueue.
     prev_free_block: "KVCacheBlock | None" = None
-    next_free_block: "KVCacheBlock | None" = None
+    …
 ```
-【源码：`vllm/v1/core/kv_cache_utils.py#L176-197`，阅读锚 v0.30.0】看什么：**块的五个核心身份字段**——物理块号、引用数、哈希身份、两个链表指针（节选以 `…` 略去的还有 `pool` 反向指针与 `_block_hash_num_tokens` 两个记账字段——后者的注释「partial entries can end inside a cache block」恰是 6.5 节「命中停在块中间」的伏笔）。KV 数据本身不在这里：块对象是账本页，真正的 K/V 张量住在 worker 的显存里（6.5 节会看到账与货分家的深意）。注意那行注释的措辞：链表指针「只许 `FreeKVCacheBlockQueue` 操纵」——写权从字段声明起就划清了。
+【源码：`vllm/v1/core/kv_cache_utils.py#L176-197`（节选——docstring 后、_block_hash 类型行与 next_free_block 等以 `…` 略），阅读锚 v0.30.0】看什么：**块的五个核心身份字段**——物理块号、引用数、哈希身份、两个链表指针（节选以 `…` 略去的还有 `pool` 反向指针与 `_block_hash_num_tokens` 两个记账字段——后者的注释「partial entries can end inside a cache block」恰是 6.5 节「命中停在块中间」的伏笔）。KV 数据本身不在这里：块对象是账本页，真正的 K/V 张量住在 worker 的显存里（6.5 节会看到账与货分家的深意）。注意那行注释的措辞：链表指针「只许 `FreeKVCacheBlockQueue` 操纵」——写权从字段声明起就划清了。
 
 池层把所有块一次造齐（摘录保持原缩进，中段注释以 `…` 略）：
 
@@ -59,9 +58,9 @@ class KVCacheBlock:
 ```
 【源码：`vllm/v1/core/block_pool.py#L178-194`，阅读锚 v0.30.0】看什么：三件事——**初始化即全量建池**（设计文档的原话：「We allocate all KVCacheBlock when initializing the KV cache manager to be a block pool. This avoids Python object creation overheads」【官方设计文档 docs/design/prefix_caching.md#L123】——运行期零对象创建，教学引擎 `engine_v3.py` 的块号栈同款思想）；**空闲块本身串成双链表**（队首=最久未用，块内嵌指针使「从中间摘除」是 O(1)——这是 6.3 节 touch 动作的物理基础）；**block 0 出厂即被扣为哨兵**（sentinel，`null_block`，占位用、引用数不维护——一个工程细节，后面各摘录里反复出现的 `not block.is_null` 判空都在防它）。
 
-组记账层与协调层先各记一句，深讲分别留给自己（6.3 的命中规则）与 hybrid（6.7）：每类 KV 组（全注意力组、滑窗组、Mamba 组……）各有一份 `SingleTypeKVCacheManager`，持有自己的 `req_to_blocks` 账本与类型特化的命中规则；协调层在多组之间归并出「这条请求到底命中了多少」。**门面层**的动机，源码 docstring 写得直白：「The allocation result of KVCacheManager, work as the interface between Scheduler and KVCacheManager, to **hide KVCacheManager's internal data structure** from the Scheduler」【源码：`vllm/v1/core/kv_cache_manager.py#L38-40` docstring，阅读锚 v0.30.0】——调度器只认四个方法（`get_computed_blocks`/`allocate_slots`/`free`/`cache_blocks`），五层内部结构对它不可见。对比 Book6 的 `engine_v4.py`：教学引擎把块账直接记在 `PrefixCache` 一个类里——工业版把同一个职责拆成了五层，**分层的依据不是功能而是写权**：每层独占自己的容器，跨层只经方法调用说话。
+组记账层与协调层先各记一句，深讲分别留给自己（6.3 的命中规则）与 hybrid（6.7）：每类 KV 组（全注意力组、滑窗组、Mamba 组……）各有一份 `SingleTypeKVCacheManager`，持有自己的 `req_to_blocks` 账本与类型特化的命中规则；协调层在多组之间归并出「这条请求到底命中了多少」。**门面层**的动机，源码 docstring 写得直白：「The allocation result of KVCacheManager, work as the interface between Scheduler and KVCacheManager, to **hide KVCacheManager's internal data structure** from the Scheduler」【源码：`vllm/v1/core/kv_cache_manager.py#L37-39` docstring，阅读锚 v0.30.0】——调度器只认四个方法（`get_computed_blocks`/`allocate_slots`/`free`/`cache_blocks`），五层内部结构对它不可见。对比 Book6 的 `engine_v4.py`：教学引擎把块账直接记在 `PrefixCache` 一个类里——工业版把同一个职责拆成了五层，**分层的依据不是功能而是写权**：每层独占自己的容器，跨层只经方法调用说话。
 
-这套栈是谁建的、什么时候建的？启动期有一条短管线值得记全：worker 按模型结构自报每层组的 `KVCacheSpec`（NPU 侧入口 `vllm_ascend/worker/worker.py::NPUWorker.get_kv_cache_spec`#L994）→ EngineCore 拿 profiling 测出的可用显存算出块数（`vllm/v1/engine/core.py#L318/#L333`——第 4 章 StartPlan 优化的正是这一步）→ Scheduler 构造 `KVCacheManager`（`vllm/v1/core/sched/scheduler.py#L299`）。块池的容量因而不是配置死的，是「显存预算 ÷ 每块字节」算出来的——本章实验③会把这笔账在 NPU 上实算一遍。
+这套栈是谁建的、什么时候建的？启动期有一条短管线值得记全：worker 按模型结构自报每层组的 `KVCacheSpec`（NPU 侧入口 `vllm_ascend/worker/worker.py::NPUWorker.get_kv_cache_spec`#L994）→ EngineCore 拿 profiling 测出的可用显存算出块数（`vllm/v1/engine/core.py#L319/#L333`——第 4 章 StartPlan 优化的正是这一步）→ Scheduler 构造 `KVCacheManager`（`vllm/v1/core/sched/scheduler.py#L299`）。块池的容量因而不是配置死的，是「显存预算 ÷ 每块字节」算出来的——本章实验③会把这笔账在 NPU 上实算一遍。
 
 ## 6.3 哈希链与命中：B6-3 的答案
 
@@ -103,7 +102,7 @@ $$h_i = H\big(h_{i-1},\ t_i,\ e\big),\qquad h_{-1}=\text{NONE\_HASH}\tag{6.1}$$
             for computed, cached in zip(computed_blocks, cached_block):
                 computed.append(cached)
 ```
-【源码：`vllm/v1/core/single_type_kv_cache_manager.py#L790-797`（截尾标 …），阅读锚 v0.30.0】看什么：从块 0 逐哈希查表，**第一个 miss 就 break**——注释把理由说透了：链式哈希保证后面的必 miss。对照 Book6 `engine_v4.py::PrefixCache` 的八行走查循环：教学版逐键查 dict、查到没有就停——与这里 Phase 1 的循环逐行同构，工业版多出的只是「组维度」（同一哈希按组各查各的）与满块截断的精确化。这就是「你已经懂机制，现在看工业长相」的具体含义（图 6.2）。
+【源码：`vllm/v1/core/single_type_kv_cache_manager.py#L790-797`，阅读锚 v0.30.0】看什么：从块 0 逐哈希查表，**第一个 miss 就 break**——注释把理由说透了：链式哈希保证后面的必 miss。对照 Book6 `engine_v4.py::PrefixCache` 的八行走查循环：教学版逐键查 dict、查到没有就停——与这里 Phase 1 的循环逐行同构，工业版多出的只是「组维度」（同一哈希按组各查各的）与满块截断的精确化。这就是「你已经懂机制，现在看工业长相」的具体含义（图 6.2）。
 
 ![图 6.2](figures/fig-6-2-hash-chain.png)
 
@@ -126,7 +125,7 @@ $$h_i = H\big(h_{i-1},\ t_i,\ e\big),\qquad h_{-1}=\text{NONE\_HASH}\tag{6.1}$$
 
 > **【考据框】去重还是 append-only？**V0 检测到重复块会释放新块、改指旧块（设计文档同一节的对照叙述）；V1 选了容忍重复——块表一旦写下不许改，冗余块活到请求 free 时自然消除。为什么方向反了：块表 append-only 换来的是 worker 侧执行的简单性（块号序列只追加不重写，6.5 节 CoW 的拷贝对下发依赖这一点）——**为执行层的简单付一点内存冗余**，这是 V0→V1 不变量迁移的一个典型样本，与第 1 章那两个 7 行别名文件讲的是同一个故事的两面。
 
-最后把 Book6 的两派之争收口。哈希派 vs radix 树派，争的是「复用键怎么组织、驱逐谁先走」。vLLM 的答卷是第三条路：**哈希表查命中 + 空闲双链表管驱逐**——LRU 语义不需要显式的树，它被编码进了队列的不变量里：「The least recent used block is at the front (LRU). If two blocks have the same last accessed time…the one with more hash tokens (the tail of a block chain) is at the front」【源码：`vllm/v1/core/kv_cache_utils.py#L256-260` docstring，阅读锚 v0.30.0】。radix 派「叶子先逐」的驱逐语义，在这里由 free 的入队顺序实现——叶子（哈希链最深的尾块）被排到最先被逐的位置。Book6 那句「哈希派的键链，悄悄长成了一棵树」的判断，在工业答卷里得到了一个精确的注脚：**树没有消失，它变成了队列序**。
+最后把 Book6 的两派之争收口。哈希派 vs radix 树派，争的是「复用键怎么组织、驱逐谁先走」。vLLM 的答卷是第三条路：**哈希表查命中 + 空闲双链表管驱逐**——LRU 语义不需要显式的树，它被编码进了队列的不变量里：「The least recent used block is at the front (LRU). If two blocks have the same last accessed time…the one with more hash tokens (the tail of a block chain) is at the front」【源码：`vllm/v1/core/kv_cache_utils.py#L257-260` docstring，阅读锚 v0.30.0】。radix 派「叶子先逐」的驱逐语义，在这里由 free 的入队顺序实现——叶子（哈希链最深的尾块）被排到最先被逐的位置。Book6 那句「哈希派的键链，悄悄长成了一棵树」的判断，在工业答卷里得到了一个精确的注脚：**树没有消失，它变成了队列序**。
 
 ## 6.4 块的一生：四动作的账
 
@@ -187,7 +186,7 @@ free——例 6.1 时刻 4/5 那个双桶的谜底：
         # Blocks to reuse last are appended to the end of the free queue.
         self.free_block_queue.append_n(blocks_to_evict_last)
 ```
-【源码：`vllm/v1/core/block_pool.py#L778-798`，阅读锚 v0.30.0】看什么：一次 free 分两桶——**无哈希块插队头**（刚释放的裸块物理位置还热着，下一个请求立刻复用它，GPU 局部性更好）、**有哈希块排队尾**（缓存身份的块尽量晚死，成全 LRU）。设计文档对入队顺序的解释则是缓存视角：「the last block of a request must hash more tokens and is less likely to be reused by other requests. As a result, it should be evicted first」【官方设计文档 prefix_caching.md#L198】——尾块哈希覆盖的 token 最多、被完整复用的概率最小，所以该最先被逐。两个视角说的是同一件事：调用方把块**逆序**传进来（`single_type_kv_cache_manager.py#L581` 的 `reversed(...)`），配合双桶，让「最不易复用的排最前」。
+【源码：`vllm/v1/core/block_pool.py#L778-798`（节选——中段逐块分桶的 for 循环体以 … 略，其内每块先做 `block.ref_cnt -= 1` 再判桶），阅读锚 v0.30.0】看什么：一次 free 分两桶——先给每个块的引用数减一（free 是减引用、不是收房子——例 6.1 时刻 4 的「块 1,2 ref 2→1 不入队」就是这行干的）、**无哈希块插队头**（刚释放的裸块物理位置还热着，下一个请求立刻复用它，GPU 局部性更好）、**有哈希块排队尾**（缓存身份的块尽量晚死，成全 LRU）。设计文档对入队顺序的解释则是缓存视角：「the last block of a request must hash more tokens and is less likely to be reused by other requests. As a result, it should be evicted first」【官方设计文档 prefix_caching.md#L198】——尾块哈希覆盖的 token 最多、被完整复用的概率最小，所以该最先被逐。两个视角说的是同一件事：调用方把块**逆序**传进来（`single_type_kv_cache_manager.py#L581` 的 `reversed(...)`），配合双桶，让「最不易复用的排最前」。
 
 > **【考据框】文档单说 vs 代码双桶。**设计文档只讲了「逆序 append 尾部」；代码实际是 prepend/append 双桶。读引擎源码的一课：**设计文档讲语义，代码注释讲动机，两者都读才算读完**——这正是第 2 章「文档=代码的投影」的活例（投影会滞后）。
 
@@ -204,10 +203,11 @@ free——例 6.1 时刻 4/5 那个双桶的谜底：
 | t5 | B 结束（free）——无哈希桶 | `free_blocks` | 0 | — | **队首**（LIFO：刚用过的物理位置还热） |
 | t6 | 被 C 从队头弹出（allocate） | `get_new_blocks` | 1 | — | 已摘出 |
 | t6' | C 写满 $c_{12}$-$c_{15}$（cache） | `cache_full_blocks` | 1 | $h_4$ | —（在用） |
+| t7 | 队列耗尽、队头带哈希块 5（$h_3'$）被弹出 | `get_new_blocks`→`_maybe_evict_cached_block` | +1（新主人） | **删键+reset_hash** | 弹出即驱逐——护照上「哈希身份写满才有、驱逐即注销」在此兑现 |
 
-这个例子让你看见什么：**LIFO 复用不是抽象原则，是时刻 5→6 之间那次「队首直取」**——B 刚放回的块，下一个请求立刻拿来用（GPU 上那块显存的数据通路还是热的）。对照另一个极端：带哈希的块（例 6.1 时刻 5 的块 5,2,1）排在队尾，要等队列几乎耗尽才轮到被弹出——那时「弹出即驱逐」把它们的缓存身份销户（表 6.1 的 evict 行）。**块的「死亡」有两层**：free 只还回使用权（身份还在，等着下一次命中）；驱逐才注销缓存身份。两层分开，正是「释放立刻、驱逐尽量晚」这对矛盾能共存的原因。
+这个例子让你看见什么：**LIFO 复用不是抽象原则，是时刻 5→6 之间那次「队首直取」**；**驱逐也不是抽象原则，是 t7 那次「弹出即销户」**——B 刚放回的块，下一个请求立刻拿来用（GPU 上那块显存的数据通路还是热的）。对照另一个极端：带哈希的块（例 6.1 时刻 5 的块 5,2,1）排在队尾，要等队列几乎耗尽才轮到被弹出——那时「弹出即驱逐」把它们的缓存身份销户（表 6.1 的 evict 行）。**块的「死亡」有两层**：free 只还回使用权（身份还在，等着下一次命中）；驱逐才注销缓存身份。两层分开，正是「释放立刻、驱逐尽量晚」这对矛盾能共存的原因。
 
-## 6.5 命中停在块中间：CoW 的真实触发
+## 6.5 命中停在块中间：CoW（copy-on-write，写时复制）的真实触发
 
 第 9 站的最后一个环节：命中长度「停在块中间」时块表怎么处理。先把触发条件钉准——这是容易想当然的地方（笔者初稿就写错过）：**跨请求的部分前缀命中不触发写时复制**。例 6.1 时刻 3 的 B 对 A 的第 3 块只对上 2/4 个 token——链断即停，B 的命中只算到整块边界（8 个 token），断点之后的 token 它**自己新分块重算**（时刻 3 的块 5），与 A 的块 3 再无关系。真正触发重定向的判据在源码里只有一行：
 
@@ -224,7 +224,7 @@ free——例 6.1 时刻 4/5 那个双桶的谜底：
             and num_local_computed_tokens % self.block_size != 0
         )
 ```
-【源码：`vllm/v1/core/single_type_kv_cache_manager.py#L165-179`（截尾标 …），阅读锚 v0.30.0】看什么：**命中长度非整块倍数**才是触发条件——「The local prefix-cache hit ends inside one of this manager's blocks」。什么场景会让命中停在块中间？最典型的是**并行采样分叉**：同一 prompt 的两条采样序列（`n>1`），fork 点落在块中间——第二条序列的「已计算」包含整块的共享 prompt 段加上块中间的分叉点，它的块表里那个分叉块同时挂着两条序列的引用。
+【源码：`vllm/v1/core/single_type_kv_cache_manager.py#L165-175`，阅读锚 v0.30.0】看什么：**命中长度非整块倍数**才是触发条件——「The local prefix-cache hit ends inside one of this manager's blocks」。什么场景会让命中停在块中间？v0.30.0 的正身答案是 **fine-grained 哈希**（6.6 其三预告的双粒度：`hash_block_size < block_size` 时命中按哈希粒度对齐——`single_type_kv_cache_manager.py#L772` 的 Fine-grained mode 分支），命中的 token 数不再是块大小的整数倍，尾块「半块命中」由此产生。顺带一句诚实的否定：直觉候选「并行采样分叉」（n>1 两路共享尾块）在 V1 **不构成**此场景——v0.30.0 的 `n>1` 在前端就扇出成 n 个独立子请求（`llm_engine.py#L287-300` 的 copy(request) 循环，各带同一 prompt、各自从头算尾块），引擎侧没有 fork 型的共享块表；Book6 例 5.4 的「尾块才复制」是教学语义的 CoW，引擎里的 CoW 长在 fine-grained 命中上。
 
 重定向的执行约定在 `_apply_cow` 的 docstring 里，值得整段读：
 
@@ -246,7 +246,7 @@ free——例 6.1 时刻 4/5 那个双桶的谜底：
 ```
 【源码：`vllm/v1/core/single_type_kv_cache_manager.py#L455-468`，阅读锚 v0.30.0】看什么：**两端保活**——源块保留命中引用、新块在请求持有的引用之外**额外多拿一条命**，直到 worker 真的把数据抄过去；这多出的一条命防的是「同一步内 free 把两端的块回收再分配」的竞态。三行 assert 也值得读：要求被顶替的块确实在请求块表的那个位置、确实有人引用——账目对不上直接炸，这是防御式记账。
 
-**例 6.3（构造例：并行采样分叉的 CoW 账）** 沿用 $b=4$ 的世界：请求 S 的 prompt 10 token（$t_0$-$t_9$），采样参数 $n=2$（两条序列 S1/S2 共享 prompt）。走查：①S1 先算——块 1（$t_0$-$t_3$）、块 2（$t_4$-$t_7$）满块，块 3 装 $t_8,t_9$ 2/4；②两序列各自解码：S1 在块 3 续写 $s^{(1)}_{10},s^{(1)}_{11}$ 写满、开块 4；S2 此刻进场——它的「已计算」=共享的 10 个 token（**非整块**，$10\bmod 4=2\neq0$）——partial hit 触发：登记 `(block_idx=2, source=块3)`；③`_apply_cow`：取空闲队首的**新块 5**，`req_blocks[2]=块5`（S2 的块表原地顶替），拷贝对 (块3→块5) 进 pending，块 5 引用数 +2（请求 1 条+保活 1 条）；④worker 执行拷贝——把块 3 全部 4 个 token 的 K/V 抄进块 5（含 S1 写入的两个 token——抄整块，S2 随后会在块 5 覆写自己分叉后的部分）；⑤S2 在块 5 续写 $s^{(2)}_{10},s^{(2)}_{11}$——注意块 5 写满后以**自己的新哈希**入册，块 3 的哈希（若已满入册）原封不动。效果读法：S2 只多付 1 块显存与一次 4-token 拷贝，换来「共享不写、写入私有」两全——**这正是 Book6 例 5.4（并行采样两路共享尾块、只多付 1 块复制）的源码正身**，那时教的「写进新块≠写时复制、尾块续写才是」，现在的行号就是 6.5 节这三段摘录。
+**例 6.3（构造例：fine-grained 命中的 CoW 账）** 沿用 $b=4$ 的世界、开 fine-grained（哈希粒度 2——满半块即可命中入册）：请求 S 先算完 prompt 10 token——块 1、块 2 满块入册，块 3 只装了 $t_8,t_9$（2/4，**半块**：按哈希粒度 2 也入册了 $h_{t_8t_9}$）。请求 W 进门，prompt 前 10 个 token 与 S 相同、此后分岔。走查（输入：W 的命中查询；输出：CoW 三笔账）：①查链——$h_1$✓$h_2$✓$h_{t_8t_9}$✓，W 的本地命中=**10 个 token**（两个整块+一个半块）；②$10\bmod 4=2\neq0$——`_has_partial_local_hit` 为真，命中尾巴「停在块 3 中间」：登记 `(block_idx=2, source=块3)`；③`_apply_cow`：取空闲队首的**新块 5**，`req_blocks[2]=块5`（W 的块表原地顶替），拷贝对 (块3→块5) 进 pending，块 5 引用数 +2（请求 1 条+保活 1 条）；④worker 执行拷贝——把块 3 的 K/V 抄进块 5（抄已有部分），W 随后在块 5 续写自己的分岔 token（写满后以**自己的新哈希**入册，块 3 的半块哈希原封不动）。效果读法：W 只多付 1 块显存与一次小拷贝，换来「共享不写、写入私有」两全——**Book6 例 5.4 教的「写进新块≠写时复制、尾块续写才是」，在引擎里的行号就是 6.5 节这三段摘录**；触发它的不是并行采样（那在前端已扇出），是哈希粒度细过块粒度的「半块命中」。
 
 最后一笔要特别记：`_pending_cow_copies` 里的拷贝对，由 `KVCacheManager.take_kv_cache_block_copies`（`vllm/v1/core/kv_cache_manager.py#L873-888`）打包成 `KVCacheBlockCopy(src, dst)` 随调度输出下发——**块账记在 EngineCore 进程，KV 数据住在 worker 进程，拷贝对是两者之间唯一的搬运指令**。第 4 章的进程拓扑在这里第一次落到了数据结构上：五层管理器全在调度侧，它们操纵的从来只是「块号与身份」，一字节的 K/V 都没碰过。
 
@@ -294,20 +294,20 @@ free——例 6.1 时刻 4/5 那个双桶的谜底：
 
 图 6.3 两类住客同池总览（按设计文档与 v0.30.0 代码面自绘，示意级）：full 组逐 token 保槽无上界；滑窗组只保最近 W 个 token、窗外块随解码释放；线性/SSM 组固定大小状态——三类由同一协调器管理。
 
-算例一笔（B5-8 的三刀机，正文零占位、只引数字）：MLA 3 层 960 元素/token 无界 + GDN 9 层固定 1,317,888——「无界 vs 固定」两条账本线交叉出缓存回收的临界点 $n^*\approx1{,}373$ token【设计文档 `code/Book5-前沿混合架构/ch09/DESIGN-3TO1.md`#L70】。这套「分类型状态账」如何进块池、滑窗层怎么滚、Mamba 状态怎么 checkpoint——**机制深讲唯一归属 Book8 第 1 章**，本节到「同一协调器、各组各账」为止。
-
-> **【欠账】** hybrid KV cache manager 的机制深讲（线性/SSM 固定状态与全注意力 KV 的统一分页、层型特化命中）→ Book8 第 1 章；KV 的第四种省法——把 KV 搬走（CPU offload/分层 tiering，B6-2 的地址）→ Book8 第 9 章。
+算例一笔（B5-8 的三刀机，正文零占位、只引数字）：MLA 3 层 960 元素/token 无界 + GDN 9 层固定 1,317,888——「无界 vs 固定」两条账本线交叉出缓存回收的临界点 $n^*\approx1{,}373$ token【设计文档 `code/Book5-前沿混合架构/ch09/DESIGN-3TO1.md`#L70】。这套「分类型状态账」如何进块池、滑窗层怎么滚、Mamba 状态怎么 checkpoint——**机制深讲唯一归属 Book8 第 1 章**，本节到「同一协调器、各组各账」为止（章末欠账框正式挂账）。
 
 ## 6.8 本章小结
 
-回到开篇的两笔账。块表与块池的正身：五层结构——数据结构、池、组记账、协调、门面，每层写权独占自己的容器，调度器只认门面的四个方法；写时复制的正身：命中停在块中间（典型如并行采样分叉）时共享尾块被原地顶替成私有块，两端保活、拷贝对下发——Book6 第 5 章那句「写进新块≠写时复制、尾块续写才是」的边界判断，现在有了行号。哈希 vs radix 之争的答案：**链式哈希查命中、空闲双链表管驱逐**——树没有显式地存在，它的驱逐语义（叶子先逐）被编码进了 free 的逆序双桶里；满块原则、断链即停、append-only 容忍重复，三个决策共同把「哈希=内容+来历」的契约守住了。还有 Book1 最初那笔账：F4「K/V 的读取语义」一路从 Transformer 原典的注意力账走到这——块粒度的读取（gather 按表逐块拼回逻辑序）在本章的块表与 6.5 的「拷贝对=唯一搬运指令」处落地，欠账链 Book1→Book3→Book6→本章闭合（算子级的读取在第 9 章收最后一环）。
+回到开篇的两笔账。块表与块池的正身：五层结构——数据结构、池、组记账、协调、门面，每层写权独占自己的容器，调度器只认门面的四个方法；例 6.1 的六时刻把三本账（块表/空闲表/哈希表）走了一遍——断链、共享块不还账、free 双桶、touch 中摘，四个机制看点各有着落；例 6.2 的护照表把块 6 的一生竖着读——LIFO 复用与「free 释放使用权、驱逐才注销身份」的两层死亡。写时复制的正身：例 6.3 的并行采样分叉走查——10 mod 4=2≠0 触发 partial hit、新块多拿一条命保活、拷贝对下发；Book6 第 5 章那句「写进新块≠写时复制、尾块续写才是」的边界判断，现在有了行号。哈希 vs radix 之争的答案：**链式哈希查命中、空闲双链表管驱逐**——树没有显式地存在，它的驱逐语义（叶子先逐）被编码进了 free 的逆序双桶里。实验的账面是全章最硬的一格：例 6.4 手算的 $b=128$ 天花板 **56.0%** 与 APC 开臂实测命中率**逐位咬合**（命中数 10752=3×4×896）——满块原则、断链即停、每前缀首条不命中，三个机制约束在一个数字里全部兑现；而名义 b16 臂被平台闸门覆写回 128（54.8%=同配置噪声档），16 vs 128 对比在 NPU 上不可实测、只作手算账保留。还有 Book1 最初那笔账：F4「K/V 的读取语义」欠账链 Book1→Book3→Book6→本章闭合（算子级的读取在第 9 章收最后一环）。
 
-**带走的心智**是两幅画。**其一，块的护照**：每个块的一生只是五个核心字段的变化史——块号生来不变，引用数进出自如，哈希身份写满才有、驱逐即注销，队列位置随摸热与释放起落；KV 数据不在这本护照里，护照只是账。**其二，账与货分家**：五层管理器全在调度进程里拨算盘，一字节的 K/V 都不碰；数据住在 worker 的显存里，CoW 拷贝对是两界之间唯一的搬运指令——读任何 KV 管理代码，先分清「这句在记账还是在搬货」。
+**带走的心智**是两幅画。**其一，块的护照**：每个块的一生只是五个核心字段的变化史——块号生来不变，引用数进出自如，哈希身份写满才有、驱逐即注销，队列位置随摸热与释放起落；KV 数据不在这本护照里，护照只是账（一本全池 8110 块的户籍册——第 6.6 节探针的实数）。**其二，账与货分家**：五层管理器全在调度进程里拨算盘，一字节的 K/V 都不碰；数据住在 worker 的显存里，CoW 拷贝对是两界之间唯一的搬运指令（五层管理器经手的 KV 字节数是零）——读任何 KV 管理代码，先分清「这句在记账还是在搬货」。
 
-zoom out 回全书：生命周期的第 9 站走完，块的世界闭合——请求有了块号、块有了身份与秩序。下一章（第 7 章）这些块号随 `SchedulerOutput` 越过进程边界进入 executor 与 worker，变成前向输入的一部分：**块表怎么被真正的计算消费**，执行层的故事从这开始。
+zoom out 回全书：生命周期的第 9 站走完，块的世界闭合——请求有了块号、块有了身份与秩序。本章的「不够」也有两笔，都指给了下册：hybrid 住客只立了「同一协调器、各组各账」的骨架（机制深讲 Book8 第 1 章）；KV 的第四种省法（把 KV 搬走）只在欠账框里挂了名（Book8 第 9 章）。下一章（第 7 章）这些块号随 `SchedulerOutput` 越过进程边界进入 executor 与 worker，变成前向输入的一部分：**块表怎么被真正的计算消费**，执行层的故事从这开始。
 
 **动手验证**（Atlas 910B3；选卡纪律照 CLAUDE.md）：
 ① `source env.sh && ASCEND_RT_VISIBLE_DEVICES=<卡> python code/ch06/exp_ch06.py --skip-serve`——形状探针，验收行：`block_size 128 / num_gpu_blocks 8110 / kv_total_gib 23.76`；
 ② 去掉 `--skip-serve` 全跑三臂——验收行：off 臂 hit rate 0.0%、on 臂 56.0%（对照例 6.4 天花板）、名义 b16 臂 54.8% 且 serve 日志出现覆写行「Block size is set to 128…」；
 ③ `python code/ch06/fig_ch06.py`——重渲三图；
 ④ 正身复核：`sed -n '1217,1222p' repos/vllm-ascend/vllm_ascend/utils.py`——6.6 节那道覆写闸门的原文（外层条件 `if cache_config.block_size != 128:` 在 L1217）。
+
+> **【欠账】** hybrid KV cache manager 的机制深讲（线性/SSM 固定状态与全注意力 KV 的统一分页、层型特化命中）→ Book8 第 1 章；KV 的第四种省法——把 KV 搬走（CPU offload/分层 tiering，B6-2 的地址）→ Book8 第 9 章。

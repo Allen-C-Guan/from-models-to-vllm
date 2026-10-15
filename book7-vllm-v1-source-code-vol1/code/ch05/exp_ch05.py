@@ -1,6 +1,6 @@
 # exp_ch05.py —— Book7 ch05 代码件：调度器两实验（preemption 场景构造 + token 预算两档对照）
 # 用途：ch05《调度器》实测——
-#   实验① preemption 场景：低 KV 预算（gpu_memory_utilization=0.30）+ 长请求并发，构造 KV 先于预算耗尽、
+#   实验① preemption 场景：低 KV 预算（gpu_memory_utilization=0.015）+ 长请求并发，构造 KV 先于预算耗尽、
 #     触发 RECOMPUTE 抢占；判据预注册（notes/14 §8）：周期统计行出现「Preemptions: K」段（仅 K>0 出现——
 #     出现即判据达成）、KV usage 行逼近 100%、至少一条请求完成；预期行为：抢占步不收新请求。
 #   实验② max-num-batched-tokens 两档（512 vs 2048）：同 workload（一条 2k 长预填+3 条短请求），
