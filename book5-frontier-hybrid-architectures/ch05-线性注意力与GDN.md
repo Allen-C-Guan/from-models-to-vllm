@@ -118,7 +118,7 @@ $$(I+M)\,u=\beta V,\qquad M=\mathrm{tril}\big(\beta\,KK^\top\odot\hat D,\,-1\big
 
 $$\mathrm{out}_w=(Q\odot e^{c})\,S_w+(\hat D\odot QK^\top)(u-\tilde k\,S_w),\qquad S_{w+1}=e^{c_C}S_w+k_\times^\top(u-\tilde k\,S_w) \tag{5.9}$$
 
-用人话说：每个块的输出=「带着衰减滤镜问上一块传来的老状态」加「块内一场喂着冲销后新值的小注意力」；块与块之间只传那一张 $S$（先整体按 $e^{c_C}$ 打折、再叠本块新写）——递推没有消失，只是从「每 token 一步」变成了「每块一步」，块内那一步是矩阵乘、可以并行。
+用人话说：每个块的输出=「带着衰减滤镜问上一块传来的老状态」加「块内一场喂着冲销后新值的小注意力」；块与块之间只传那一张 $S$（先整体按 $e^{c_C}$ 打折、再叠本块新写）——递推没有消失，只是从「每 token 一步」变成了「每块一步」，块内那一步是矩阵乘、可以并行。（从式 (5.6) 到式 (5.8)/(5.9) 的零跳跃完整推导——含三处「摞矩阵」的三行算例与 $\tilde k$、$k_\times$ 的严格定义——见本章末**附录 5A**。）
 
 先在纸面上把 UT 求解跑给你看——它不是抽象，就是例 5.1 的覆写算术批发版：
 
@@ -264,3 +264,467 @@ $$\mathrm{out}_w=(Q\odot e^{c})\,S_w+(\hat D\odot QK^\top)(u-\tilde k\,S_w),\qqu
   ```
 - **四图复绘**：`python "[`code/ch05/fig_ch05.py`](code/ch05/fig_ch05.py)"`（图 5.4 需先有 `gdn_run1.json`）。
 - 验收点：能手算例 5.1 的同键双写与例 5.2 的 UT 前代；能写出式 (5.5)/(5.6) 并说清 $\alpha$ 与 $\beta$ 各管哪个轴；能解释 chunkwise 为什么能并行、报出 GDN 训练/推理双口径复杂度；能复述 Qwen3-Next 位置编码的按层分型与 $n^*=1{,}536$ 的来历。
+
+## 附录 5A：从式 (5.6) 到式 (5.9)——零跳跃完整推导
+
+（应作者指令 2026-10-13 增补。正文 5.4 节从式 (5.6) 直接落到式 (5.8)/(5.9)，中间推导以「用人话说」带过；本附录把这条链拆成十步，每一步只用 5A.1 列出的初等定律（律 0–律 6），不引入任何新假设、新近似。）
+
+三处「逐条方程摞成矩阵」的转换（摞矩阵 #1/#2/#3）各配一个**三行符号算例**——逐条列出 $t{=}1,2,3$ 的标量方程、摞成矩阵、系数按格落位，全程不代具体数值；数值对拍（同一份数据走零售/批发/源码三方）统一收在 5A.11 的例 5A.3，兼作单测期望值。
+
+### 5A.0 路线图与符号
+
+```text
+第 1 步  式(5.6) ──右乘分配律+结合律──→ 残差形式（先打折、读、写残差 u_t）
+第 2 步  折扣连乘 ──对数记账（g=ln α, c=cumsum）──→ e^{c} 记法        〔例 5A.1〕
+第 3 步  残差式逐级回代 ──望远镜──→ 状态展开式 (◆)
+第 4 步  展开式代回 u_t 的定义 ──→ 增量方程（每 token 一条）
+第 5 步  C 条方程按行装订 ──→ 三角方程组 (I+M)U=Ṽ                〔摞矩阵 #1〕
+第 6 步  解三角方程（前代=零售递推）；k̃ 的正身=第二个右端          〔例 5A.2+检验框〕
+第 7 步  展开式 (◆) 代入 o_t=S_t q_t ──→ 块内输出                 〔摞矩阵 #2〕
+第 8 步  展开式 (◆) 取 i=C ──→ 状态交接                           〔摞矩阵 #3〕
+第 9 步  全部结果转置到键轴在前 ──逐符号──→ 式 (5.9)
+第10步  全链地图与数值对拍收束（三处符号算例在此代数值三方验证）
+```
+
+**符号与形状**（除注明外均为单头、单条 $B{=}1$ 口径）：
+
+| 符号 | 含义 | 形状 | 注 |
+|---|---|---|---|
+| $q_t,\,k_t$ | 查询/键 | $(d_k,)$ | 列向量 |
+| $v_t,\,u_t,\,o_t$ | 值/净写入/输出 | $(d_v,)$ | 列向量 |
+| $S_w,\,S_t$ | 关联记忆状态 | $(d_v,d_k)$ | **行=值、列=键**，与式 (5.6) 同摆法；$S_w$=本块入口时刻的状态（块编号 $w$），首块 $S_w=0$。第 9 步统一转置到式 (5.9) 的键轴在前 |
+| $Q,\,K$ | 块内行堆叠 | $(C,d_k)$ | 第 $t$ 行 $=q_t^\top$ / $k_t^\top$ |
+| $V,\,U$ | 块内行堆叠 | $(C,d_v)$ | 第 $t$ 行 $=v_t^\top$ / $u_t^\top$ |
+| $\beta_t,\,\alpha_t$ | 写强度/衰减门 | 标量 | $\beta_t\in(0,1)$，$\alpha_t\in(0,1)$ |
+| $g_t,\,c_i$ | 对数衰减/累积 | 标量 | $g_t=\ln\alpha_t\le 0$；$c_i=\sum_{s\le i}g_s$；**约定 $c_0=0$** |
+| $M,\,\hat D$ | 冲销强度/存活比 | $(C,C)$ | 定义见第 5/7 步 |
+| $\tilde V$ | 三角系统右端 | $(C,d_v)$ | 第 5 步 |
+| $u$ | 未修正解 $(I+M)^{-1}\beta V$ | $(C,d_v)$ | 第 6 步；**矩阵级记号，勿与 token 级 $u_t$（净写入）混淆** |
+| $\mathrm{out}_w$ | 块内输出，第 $i$ 行 $=o_i^\top$ | $(C,d_v)$ | 第 7 步 |
+| $\mathrm{diag}(\beta)$ | $\beta$ 摆成对角阵（行缩放的矩阵写法） | $(C,C)$ | 第 6 步 |
+| $\tilde k,\,k_\times$ | 过求解衰减键/尾衰减键 | $(C,d_k)$ | 定义见第 6/8 步 |
+| $\odot$ | 逐元素乘 | — | 矩阵$\odot$矩阵=逐元素；矩阵$\odot$向量（本书用法）=按行缩放（第 $t$ 行乘 $e^{c_t}$） |
+
+**数值对拍用的公共数据**（$d_k=d_v=2$，$C=3$，$\beta_t\equiv 1$；键取单位向量、$k_2\perp k_3$ 省一项耦合；$q_t=k_t$ 读自家地址；供例 5A.1/5A.2 与 5A.11 对拍使用——摞矩阵符号算例不代数值）：
+
+$$S_w=\begin{pmatrix}2&0\\0&0\end{pmatrix},\qquad K=\begin{pmatrix}1&0\\0.6&0.8\\0.8&-0.6\end{pmatrix}$$
+
+$$V=\begin{pmatrix}5&0\\0&2\\3&1\end{pmatrix},\qquad \alpha=(1,\,0.5,\,0.5)$$
+
+内积备查：$k_1^\top k_2=0.6$，$k_1^\top k_3=0.8$，$k_2^\top k_3=0$；$S_wk_1=(2,0)$，$S_wk_2=(1.2,0)$，$S_wk_3=(1.6,0)$。
+
+### 5A.1 工具箱：本推导允许使用的全部定律
+
+推导只允许用以下几组（均为矩阵乘法定义或标量代数的直接推论，每条附形状与一句理由）：
+
+- **律 0（标量浮动）**：$\lambda(AB)=(\lambda A)B=A(\lambda B)$。标量乘法与矩阵乘法可交换位置。
+- **律 1（外积双线性）**：$(a\pm b)k^\top=ak^\top\pm bk^\top$，$(\lambda a)k^\top=\lambda(ak^\top)$，$a(k\pm l)^\top=ak^\top\pm al^\top$。外积对两个槽位各自线性——按外积定义 $(ak^\top)_{ij}=a_i k_j$ 逐格即得。
+- **律 2（右乘分配）**：$A(B\pm C)=AB\pm AC$。逐格展开 $(AB)_{ij}=\sum_l A_{il}B_{lj}$，和对每项成立。
+- **律 3（结合律的两种用法）**：
+  - **B1**：$S(kk^\top)=(Sk)k^\top$，$S\in(d_v,d_k),\,k\in(d_k,)$——括号从右因子挪到中间：$S\cdot(k\cdot k^\top)=(S\cdot k)\cdot k^\top$。
+  - **B2**：$(uk^\top)q=(k^\top q)\,u$，$u\in(d_v,),\,k,q\in(d_k,)$——同一条结合律：$(u\cdot k^\top)\cdot q=u\cdot(k^\top\cdot q)$，$k^\top q$ 是标量可提出。
+- **律 4（行视角）**：$(AB)$ 的第 $t$ 行 $=\sum_j A_{tj}\cdot(B$ 的第 $j$ 行$)$。由 $(AB)_{tc}=\sum_j A_{tj}B_{jc}$ 逐列聚成行。
+- **律 5（外积和视角）**：$AB=\sum_j (A$ 的第 $j$ 列$)(B$ 的第 $j$ 行$)$。由 $(AB)_{il}=\sum_j A_{ij}B_{jl}$ 按 $j$ 分组即得——矩阵乘法的第三副面孔。
+- **律 3 补注（一般结合律与单位阵吸收）**：$(AB)C=A(BC)$（按乘法定义逐格可证）；$AI=A$（$(AI)_{il}=\sum_jA_{ij}\delta_{jl}=A_{il}$）。第 1、6 步用到。
+- **律 6（转置律）**：$(X\pm Y)^\top=X^\top\pm Y^\top$，$(\lambda X)^\top=\lambda X^\top$，$(AB)^\top=B^\top A^\top$，$(A^\top)^\top=A$。第 5/7 步的形状对齐与第 9 步的转置对齐用。
+
+### 5A.2 第 1 步：式 (5.6) 重排成「先打折、读、写残差」
+
+出发点（式 (5.6)，$\alpha_t(I-\beta_tk_tk_t^\top)$ 中 $\alpha_t$ 为标量，律 0 先浮出来）：
+
+$$S_t=\alpha_t S_{t-1}\big(I-\beta_t k_tk_t^\top\big)+\beta_t v_tk_t^\top$$
+
+括号内先做标量分配并吸收单位阵（$\alpha_tI-\alpha_t\beta_tk_tk_t^\top$ 一项中 $AI=A$，律 3 补注），再右乘分配（律 2）展开：
+
+$$=\;\alpha_t S_{t-1}\;-\;\alpha_t\beta_t\,S_{t-1}\big(k_tk_t^\top\big)\;+\;\beta_t v_tk_t^\top$$
+
+对第二项用 B1 挪括号，$S_{t-1}(k_tk_t^\top)=(S_{t-1}k_t)k_t^\top$：
+
+$$=\;\alpha_t S_{t-1}\;-\;\alpha_t\beta_t\,(S_{t-1}k_t)\,k_t^\top\;+\;\beta_t v_tk_t^\top$$
+
+后两项共享 $k_t^\top$ 这个右槽，用律 1 把左槽合并（$\beta_t v_t-\alpha_t\beta_t(S_{t-1}k_t)=\beta_t\big(v_t-\alpha_tS_{t-1}k_t\big)$，标量 $\beta_t$ 由律 0 提出）：
+
+$$\boxed{\;S_t=\alpha_t S_{t-1}+u_tk_t^\top\;,\qquad u_t:=\beta_t\big(v_t-\alpha_t S_{t-1}k_t\big)\;}\tag{5A.1}$$
+
+读出定义（承实物 5.1 的四拍次序：写完自己的再读）：
+
+$$o_t=S_tq_t\tag{5A.2}$$
+
+用人话说：(5A.1) 就是「先打折（$\alpha_t$ 乘整本）、再读旧（$S_{t-1}k_t$）、写残差（$u_t$ 贴在地址 $k_t$ 上）」——与式 (5.6) 的「先擦后写」逐位相同，只是代数上换了副面孔（正文 5.3 节已对 $\alpha_t=1$ 的特例演过一遍，此处多了 $\alpha_t$）。
+
+### 5A.3 第 2 步：折扣连乘 → 对数记账（$g$ 与 $c$ 的引入）
+
+把 (5A.1) 逐级代入会发现系数全是**连乘积**（第 3 步会显式看到）：越老的东西头上挂的 $\alpha$ 越多。对连乘积，标准记账是取对数（依据恒等式 $e^ae^b=e^{a+b}$：乘法搬进指数变加法）。定义：
+
+$$g_t:=\ln\alpha_t\ \ (\le 0),\qquad c_i:=\sum_{s=1}^{i}g_s\;(=g_1+\cdots+g_i),\qquad c_0:=0$$
+
+由此立得两条**翻译恒等式**（对因子个数归纳；两因子、三因子各写一行，归纳即机械重复）：
+
+$$e^{c_2}=e^{g_1+g_2}=e^{g_1}e^{g_2}=\alpha_1\alpha_2,\qquad e^{c_3}=e^{g_1}e^{g_2}e^{g_3}=\alpha_1\alpha_2\alpha_3\;\Rightarrow\;e^{c_i}=\alpha_1\cdots\alpha_i$$
+
+$$c_i-c_j=(g_1{+}{\cdots}{+}g_i)-(g_1{+}{\cdots}{+}g_j)=g_{j+1}{+}{\cdots}{+}g_i\;\Rightarrow\;e^{c_i-c_j}=\alpha_{j+1}\cdots\alpha_i$$
+
+第二条就是望远镜：公共前缀 $g_1..g_j$ 相消，剩「$j$ 之后到 $i$」那段。它的语义——**$j$ 时刻写入的内容活到 $i$ 时刻，被中间每一步的 $\alpha$ 依次打折后剩下的成数**（$j=i$ 时中间为空，空积 $=1$）。
+
+注意 $g=\ln\alpha$ 是双射坐标变换（$\alpha\in(0,1)\leftrightarrow g\in(-\infty,0)$，$\alpha=e^g$ 可逆），衰减机制本身原封未动——作用在状态上的始终是 $\alpha$，$g$ 只在记账层出场。
+
+> **例 5A.1（$\alpha=(1,0.5,0.5)$ 的记账表）** $g=(0,\ln 0.5,\ln 0.5)$，$c=(0,\ln 0.5,\ln 0.25)$。
+>
+> | | $j{=}1$ | $j{=}2$ | $j{=}3$ | 行读数 $e^{c_i}$ |
+> |---|---|---|---|---|
+> | $i{=}1$ | $1$（空积） | — | — | $1=\alpha_1$ |
+> | $i{=}2$ | $0.5=\alpha_2$ | $1$ | — | $0.5=\alpha_1\alpha_2$ |
+> | $i{=}3$ | $0.25=\alpha_2\alpha_3$ | $0.5=\alpha_3$ | $1$ | $0.25=\alpha_1\alpha_2\alpha_3$ |
+>
+> 格 $(i,j)$ 即存活比 $\hat D_{ij}=e^{c_i-c_j}$：第 $j$ 列的写入被读第 $i$ 行时剩下的成数；对角线恒 1。
+
+### 5A.4 第 3 步：望远镜展开
+
+对块内 token 逐级代入 (5A.1)，每行的系数转换显式写出（用 $e^{g_i}e^{x}=e^{x+g_i}=e^{x\text{ 的 }c\text{ 记法}}$，即第 2 步翻译恒等式倒用）：
+
+$$S_1=\alpha_1S_w+u_1k_1^\top=e^{c_1}S_w+e^{c_1-c_1}u_1k_1^\top$$
+
+$$S_2=\alpha_2S_1+u_2k_2^\top=\alpha_2e^{c_1}S_w+\alpha_2e^{c_1-c_1}u_1k_1^\top+u_2k_2^\top$$
+
+$$=e^{c_2}S_w+e^{c_2-c_1}u_1k_1^\top+e^{c_2-c_2}u_2k_2^\top$$
+
+（其中 $\alpha_2e^{c_1}=e^{g_2}e^{c_1}=e^{c_1+g_2}=e^{c_2}$；$\alpha_2\cdot 1=e^{c_2-c_1}$。）
+
+$$S_3=\alpha_3S_2+u_3k_3^\top$$
+
+$$=e^{c_3}S_w+e^{c_3-c_1}u_1k_1^\top+e^{c_3-c_2}u_2k_2^\top+e^{c_3-c_3}u_3k_3^\top$$
+
+归纳步（设展开式对 $i-1$ 成立，代入 (5A.1)）：$\alpha_iS_{i-1}=e^{g_i}\big[e^{c_{i-1}}S_w+\sum_{j\le i-1}e^{c_{i-1}-c_j}u_jk_j^\top\big]=e^{c_i}S_w+\sum_{j\le i-1}e^{c_i-c_j}u_jk_j^\top$，再添 $u_ik_i^\top=e^{c_i-c_i}u_ik_i^\top$。归纳完成：
+
+$$\boxed{\;S_i=e^{c_i}\,S_w+\sum_{j\le i}e^{c_i-c_j}\,u_jk_j^\top\;}\tag{5A.3}$$
+
+（下文引用此式时记作 (◆)。）用人话说：任意时刻的状态=「老地基按从头到 $i$ 的连乘打折」加「块内每笔写入按各自的存活率挂着」。
+
+### 5A.5 第 4 步：每个 token 的增量方程
+
+把 (5A.3) 取 $i=t-1$（$t=1$ 时取 $i=0$：$S_0=e^{c_0}S_w=S_w$，空和，成立）代回 $u_t$ 的定义 (5A.1)。先算中间量 $S_{t-1}k_t$（对求和的每一项用 B2：$(u_jk_j^\top)k_t=(k_j^\top k_t)u_j$）：
+
+$$S_{t-1}k_t=e^{c_{t-1}}S_wk_t+\sum_{j<t}e^{c_{t-1}-c_j}(k_j^\top k_t)\,u_j$$
+
+两边乘 $\alpha_t$（$e^{g_t}e^{c_{t-1}}=e^{c_t}$；$e^{g_t}e^{c_{t-1}-c_j}=e^{c_t-c_j}$）：
+
+$$\alpha_tS_{t-1}k_t=e^{c_t}S_wk_t+\sum_{j<t}e^{c_t-c_j}(k_t^\top k_j)\,u_j$$
+
+代入 $u_t=\beta_t(v_t-\alpha_tS_{t-1}k_t)$，用标量对向量和的分配（标量代数）展开三项：
+
+$$u_t=\beta_tv_t-\beta_te^{c_t}S_wk_t-\sum_{j<t}\beta_te^{c_t-c_j}(k_t^\top k_j)\,u_j$$
+
+含未知数的和搬到左边（仍是向量的等式，逐分量搬）：
+
+$$\boxed{\;u_t+\sum_{j<t}\beta_t\,e^{c_t-c_j}\,(k_t^\top k_j)\,u_j=\beta_t\big(v_t-e^{c_t}S_wk_t\big)\;}\tag{5A.4}$$
+
+三条方程的语义：**净写入 = 目标值 − 老地基已答的（$e^{c_t}S_wk_t$，带从头到 $t$ 的折扣）− 本块前笔已答的（按存活比与键重叠度）**。右端两项不含未知数；依赖全部集中在左边的和里。（$t{=}1,2,3$ 的逐条展开见第 5 步第一拍。）
+
+### 5A.6 第 5 步：摞成三角方程组【摞矩阵 #1】
+
+摞矩阵分三拍：**第一拍逐条列出，第二拍竖着摞，第三拍系数落表**。
+
+**第一拍：把 (5A.4) 的前三条方程逐条写开**（空和省略；$C>3$ 时机械延长，每条方程多一项而已）：
+
+$$u_1=\beta_1\big(v_1-e^{c_1}S_wk_1\big)$$
+
+$$u_2+\beta_2e^{c_2-c_1}(k_2^\top k_1)\,u_1=\beta_2\big(v_2-e^{c_2}S_wk_2\big)$$
+
+$$u_3+\beta_3e^{c_3-c_1}(k_3^\top k_1)\,u_1+\beta_3e^{c_3-c_2}(k_3^\top k_2)\,u_2=\beta_3\big(v_3-e^{c_3}S_wk_3\big)$$
+
+**第二拍：未知数竖着摞成 $U$、已知右端竖着摞成 $\tilde V$**（第 $t$ 行对第 $t$ 条方程；$u_t$ 是 $(d_v,)$ 列向量，摞成行需转置，$S_w$ 侧同理用律 6）：
+
+$$U:=\begin{pmatrix}u_1^\top\\ u_2^\top\\ u_3^\top\end{pmatrix}\in(C,d_v)$$
+
+$$\tilde V:=\begin{pmatrix}\beta_1\big(v_1^\top-e^{c_1}k_1^\top S_w^\top\big)\\ \beta_2\big(v_2^\top-e^{c_2}k_2^\top S_w^\top\big)\\ \beta_3\big(v_3^\top-e^{c_3}k_3^\top S_w^\top\big)\end{pmatrix}$$
+
+$$=\beta\big(V-(K\odot e^{c})\,S_w^\top\big)\in(C,d_v)$$
+
+（$(K\odot e^{c})S_w^\top$ 的第 $t$ 行 $=e^{c_t}k_t^\top S_w^\top=(e^{c_t}S_wk_t)^\top$，$S_w^\top\in(d_k,d_v)$；$\beta$ 的行缩放写成矩阵即 $\mathrm{diag}(\beta)$，两种记法下文通用。）
+
+**第三拍：三条方程左端里 $u_j$ 的标量系数按「第 $t$ 行=第 $t$ 条方程、第 $j$ 列=未知数 $u_j$」落进一张表**：
+
+| | $j{=}1$ | $j{=}2$ | $j{=}3$ |
+|---|---|---|---|
+| $t{=}1$ | $1$ | $0$ | $0$ |
+| $t{=}2$ | $\beta_2e^{c_2-c_1}(k_2^\top k_1)$ | $1$ | $0$ |
+| $t{=}3$ | $\beta_3e^{c_3-c_1}(k_3^\top k_1)$ | $\beta_3e^{c_3-c_2}(k_3^\top k_2)$ | $1$ |
+
+对角线：每条方程都含有自己的 $u_t$（系数 $1$）。严格下三角：$j<t$ 的耦合系数——后面的 token 冲销前面的。上三角为 $0$：$j>t$ 的未知数不出现——因果。这张表就是 $I+M$：
+
+$$M_{tj}:=\begin{cases}\beta_t\,e^{c_t-c_j}\,(k_t^\top k_j),& j<t\\ 0,&\text{否则}\end{cases}\in(C,C)$$
+
+装订正确性用**律 4** 逐行验证：$(I+M)U$ 的第 $t$ 行 $=\sum_j(I+M)_{tj}\cdot(U$ 的第 $j$ 行$)=u_t^\top+\sum_{j<t}M_{tj}u_j^\top$——正是第一拍第 $t$ 条方程的左端；右端即 $\tilde V$ 的第 $t$ 行。故 $C$ 条方程装订为：
+
+$$\boxed{\;(I+M)\,U=\tilde V\;}\tag{5A.5}$$
+
+矩阵方程的每一行与标量方程逐字相同——装订没有引入也没有丢失任何信息。解它的前代法（第 $t$ 行用已解出的前 $t-1$ 行代进去）在算术上**就是**零售递推本身；批发形态则把解写成 $(I+M)^{-1}$——其构造正是 UT/WY 变换（工程上分块完成；第 6 步只用到它的线性性）。
+
+### 5A.7 第 6 步：解的线性与 $\tilde k$ 的正身
+
+(5A.5) 的解 $U=(I+M)^{-1}\tilde V$。把第 5 步的紧凑式
+
+$$\tilde V=\beta\big(V-(K\odot e^{c})\,S_w^\top\big)$$
+
+代入，用**求解的线性性**拆成两个同系数系统的解之差。线性性的依据只有两句：
+
+- 若 $(I+M)X_1=B_1$、$(I+M)X_2=B_2$，律 2 给 $(I+M)(X_1-X_2)=B_1-B_2$；
+- $(I+M)$ 是单位下三角，前代法对行归纳逐行唯一确定解。
+
+故解算子良定义且线性；下式两个方括号的重组用一般结合律（律 3 补注）——第一个方括号正是正文式 (5.8) 的解 $u$，第二个即 $\tilde k$：
+
+$$U=\underbrace{(I+M)^{-1}\,\beta V}_{=:u}\;-\;\underbrace{(I+M)^{-1}\,\mathrm{diag}(\beta)\,(K\odot e^{c})}_{=:\,\tilde k}\,S_w^\top\tag{5A.6}$$
+
+$$\boxed{\;U=u-\tilde k\,S_w^\top\;}\tag{5A.7}$$
+
+**$\tilde k$ 的严格定义由此而来：它不是裸的衰减键 $K\odot e^{c}$，而是衰减键过了同一个三角系统 $(I+M)$ 之后的解**——「老地基已答的部分」这笔修正必须参与三角求解（见下面检验框）。工程正身在 HF 源码里就是连着的两行求解【证据等级：官方源码（transformers 5.18.0，行级锚）】：
+
+- `L472`：对右端 $\beta V$ 解出 `new_values`（即 $u$）；
+- `L473`：对右端 $\beta(K\odot e^{c})$（`decayed_k_beta`，`L463`）解出 `k_cumdecay`（即 $\tilde k$）；
+- `L498`：两者相减得 `v_new`（即 $U$）。
+
+源码注释原话："the part of new_values that the old state already predicts is subtracted out, so that only the correction is written…"（旧状态已能预测的部分被减去、只写修正——这就是 delta rule）。
+
+> **例 5A.2（第二个右端的求解，公共数据）** 与例 5A.3 批发段同一次批量三角求解的第二个右端（HF `L472/L473` 连解两个右端），全程矩阵粒度。取 $I+M=\begin{pmatrix}1&0&0\\0.3&1&0\\0.2&0&1\end{pmatrix}$（构造见例 5A.3 第 5 步）、$\mathrm{diag}(\beta)(K\odot e^{c})=\begin{pmatrix}1&0\\0.3&0.4\\0.2&-0.15\end{pmatrix}$：
+>
+> $$u=(I+M)^{-1}\beta V=\begin{pmatrix}5&0\\-1.5&2\\2&1\end{pmatrix},\qquad \tilde k=(I+M)^{-1}\mathrm{diag}(\beta)(K\odot e^{c})=\begin{pmatrix}1&0\\0&0.4\\0&-0.15\end{pmatrix}$$
+>
+> 相减（一次矩阵乘、一次矩阵减）：
+>
+> $$U=u-\tilde kS_w^\top=\begin{pmatrix}5&0\\-1.5&2\\2&1\end{pmatrix}-\begin{pmatrix}1&0\\0&0.4\\0&-0.15\end{pmatrix}\begin{pmatrix}2&0\\0&0\end{pmatrix}=\begin{pmatrix}5&0\\-1.5&2\\2&1\end{pmatrix}-\begin{pmatrix}2&0\\0&0\\0&0\end{pmatrix}=\begin{pmatrix}3&0\\-1.5&2\\2&1\end{pmatrix}$$
+>
+> ——与例 5A.3 的零售读数**逐位一致**。
+
+> **【检验框】$\tilde k$ 为什么必须过求解：裸键反例。** 若误把 $\tilde k$ 当裸衰减键 $K\odot e^{c}$（不过 $(I+M)^{-1}$），取 $\alpha\equiv1$、$S_w=\begin{pmatrix}2&0\\0&0\end{pmatrix}$、$k_1=(1,0),k_2=(0.6,0.8)$、$v_1=(5,0),v_2=(0,2)$。
+>
+> 矩阵级解：$(I+M)u=\beta V$ 给 $u=\begin{pmatrix}5&0\\-3&2\end{pmatrix}$；裸键扣除得「净写入」第二行 $=(-3,2)-(1.2,0)=(-4.2,2)$。
+>
+> 零售真值（token 级净写入）：$u_1=v_1-S_wk_1=(3,0)$；$S_1k_2=S_wk_2+u_1(k_1^\top k_2)=(1.2,0)+0.6(3,0)=(3,0)$；故 $u_2=v_2-S_1k_2=(0,2)-(3,0)=(-3,2)$。
+>
+> 裸键结果 $(-4.2,2)$ 比真值 $(-3,2)$ **多扣了** $M_{21}\cdot(S_wk_1)=0.6\times(2,0)=(1.2,0)$——修正量自身的键间耦合，正是漏掉的那次求解应当补回的部分。
+>
+> 结论：正文式 (5.8) 与 (5.9) 原样精确，唯 $\tilde k$ 必须按 (5A.6) 定义。
+
+### 5A.8 第 7 步：块内输出【摞矩阵 #2】
+
+把 (5A.3) 代入 (5A.2)，和的每一项用 B2：
+
+$$o_i=S_iq_i=e^{c_i}(S_wq_i)+\sum_{j\le i}e^{c_i-c_j}(u_jk_j^\top)q_i$$
+
+$$=e^{c_i}(S_wq_i)+\sum_{j\le i}e^{c_i-c_j}\,(k_j^\top q_i)\,u_j\tag{5A.8}$$
+
+同样三拍。**第一拍：把 (5A.8) 的前三条读出方程逐条写开**（$q$ 为一般查询，非必 $q{=}k$；每项的 $(u_jk_j^\top)q_i$ 已由 B2 收成 $(k_j^\top q_i)u_j$）：
+
+$$o_1=e^{c_1}(S_wq_1)+e^{c_1-c_1}(q_1^\top k_1)\,u_1$$
+
+$$o_2=e^{c_2}(S_wq_2)+e^{c_2-c_1}(q_2^\top k_1)\,u_1+e^{c_2-c_2}(q_2^\top k_2)\,u_2$$
+
+$$o_3=e^{c_3}(S_wq_3)+e^{c_3-c_1}(q_3^\top k_1)\,u_1+e^{c_3-c_2}(q_3^\top k_2)\,u_2+e^{c_3-c_3}(q_3^\top k_3)\,u_3$$
+
+**第二拍：把三条方程的两项各自竖着摞**——第一项的三个行向量摞成一块：
+
+$$\begin{pmatrix}e^{c_1}(S_wq_1)^\top\\ e^{c_2}(S_wq_2)^\top\\ e^{c_3}(S_wq_3)^\top\end{pmatrix}$$
+
+第二项的三个和式摞成一块：
+
+$$\begin{pmatrix}(q_1^\top k_1)\,u_1^\top\\ e^{c_2-c_1}(q_2^\top k_1)\,u_1^\top+(q_2^\top k_2)\,u_2^\top\\ e^{c_3-c_1}(q_3^\top k_1)\,u_1^\top+e^{c_3-c_2}(q_3^\top k_2)\,u_2^\top+(q_3^\top k_3)\,u_3^\top\end{pmatrix}$$
+
+**第三拍：两块各自认出矩阵乘法**。左块每行提出公共右因子 $S_w^\top$（$e^{c_i}(S_wq_i)^\top=e^{c_i}q_i^\top S_w^\top$，律 6），提出的行因子竖着摞正是「按行缩放的 $Q$」：
+
+$$\begin{pmatrix}e^{c_1}(S_wq_1)^\top\\ e^{c_2}(S_wq_2)^\top\\ e^{c_3}(S_wq_3)^\top\end{pmatrix}=\underbrace{\begin{pmatrix}e^{c_1}q_1^\top\\ e^{c_2}q_2^\top\\ e^{c_3}q_3^\top\end{pmatrix}}_{=:Q\odot e^{c}\ (\text{按行缩放})}\cdot S_w^\top$$
+
+右块先落系数表（第 $i$ 行=第 $i$ 条方程、第 $j$ 列=未知数 $u_j$）：
+
+| | $j{=}1$ | $j{=}2$ | $j{=}3$ |
+|---|---|---|---|
+| $i{=}1$ | $q_1^\top k_1$ | $0$ | $0$ |
+| $i{=}2$ | $e^{c_2-c_1}(q_2^\top k_1)$ | $q_2^\top k_2$ | $0$ |
+| $i{=}3$ | $e^{c_3-c_1}(q_3^\top k_1)$ | $e^{c_3-c_2}(q_3^\top k_2)$ | $q_3^\top k_3$ |
+
+内层 $q_i^\top k_j$ 摞成 $QK^\top$（$(QK^\top)_{ij}=q_i^\top k_j$），存活率落成 $\hat D_{ij}:=e^{c_i-c_j}$（$j\le i$），逐格相乘（$\odot$ 逐元素）再右乘 $U$——律 4 保证第 $i$ 行 $=\sum_j[\hat D\odot QK^\top]_{ij}\cdot u_j^\top$，逐字复现第二拍右块的每一个和式，故右块 $=(\hat D\odot QK^\top)\,U$。
+
+**注意这张表含对角线**（$j{=}i$ 时 $e^{0}=1$：读出时自己的写入在场），与 $M$ 的严格下三角差一条对角线；$j{>}i$ 的格按因果置 $0$。两块相加、净写入用 (5A.7)：
+
+$$\boxed{\;\mathrm{out}_w=(Q\odot e^{c})\,S_w^\top+(\hat D\odot QK^\top)\,(u-\tilde kS_w^\top)\;}\tag{5A.9}$$
+
+（$\mathrm{out}_w\in(C,d_v)$，第 $i$ 行 $=o_i^\top$。）用人话说：每行输出=「带着衰减滤镜问老地基」加「块内一场小注意力——权重 $q_i^\top k_j$ 按存活比打折，value 是净写入」。数值版见例 5A.3。
+
+### 5A.9 第 8 步：状态交接【摞矩阵 #3】
+
+(5A.3) 取 $i=C$ 即块末状态：
+
+$$S_{w+1}=e^{c_C}\,S_w+\sum_{j\le C}e^{c_C-c_j}\,u_jk_j^\top$$
+
+还是三拍。**第一拍：把和逐项写开**（$C=3$ 示意；每项是「左因子×右因子」的一笔秩一写入，存活率先挂在左因子上）：
+
+$$S_{w+1}=e^{c_3}\,S_w\;+\;\big(e^{c_3-c_1}\,u_1\big)\,k_1^\top\;+\;\big(e^{c_3-c_2}\,u_2\big)\,k_2^\top\;+\;\big(e^{c_3-c_3}\,u_3\big)\,k_3^\top$$
+
+**第二拍：左因子竖着摞、右因子横着摞**——三个左因子（连同存活率）摞成 $U^\top$ 的**列**：
+
+$$U^\top=\big[\,u_1\;\big|\;u_2\;\big|\;u_3\,\big]\in(d_v,C)\qquad\text{（列堆叠）}$$
+
+三个右因子摞成衰减键矩阵的**行**：
+
+$$K\odot e^{c_C-c}=\begin{pmatrix}e^{c_3-c_1}\,k_1^\top\\ e^{c_3-c_2}\,k_2^\top\\ e^{c_3-c_3}\,k_3^\top\end{pmatrix}\in(C,d_k)\qquad\text{（行堆叠）}$$
+
+**第三拍：律 5 配对相乘**——$U^\top(K\odot e^{c_C-c})=\sum_j\big(U^\top$ 的第 $j$ 列$)\cdot\big($衰减键矩阵的第 $j$ 行$)$：第 $1$ 列配第 $1$ 行得 $e^{c_3-c_1}u_1k_1^\top$，第 $2$、$3$ 对同理——**列 $j$ 恒配行 $j$，配一次就是一笔秩一写入**。记 $k_\times:=K\odot e^{c_C-c}$（每把键乘上它「活到块尾」的存活率）：
+
+$$\boxed{\;S_{w+1}=e^{c_C}\,S_w+U^\top k_\times\;}\tag{5A.10}$$
+
+（$U^\top\in(d_v,C)$、$k_\times\in(C,d_k)$，乘积 $(d_v,d_k)$ 与 $S$ 同形；$U=u-\tilde kS_w^\top$ 承 (5A.7)。）用人话说：整块只做一次整体打折（$e^{c_C}$ 打在老地基上——标量连乘结合律 $\alpha_C(\alpha_{C-1}(\cdots S_w))=(\alpha_1\cdots\alpha_C)S_w$，「先忘」的块级版），再叠本块全部净写入（每笔按活到块尾的存活率）。
+
+### 5A.10 第 9 步：转置对齐——逐符号落到式 (5.9)
+
+本附录状态取「行=值、列=键」（承式 (5.6)）；式 (5.9) 与 HF 实装取键轴在前（承实物 5.1 的注记：同一张记忆的两种摆放）。对齐分两个小步，两个小步的操作不同：
+
+**（i）输出式——只需重命名，不转置。** 细看 (5A.9)：旧状态只以 $S_w^\top$ 的形态出场（两处皆是），而 $S_w^\top\in(d_k,d_v)$ 本就是键轴在前的那个矩阵。令新记号 $S_w:=\text{旧 }S_w^\top$，$\mathrm{out}_w$ 保持 $(C,d_v)$ 行式不动，(5A.9) 逐字变成：
+
+$$\mathrm{out}_w=(Q\odot e^{c})\,S_w+(\hat D\odot QK^\top)\,(u-\tilde k\,S_w)$$
+
+**（ii）交接式——真转置，逐项搬。** 对 (5A.10) 两边取转置，每步旁注所用的转置律（律 6）：
+
+$$
+\begin{aligned}
+S_{w+1}^\top&=\big(e^{c_C}S_w+U^\top k_\times\big)^\top\\[2pt]
+&\overset{\text{和}}{=}\big(e^{c_C}S_w\big)^\top+\big(U^\top k_\times\big)^\top\\[2pt]
+&\overset{\text{标量}\cdot\text{乘积}}{=}e^{c_C}\,S_w^\top+k_\times^\top\,\big(U^\top\big)^\top\\[2pt]
+&\overset{\text{对合}}{=}e^{c_C}\,S_w^\top+k_\times^\top\,U
+\end{aligned}
+$$
+
+再把 $S^\top$ 按小步 (i) 改记成键轴在前的 $S$、把 $U$ 写回 $u-\tilde kS_w$：
+
+$$S_{w+1}=e^{c_C}\,S_w+k_\times^\top\,(u-\tilde k\,S_w)$$
+
+两式与式 (5.9) 逐符号相同——推导闭合。**符号对照表**（相对正文 5.4 节补全的定义）：
+
+| 符号 | 严格定义 | 本附录来源 | HF 源码锚（transformers 5.18.0） |
+|---|---|---|---|
+| $M$ | $M_{tj}=\beta_te^{c_t-c_j}(k_t^\top k_j)$，仅 $j<t$ | (5A.4) 摞矩阵 #1 | `L461`（`ut_system`，对角被 `unitriangular=True` 按 1 处理） |
+| $u$ | $(I+M)^{-1}\beta V$ | (5A.6) | `L472`（`new_values`） |
+| $\tilde k$ | $(I+M)^{-1}\,\mathrm{diag}(\beta)(K\odot e^{c})$——**过同一三角求解的衰减键** | (5A.6) | `L463`+`L473`（`decayed_k_beta`→`k_cumdecay`） |
+| $u-\tilde kS_w$ | 净写入 $U$，一个整体记号 | (5A.7) | `L498`（`v_new`） |
+| $\hat D$ | $\hat D_{ij}=e^{c_i-c_j}$，$j\le i$（含对角；上三角置 0） | 例 5A.1/第 7 步 | `L456-458`（`pairwise_decay`） |
+| $Q\odot e^{c}$ | $Q$ 第 $t$ 行乘 $e^{c_t}$ | 第 7 步 | `L490` |
+| $k_\times$ | $K\odot e^{c_C-c}$（活到块尾的键） | 第 8 步 | `L491` |
+| $e^{c_C}$ | 块内衰减连乘 | 第 8 步 | `L492`（`chunk_decay`） |
+| 输出/交接 | (5A.9)/(5A.10) 转置版 | 第 9 步 | `L499-500`/`L502` |
+
+【证据等级：官方源码（transformers 5.18.0 `modeling_qwen3_next.py::torch_chunk_gated_delta_rule`，本地浅克隆行级锚；状态形状 $(B,H_v,d_k,d_v)$ 键轴在前）】
+
+### 5A.11 第 10 步：全链收束
+
+```text
+式(5.6)
+ │ 律2+律3B1+律1（第1步）              → 残差形式 (5A.1)：先打折、读、写残差 u_t
+ │ 对数记账（第2步，双射+e^a e^b=e^{a+b}）→ g、c；翻译恒等式 e^{c_i}、e^{c_i−c_j}
+ │ 逐级回代（第3步，翻译恒等式逐项替换）  → 状态展开式 (5A.3)
+ │ 代回 u_t 定义（第4步，律3B2）         → 增量方程 (5A.4)：净写入=目标−老地基已答−前笔已答
+ │ 装订（第5步，律4）【摞矩阵 #1】        → (I+M)U=Ṽ；前代=零售递推
+ │ 解线性（第6步）                       → u 与 k̃ 两次同系统求解，U=u−k̃S_wᵀ（例 5A.2+检验框）
+ │ (5A.3) 代入 o_t=S_t q_t（第7步，律4）【摞矩阵 #2】→ out_w 两项式
+ │ (5A.3) 取 i=C（第8步，律5）【摞矩阵 #3】→ 交接式；e^{c_C} 整体打折
+ │ 转置（第9步：改名+逐项转置）           → 式 (5.9) 逐符号闭合
+```
+
+**带走的心智**：整条推导只有三个真动作——**重排**（分配律/结合律换面孔）、**记账**（连乘的对数坐标）、**装订**（逐条方程按行摞成矩阵：第一拍逐条列出、第二拍竖着摞、第三拍系数落表；行视角与外积和视角是仅有的两条装订律）。「依赖」从未被消灭：它从「执行顺序」变成了「数据结构」——全部编码在 $M$ 的严格下三角里，而 $M$ 只靠输入的内积就能预先算出。递推由此从每 token 一步降到每块一步。
+
+**例 5A.3（数值全流程：公式 → 代入 → 读数；三方对拍，兼作单测期望值）** 严格顺着公式走：零售段的每个量在用到它的那一步**当场计算**，不设备查表。计算**停留在矩阵层面**：写出具体的矩阵/向量，直接给出结果，不逐元素展开乘加。两种形态各按各的真实粒度——**零售按 token 逐步**（递推形态本就如此），**批发按矩阵整块**（先构造完整矩阵、再一次批量运算，与工程实现同构）。
+
+**输入的来历**（两种形态共用）：真实层里，token $x_t$ 经融合投影 `in_proj_qkvz` 得 $q,k,v,z$ 四路、经 `in_proj_ba` 得 $\beta,\alpha$ 的原始激活，$q/k/v$ 再各过一道因果短卷积（核宽 4），$q,k$ 另做 L2 归一（5.4 节层模块全貌）。本 toy 从**投影后的量**直接起步——5A.0 公共数据的 $K,V$ 就是 $k_t,v_t$ 摞成的行堆叠矩阵（第 $t$ 行 $=k_t^\top$ / $v_t^\top$），$Q$ 因 toy 取 $q_t=k_t$ 而等于 $K$；$\alpha=(1,\,0.5,\,0.5)$ 是衰减门、$\beta_t\equiv1$ 是写强度；$S_w=\begin{pmatrix}2&0\\0&0\end{pmatrix}$ 是上一块递推交下来的入口状态（首块为零）。
+
+**零售**（式 (5A.1)：$u_t=\beta_t(v_t-\alpha_tS_{t-1}k_t)$，$S_t=\alpha_tS_{t-1}+u_tk_t^\top$；读出 $o_t=S_tq_t$）
+
+$t=1$（$\alpha_1=1$）。读旧账 $S_0k_1=S_wk_1$：
+
+$$S_wk_1=\begin{pmatrix}2&0\\0&0\end{pmatrix}\begin{pmatrix}1\\0\end{pmatrix}=(2,0)$$
+
+残差与更新：
+
+$$u_1=\beta_1\big(v_1-\alpha_1S_wk_1\big)=(5,0)-1\times(2,0)=(3,0)$$
+
+$$S_1=\alpha_1S_w+u_1k_1^\top=1\times\begin{pmatrix}2&0\\0&0\end{pmatrix}+\begin{pmatrix}3\\0\end{pmatrix}\begin{pmatrix}1&0\end{pmatrix}=\begin{pmatrix}5&0\\0&0\end{pmatrix}$$
+
+读出：
+
+$$o_1=S_1q_1=\begin{pmatrix}5&0\\0&0\end{pmatrix}\begin{pmatrix}1\\0\end{pmatrix}=(5,0)$$
+
+$t=2$（$\alpha_2=0.5$）。读旧账 $S_1k_2$：
+
+$$S_1k_2=\begin{pmatrix}5&0\\0&0\end{pmatrix}\begin{pmatrix}0.6\\0.8\end{pmatrix}=(3,0)$$
+
+残差与更新：
+
+$$u_2=\beta_2\big(v_2-\alpha_2S_1k_2\big)=(0,2)-0.5\times(3,0)=(-1.5,2)$$
+
+$$S_2=\alpha_2S_1+u_2k_2^\top=0.5\begin{pmatrix}5&0\\0&0\end{pmatrix}+\begin{pmatrix}-1.5\\2\end{pmatrix}\begin{pmatrix}0.6&0.8\end{pmatrix}$$
+
+$$=\begin{pmatrix}2.5&0\\0&0\end{pmatrix}+\begin{pmatrix}-0.9&-1.2\\1.2&1.6\end{pmatrix}=\begin{pmatrix}1.6&-1.2\\1.2&1.6\end{pmatrix}$$
+
+读出：
+
+$$o_2=S_2q_2=\begin{pmatrix}1.6&-1.2\\1.2&1.6\end{pmatrix}\begin{pmatrix}0.6\\0.8\end{pmatrix}=(0,2)$$
+
+$t=3$（$\alpha_3=0.5$）。读旧账 $S_2k_3$：
+
+$$S_2k_3=\begin{pmatrix}1.6&-1.2\\1.2&1.6\end{pmatrix}\begin{pmatrix}0.8\\-0.6\end{pmatrix}=(2,0)$$
+
+残差与更新：
+
+$$u_3=\beta_3\big(v_3-\alpha_3S_2k_3\big)=(3,1)-0.5\times(2,0)=(2,1)$$
+
+$$S_3=\alpha_3S_2+u_3k_3^\top=0.5\begin{pmatrix}1.6&-1.2\\1.2&1.6\end{pmatrix}+\begin{pmatrix}2\\1\end{pmatrix}\begin{pmatrix}0.8&-0.6\end{pmatrix}$$
+
+$$=\begin{pmatrix}0.8&-0.6\\0.6&0.8\end{pmatrix}+\begin{pmatrix}1.6&-1.2\\0.8&-0.6\end{pmatrix}=\begin{pmatrix}2.4&-1.8\\1.4&0.2\end{pmatrix}$$
+
+读出：
+
+$$o_3=S_3q_3=\begin{pmatrix}2.4&-1.8\\1.4&0.2\end{pmatrix}\begin{pmatrix}0.8\\-0.6\end{pmatrix}=(3,1)$$
+
+**批发**（矩阵粒度：先构造完整矩阵，再一次批量运算——这正是它与零售的本质区别，也与工程实现同构）
+
+第 5 步：构造三角系统。**输入矩阵按定义构造**：$K,Q\in(C,d_k)$、$V\in(C,d_v)$，第 $t$ 行分别 $=k_t^\top,\,q_t^\top,\,v_t^\top$（token 向量的来历见本例开头「输入的来历」；toy 取 $q_t=k_t$，故 $Q=K$）：
+
+$$K=Q=\begin{pmatrix}1&0\\0.6&0.8\\0.8&-0.6\end{pmatrix},\qquad V=\begin{pmatrix}5&0\\0&2\\3&1\end{pmatrix}$$
+
+**记账**（构造下列矩阵要用）：由 $\alpha=(1,\,0.5,\,0.5)$ 得 $g=(0,\,\ln 0.5,\,\ln 0.5)$、$c=(0,\,\ln 0.5,\,\ln 0.25)$，于是行缩放向量 $e^{c}=(1,\,0.5,\,0.25)$（第 $t$ 个分量乘到第 $t$ 行），存活比 $e^{c_2-c_1}=0.5$、$e^{c_3-c_1}=0.25$、$e^{c_3-c_2}=0.5$。
+
+键内积表 $KK^\top$（第 $(i,j)$ 格 $=k_i^\top k_j$）与存活比矩阵 $\hat D$（定义 $\hat D_{ij}:=e^{c_i-c_j}$，$j\le i$；上三角按因果置 0）：
+
+$$KK^\top=\begin{pmatrix}1&0.6&0.8\\0.6&1&0\\0.8&0&1\end{pmatrix},\qquad \hat D=\begin{pmatrix}1&0&0\\0.5&1&0\\0.25&0.5&1\end{pmatrix}$$
+
+三角系统（定义 $I+M:=\mathrm{tril}(KK^\top\odot\hat D)$，等价于 $M_{tj}=\beta_te^{c_t-c_j}(k_t^\top k_j)$ 仅 $j<t$）：
+
+$$I+M=\mathrm{tril}\big(KK^\top\odot\hat D\big)=\begin{pmatrix}1&0&0\\0.3&1&0\\0.2&0&1\end{pmatrix}$$
+
+（单位键使对角恰为 $1$——HF `L461` 的 `ut_system` 即此构造，对角由 `unitriangular=True` 显式按 1 处理。）
+
+右端：构造衰减键 $K\odot e^{c}$（定义：$K$ 的第 $t$ 行乘 $e^{c_t}$，系数即记账所得 $e^{c}=(1,\,0.5,\,0.25)$），再一次矩阵乘问老地基、矩阵相减：
+
+$$K\odot e^{c}=\begin{pmatrix}1&0\\0.3&0.4\\0.2&-0.15\end{pmatrix},\qquad (K\odot e^{c})S_w^\top=\begin{pmatrix}2&0\\0.6&0\\0.4&0\end{pmatrix}$$
+
+$$\tilde V=\beta\big(V-(K\odot e^{c})S_w^\top\big)=\begin{pmatrix}5&0\\0&2\\3&1\end{pmatrix}-\begin{pmatrix}2&0\\0.6&0\\0.4&0\end{pmatrix}=\begin{pmatrix}3&0\\-0.6&2\\2.6&1\end{pmatrix}$$
+
+第 6 步：一次批量三角求解（工程上就是一行 `solve_triangular`；HF `L472/L473` 对两个右端连解，第二解见例 5A.2）：
+
+$$U=(I+M)^{-1}\tilde V=\begin{pmatrix}3&0\\-1.5&2\\2&1\end{pmatrix}$$
+
+（等价性备注：手工前代逐行验证的话，第 $t$ 行恰复现零售的 $u_t$——装订正确性的体现；工程上不逐行。）
+
+第 7 步：输出——两次矩阵乘、一次矩阵加：
+
+$$(Q\odot e^{c})S_w^\top=(K\odot e^{c})S_w^\top=\begin{pmatrix}2&0\\0.6&0\\0.4&0\end{pmatrix}$$
+
+$$(\hat D\odot QK^\top)U=(\hat D\odot KK^\top)\,U=\begin{pmatrix}1&0&0\\0.3&1&0\\0.2&0&1\end{pmatrix}\begin{pmatrix}3&0\\-1.5&2\\2&1\end{pmatrix}=\begin{pmatrix}3&0\\-0.6&2\\2.6&1\end{pmatrix}$$
+
+$$\mathrm{out}=\begin{pmatrix}2&0\\0.6&0\\0.4&0\end{pmatrix}+\begin{pmatrix}3&0\\-0.6&2\\2.6&1\end{pmatrix}=\begin{pmatrix}5&0\\0&2\\3&1\end{pmatrix}$$
+
+——三个自家地址（$q_t=k_t$）读出的恰为最新值 $v_1,v_2,v_3$（覆写语义在批发路径原样保住），且与零售 $o_1,o_2,o_3$ 逐位相同。
+
+第 8 步：交接——构造 $k_\times:=K\odot e^{c_3-c}$（定义：$K$ 第 $j$ 行乘「活到块尾」的存活率，系数 $e^{c_3-c}=(0.25,\,0.5,\,1)$），再一次矩阵乘、一次矩阵加：
+
+$$k_\times=K\odot e^{c_3-c}=\begin{pmatrix}0.25&0\\0.3&0.4\\0.8&-0.6\end{pmatrix}$$
+
+$$S_{w+1}=e^{c_3}S_w+U^\top k_\times=0.25\begin{pmatrix}2&0\\0&0\end{pmatrix}+\begin{pmatrix}3&-1.5&2\\0&2&1\end{pmatrix}\begin{pmatrix}0.25&0\\0.3&0.4\\0.8&-0.6\end{pmatrix}=\begin{pmatrix}0.5&0\\0&0\end{pmatrix}+\begin{pmatrix}1.9&-1.8\\1.4&0.2\end{pmatrix}=\begin{pmatrix}2.4&-1.8\\1.4&0.2\end{pmatrix}$$
+
+——与零售末状态 $S_3$ 逐位一致。以上读数可作 `torch_chunk_gated_delta_rule` 的单测期望值（状态转置到键轴在前），亦可由 5.9 节的手写双形态内核复现。
