@@ -1,5 +1,7 @@
 # Book7《vLLM V1 源码剖析（上）：引擎主链路》
 
+> 本目录保留旧版书稿与实验。当前阅读入口为 [Book7 架构版](../book7-vllm-v1-architecture/README.md)，新旧章号对照见其附录 C。
+
 沿一条请求的生命周期逐站精读 vLLM V1 主链路：进程拓扑与 ZMQ 桥、调度器、分页 KV 与前缀缓存、执行层与双 model runner、编译与图执行（ACLGraph）、attention 后端、权重加载与模型注册四门、输出链与 OpenAI 兼容层、实验方法学。大项目：自训 DESIGN-207M 注册进 vllm-ascend（C+A 双档，与 mini 引擎三方对照）。
 
 - 双轨口径：源码引用锚 vllm v0.30.0（ced6857）；实验观察=运行栈 vllm 0.27.1 + vllm-ascend 0.27.1rc1

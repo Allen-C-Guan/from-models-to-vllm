@@ -1,0 +1,76 @@
+{
+  "tp_swiglu": {
+    "max_abs_error": 3.814697265625e-06,
+    "shape": [
+      4,
+      8
+    ]
+  },
+  "sp_token_local_rms": {
+    "max_abs_error": 2.384185791015625e-07,
+    "shape": [
+      4,
+      8
+    ]
+  },
+  "ep_dispatch_combine": {
+    "max_abs_error": 0.0,
+    "shape": [
+      4,
+      8
+    ]
+  },
+  "ep_dispatch": [
+    {
+      "expert": 0,
+      "owner_rank": 0,
+      "token_ids": [
+        0,
+        3
+      ]
+    },
+    {
+      "expert": 1,
+      "owner_rank": 0,
+      "token_ids": [
+        1
+      ]
+    },
+    {
+      "expert": 2,
+      "owner_rank": 1,
+      "token_ids": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "expert": 3,
+      "owner_rank": 1,
+      "token_ids": [
+        2,
+        3
+      ]
+    }
+  ],
+  "dcp_lse_merge": {
+    "max_abs_error": 2.384185791015625e-07,
+    "shape": [
+      2,
+      3,
+      1,
+      5
+    ]
+  },
+  "wrong_unweighted_mean_error": 0.34559208154678345,
+  "merge_with_empty_shard": {
+    "max_abs_error": 2.384185791015625e-07,
+    "shape": [
+      2,
+      3,
+      1,
+      5
+    ]
+  }
+}

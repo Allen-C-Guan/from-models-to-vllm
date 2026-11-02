@@ -1,0 +1,49 @@
+{
+  "case": "tp2pp2",
+  "mode": "fast",
+  "scheduling_requested": "sync",
+  "state": "pass",
+  "commands": [
+    {
+      "argv": [
+        "/home/g00594152/vllm/model_analysis_project/env/bin/python",
+        "-m",
+        "vllm.entrypoints.openai.api_server",
+        "--model",
+        "/home/g00594152/vllm/model_analysis_project/log/huggingface/hub/models--deepseek-ai--DeepSeek-V2-Lite/snapshots/604d5664dddd88a0433dbae533b7fe9472482de0",
+        "--served-model-name",
+        "deepseek-v2-lite",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8130",
+        "--dtype",
+        "bfloat16",
+        "--enforce-eager",
+        "--max-model-len",
+        "8192",
+        "--max-num-seqs",
+        "16",
+        "--max-num-batched-tokens",
+        "2048",
+        "--gpu-memory-utilization",
+        "0.8",
+        "--no-enable-prefix-caching",
+        "--tensor-parallel-size",
+        "2",
+        "--pipeline-parallel-size",
+        "2",
+        "--data-parallel-size",
+        "1",
+        "--decode-context-parallel-size",
+        "1",
+        "--seed",
+        "20261030",
+        "--no-async-scheduling"
+      ],
+      "devices": "0,1,2,3"
+    }
+  ],
+  "benchmark_start_unix": 1793335384.666006,
+  "benchmark_end_unix": 1793335439.1011612
+}

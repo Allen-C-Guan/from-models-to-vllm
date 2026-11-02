@@ -1,0 +1,69 @@
+{
+  "world_size": 2,
+  "dtype": "float32",
+  "mode": "fast",
+  "correctness": "pass",
+  "timing": "synchronized wall clock; maximum rank mean; Python launch included",
+  "rows": [
+    {
+      "op": "all_reduce",
+      "logical_full_bytes": 4096,
+      "max_rank_mean_us": 137.21200230065733
+    },
+    {
+      "op": "all_gather",
+      "logical_full_bytes": 4096,
+      "max_rank_mean_us": 132.6710043940693
+    },
+    {
+      "op": "reduce_scatter",
+      "logical_full_bytes": 4096,
+      "max_rank_mean_us": 133.48099309951067
+    },
+    {
+      "op": "all_to_all",
+      "logical_full_bytes": 4096,
+      "max_rank_mean_us": 138.53900600224733
+    },
+    {
+      "op": "all_reduce",
+      "logical_full_bytes": 262144,
+      "max_rank_mean_us": 137.1020043734461
+    },
+    {
+      "op": "all_gather",
+      "logical_full_bytes": 262144,
+      "max_rank_mean_us": 130.0904987147078
+    },
+    {
+      "op": "reduce_scatter",
+      "logical_full_bytes": 262144,
+      "max_rank_mean_us": 139.63949459139258
+    },
+    {
+      "op": "all_to_all",
+      "logical_full_bytes": 262144,
+      "max_rank_mean_us": 140.93199570197612
+    },
+    {
+      "op": "all_reduce",
+      "logical_full_bytes": 4194304,
+      "max_rank_mean_us": 241.91499687731266
+    },
+    {
+      "op": "all_gather",
+      "logical_full_bytes": 4194304,
+      "max_rank_mean_us": 131.84700219426304
+    },
+    {
+      "op": "reduce_scatter",
+      "logical_full_bytes": 4194304,
+      "max_rank_mean_us": 150.35249816719443
+    },
+    {
+      "op": "all_to_all",
+      "logical_full_bytes": 4194304,
+      "max_rank_mean_us": 144.2715001758188
+    }
+  ]
+}

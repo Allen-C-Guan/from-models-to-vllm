@@ -6,9 +6,9 @@
 
 本章交四样：一张进程拓扑图（图 4.1）、一张启动时序图（图 4.2）、两个实验（ps 拓扑实测、StartPlan 三连跑）、两个走查例（一步走查、七刀拆账）。答案分两层。**机制层是 GIL（全局解释器锁）**：Python 的全局解释器锁让同一进程内的 tokenize、detokenize、HTTP 处理与调度循环互相踩脚——调度器算一步的间隙里若插进一次 JSON 解析，那一步就晚了；fork 出去是老办法，但 CUDA/NPU 上下文一初始化，fork 就会踩坏设备状态（vLLM 的多进程文档 docs/design/multiprocessing.md#L100-124 花了整节讲这对矛盾——现行「best effort」策略：默认 fork、CLI 控制主进程时 spawn、检测到设备已初始化强制 spawn）。设计文档把这层账算得很直白：「vLLM V1 uses a multi-process architecture **to separate concerns and maximize throughput**」【官方设计文档 arch_overview.md#L69】。**工程层是开销分层**，metrics 设计文档有一段堪称 V1 宣言的文字：「**EngineCore is the inner loop. Performance is most critical here**…AsyncLLM is the outer loop. This is overlapped with GPU execution (ideally), so this is where any "overheads" should be if possible」【官方设计文档 metrics.md#L155-161】——用人话说：**性能关键路径上的每一微秒都留在引擎核（内循环），其余一切开销（tokenize/解码/指标/协议）外推到前端（外循环），因为外循环与 GPU 执行重叠、内循环不重叠**。类 docstring 只有一句自证：`EngineCore` 的第一行是「Inner loop of vLLM's Engine.」（core.py#L105-106）——设计与代码互为回声。
 
-「busy loop」这个词容易误导——它不是死循环烧 CPU，而是**park-and-go**：队列空时阻塞在 `input_queue.get()` 上（一微秒不烧），消息一到立刻全速处理。这个「忙」字说的是**一旦有活绝不谦让**：内循环不进任何事件调度器、不等任何回调，每一步的微秒级抖动因此可控。对照组就在身边：Book6 的 mini 引擎把调度与执行放在主线程里串行做（`engine_v1.py` 的 step 是个老实巴交的函数调用），读到 8.9 ms/token 的工业引擎把同一件事做成独立进程的忙循环——「框架开销」层的差距（Book6 ch13 的三层分解）从进程模型这层就开始拉开。
+「busy loop」这个词容易误导——它不是死循环烧 CPU，而是**park-and-go**：队列空时阻塞在 `input_queue.get()` 上（一微秒不烧），消息一到立刻全速处理。这个「忙」字说的是**一旦有活绝不谦让**：内循环不进任何事件调度器、不等任何回调，每一步的微秒级抖动因此可控。对照组就在身边：Book6 的 mini 引擎把调度与执行放在主线程里串行做（`engine_v1.py` 的 step 是个老实巴交的函数调用），读到 8.9 ms/token 的工业引擎把同一件事做成独立进程的忙循环——「框架开销」层的差距（Book6 ch14 的三层分解）从进程模型这层就开始拉开。
 
-> **最小背景栏**：本章需要 Book6 的三件旧资产——TP/PP/EP/DP 四字母的切分视角（ch12：静态切分换通信账——本章给同一组字母换进程拓扑视角）、Orca 章的交互协议视角（Book6 ch04 的句子「引擎的聪明，一半长在协议里」——ZMQ 线协议正是它的工业形态）、8.9 ms 对 59 ms 的趋势级对照口径（ch13）。ZMQ 消息系统不需要前置——4.3 节从零教到「能画出 socket 拓扑」。
+> **最小背景栏**：本章需要 Book6 的三件旧资产——TP/PP/EP/DP的切分视角（Book6 ch13：数据依赖与通信成本——本章给同一组字母换进程拓扑视角）、Orca 章的交互协议视角（Book6 ch04 的句子「引擎的聪明，一半长在协议里」——ZMQ 线协议正是它的工业形态）、8.9 ms 对 59 ms 的趋势级对照口径（Book6 ch14）。ZMQ 消息系统不需要前置——4.3 节从零教到「能画出 socket 拓扑」。
 
 ## 4.2 进程拓扑：公式数角色，ps 数进程
 

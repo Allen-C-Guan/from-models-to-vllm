@@ -12,6 +12,7 @@ import os
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+plt.rcParams["font.sans-serif"] = ["Noto Sans CJK JP", "DejaVu Sans"]
 from matplotlib.patches import FancyBboxPatch
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -42,7 +43,7 @@ def fig_journey():
     # 三段
     box(ax, 0.4, 2.2, 4.6, 2.5, "PART 1  立账  (ch1-3)\n\nservice metrics & roofline (ch1)\narithmetic of inference (ch2)\nKV compression 3 lines (ch3)", ec=BLUE, fc="#dcebfc", fs=7.6)
     box(ax, 5.6, 2.2, 4.6, 2.5, "PART 2  造引擎  (ch4-7)\n\nv1 naive → v2 continuous batching\n→ v3 paged KV → v4 prefix cache\n→ chunked prefill & preemption", ec=ORANGE, fc="#fde3d6", fs=7.6)
-    box(ax, 10.8, 2.2, 5.0, 2.5, "PART 3  单项深化  (ch8-12)\n\nattention kernel / sampling /\nspeculative decoding / quantization /\ngraph exec & parallel → ch13 finale", ec=TEAL, fc="#d9f2e7", fs=7.6)
+    box(ax, 10.8, 2.2, 5.0, 2.5, "PART 3  单项深化  (ch8-13)\n\nattention kernel / sampling /\nspeculative decoding / quantization /\ngraph mode / parallel topology → ch14 finale", ec=TEAL, fc="#d9f2e7", fs=7.6)
     arr(ax, 5.0, 3.45, 5.6, 3.45, lw=1.6); arr(ax, 10.2, 3.45, 10.8, 3.45, lw=1.6)
     # 代码线：四版时间线
     labels = [("baseline\nch1", 0.8), ("v1/v2\nch4", 5.2), ("v3\nch5", 7.4), ("v4\nch6", 9.4), ("finale\ncurves ch7", 11.6)]

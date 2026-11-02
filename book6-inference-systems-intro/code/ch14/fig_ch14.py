@@ -1,9 +1,9 @@
-# fig_ch13.py —— Book6 ch13 制图：图 13.1 八册地图（you are here=第六站）（slug=finale）
+# fig_ch14.py —— Book6 ch14 制图：图 14.1 八册地图（you are here=第六站）（slug=finale）
 # 用途：收束章的系统视角门载体——八站旅程地图：站 6 高亮（本册），左侧五册旧账已清（F/B 钩回收），
 #       右侧 Book7/8 两站（B6 系新钩流向）；沿 Book4/5 收束章「站点画法+you are here 标记」图式。
-# 所属章节：Book6 第 13 章（图 13.1）。
-# 运行方式：cd 工作区根目录 && source env.sh && python "code/Book6-推理系统导论/ch13/fig_ch13.py"
-# 产物：drafts/Book6-推理系统导论/figures/fig-13-1-eight-books.png
+# 所属章节：Book6 第 14 章（图 14.1）。
+# 运行方式：cd 工作区根目录 && source env.sh && python "code/Book6-推理系统导论/ch14/fig_ch14.py"
+# 产物：drafts/Book6-推理系统导论/figures/fig-14-1-eight-books.png
 # 图规：300dpi 白底；系列色 蓝#2a78d6 橙#eb6834 青#1baf7a 黄#eda100；图内英文、图注中文。
 import argparse
 import os
@@ -11,6 +11,7 @@ import os
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+plt.rcParams["font.sans-serif"] = ["Noto Sans CJK JP", "DejaVu Sans"]
 from matplotlib.patches import FancyBboxPatch
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -52,7 +53,7 @@ def fig_map():
         ax.annotate("", xy=(x0 + 0.4, 2.85), xytext=(x0, 2.85),
                     arrowprops=dict(arrowstyle="-|>", color=MUTED, lw=1.0))
     # 左侧旧账 / 右侧新钩
-    ax.text(4.6, 1.15, "five books' IOUs settled here:\nF1-F18 / N5-N7 / B3-B5 hooks closed in ch1-12",
+    ax.text(4.6, 1.15, "five books' IOUs settled here:\nF1-F18 / N5-N7 / B3-B5 hooks closed in ch1-13",
             ha="center", fontsize=7.6, color=TEAL)
     ax.plot([7.6, 8.2], [1.4, 1.9], color=TEAL, lw=1.0)
     ax.text(12.9, 1.15, "new IOUs (B6-1..9) ride on:\nBook7 = source mainline\nBook8 = specials & production",
@@ -61,14 +62,14 @@ def fig_map():
     ax.text(8.2, 0.35, "what you carry: five books of architecture depth + one book of inference physics — the last two books wire the physics into engineering",
             ha="center", fontsize=7.4, color=MUTED)
     fig.tight_layout()
-    path = os.path.join(FIG_DIR, "fig-13-1-eight-books.png")
+    path = os.path.join(FIG_DIR, "fig-14-1-eight-books.png")
     fig.savefig(path, dpi=300, facecolor="white")
     plt.close(fig)
-    print(f"[图 13.1] {path}")
+    print(f"[图 14.1] {path}")
 
 
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser(description="ch13 制图（图 13.1 八册地图）")
+    ap = argparse.ArgumentParser(description="ch14 制图（图 14.1 八册地图）")
     args = ap.parse_args()
     os.makedirs(FIG_DIR, exist_ok=True)
     fig_map()

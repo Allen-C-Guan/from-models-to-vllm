@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="864pt" height="590.4pt" viewBox="0 0 864 590.4" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 590.4 
+L 864 590.4 
+L 864 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="line2d_1">
+    <path d="M 93.6 136.8 
+L 93.6 536.4 
+" clip-path="url(#p1cc47482d7)" style="fill: none; stroke-dasharray: 4.44,1.92; stroke-dashoffset: 0; stroke: #bcc6d2; stroke-width: 1.2"/>
+   </g>
+   <g id="line2d_2">
+    <path d="M 432 136.8 
+L 432 536.4 
+" clip-path="url(#p1cc47482d7)" style="fill: none; stroke-dasharray: 4.44,1.92; stroke-dashoffset: 0; stroke: #bcc6d2; stroke-width: 1.2"/>
+   </g>
+   <g id="line2d_3">
+    <path d="M 770.4 136.8 
+L 770.4 536.4 
+" clip-path="url(#p1cc47482d7)" style="fill: none; stroke-dasharray: 4.44,1.92; stroke-dashoffset: 0; stroke: #bcc6d2; stroke-width: 1.2"/>
+   </g>
+   <g id="patch_2">
+    <path d="M 21.6 90 
+L 165.6 90 
+Q 172.8 90 172.8 97.2 
+L 172.8 129.6 
+Q 172.8 136.8 165.6 136.8 
+L 21.6 136.8 
+Q 14.4 136.8 14.4 129.6 
+L 14.4 97.2 
+Q 14.4 90 21.6 90 
+z
+" clip-path="url(#p1cc47482d7)" style="fill: #f4f6f9; stroke: #526174; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 360 90 
+L 504 90 
+Q 511.2 90 511.2 97.2 
+L 511.2 129.6 
+Q 511.2 136.8 504 136.8 
+L 360 136.8 
+Q 352.8 136.8 352.8 129.6 
+L 352.8 97.2 
+Q 352.8 90 360 90 
+z
+" clip-path="url(#p1cc47482d7)" style="fill: #ecf4fc; stroke: #24659b; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 698.4 90 
+L 842.4 90 
+Q 849.6 90 849.6 97.2 
+L 849.6 129.6 
+Q 849.6 136.8 842.4 136.8 
+L 698.4 136.8 
+Q 691.2 136.8 691.2 129.6 
+L 691.2 97.2 
+Q 691.2 90 698.4 90 
+z
+" clip-path="url(#p1cc47482d7)" style="fill: #fff4e7; stroke: #b4611b; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 23px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: start; fill: #1e293b" x="28.8" y="34.66" transform="rotate(-0 28.8 34.66)">图 2.5  取消沿控制路径传播</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: start; fill: #526174" x="28.8" y="59.885781" transform="rotate(-0 28.8 59.885781)">停止等待，需要传播为计算生命周期事件；已经提交的设备工作可能仍在完成</text>
+   </g>
+   <g id="text_3">
+    <text style="font-weight: 700; font-size: 18px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #526174" x="93.6" y="120.24" transform="rotate(-0 93.6 120.24)">客户端／调用任务</text>
+   </g>
+   <g id="text_4">
+    <text style="font-weight: 700; font-size: 18px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #24659b" x="432" y="120.276562" transform="rotate(-0 432 120.276562)">在线前端</text>
+   </g>
+   <g id="text_5">
+    <text style="font-weight: 700; font-size: 18px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #b4611b" x="770.4" y="120.24" transform="rotate(-0 770.4 120.24)">核心／调度与 KV</text>
+   </g>
+   <g id="patch_5">
+    <path d="M 94.599152 187.2 
+Q 261.800125 187.2 426.988638 187.2 
+" clip-path="url(#p1cc47482d7)" style="fill: none; stroke: #24659b; stroke-width: 1.8; stroke-linecap: round"/>
+    <path d="M 421.388638 184.4 
+L 426.988638 187.2 
+L 421.388638 190 
+z
+" clip-path="url(#p1cc47482d7)" style="fill: #24659b; stroke: #24659b; stroke-width: 1.8; stroke-linecap: round"/>
+   </g>
+   <g id="text_6">
+    <g id="patch_6">
+     <path d="M 196.86 188.75 
+L 328.74 188.75 
+L 328.74 161.17 
+L 196.86 161.17 
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #24659b" x="262.8" y="180.272344" transform="rotate(-0 262.8 180.272344)">离开／取消生成任务</text>
+   </g>
+   <g id="patch_7">
+    <path d="M 432.999152 252 
+Q 600.200125 252 765.388638 252 
+" clip-path="url(#p1cc47482d7)" style="fill: none; stroke: #b4611b; stroke-width: 1.8; stroke-linecap: round"/>
+    <path d="M 759.788638 249.2 
+L 765.388638 252 
+L 759.788638 254.8 
+z
+" clip-path="url(#p1cc47482d7)" style="fill: #b4611b; stroke: #b4611b; stroke-width: 1.8; stroke-linecap: round"/>
+   </g>
+   <g id="text_7">
+    <g id="patch_8">
+     <path d="M 564.092344 253.55 
+L 638.307656 253.55 
+L 638.307656 225.97 
+L 564.092344 225.97 
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #b4611b" x="601.2" y="245.072344" transform="rotate(-0 601.2 245.072344)">终止请求 B</text>
+   </g>
+   <g id="text_8">
+    <g id="patch_9">
+     <path d="M 695.36 344.64 
+L 845.44 344.64 
+L 845.44 288.96 
+L 695.36 288.96 
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-size: 16px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; fill: #b4611b" transform="translate(698.4 310.48)">结束请求的活跃状态</text>
+    <text style="font-size: 16px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; fill: #b4611b" transform="translate(722.4 335.28)">协调安全清理</text>
+   </g>
+   <g id="patch_10">
+    <path d="M 769.400848 396 
+Q 602.199875 396 437.011362 396 
+" clip-path="url(#p1cc47482d7)" style="fill: none; stroke-dasharray: 6.66,2.88; stroke-dashoffset: 0; stroke: #526174; stroke-width: 1.8; stroke-linecap: round"/>
+    <path d="M 442.611362 398.8 
+L 437.011362 396 
+L 442.611362 393.2 
+z
+" clip-path="url(#p1cc47482d7)" style="fill: #526174; stroke-dasharray: 6.66,2.88; stroke-dashoffset: 0; stroke: #526174; stroke-width: 1.8; stroke-linecap: round"/>
+   </g>
+   <g id="text_9">
+    <g id="patch_11">
+     <path d="M 535.26 397.55 
+L 667.14 397.55 
+L 667.14 369.97 
+L 535.26 369.97 
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #526174" x="601.2" y="389.087656" transform="rotate(-0 601.2 389.087656)">可能晚到的内部结果</text>
+   </g>
+   <g id="text_10">
+    <g id="patch_12">
+     <path d="M 348.96 467.04 
+L 515.04 467.04 
+L 515.04 411.36 
+L 348.96 411.36 
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-size: 16px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; fill: #24659b" transform="translate(352 432.89625)">忽略已取消请求的结果</text>
+    <text style="font-size: 16px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; fill: #24659b" transform="translate(376 457.68)">清理交付侧状态</text>
+   </g>
+   <g id="text_11">
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: start; fill: #526174" x="28.8" y="527.18" transform="rotate(-0 28.8 527.18)">解除 KV 引用 ≠ 必须擦除缓存内容；清理还需尊重在途执行与存储安全。</text>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: start; fill: #526174" x="28.8" y="559.621562" transform="rotate(-0 28.8 559.621562)">本图不表示网络断开会立即被检测，也不表示执行算子可以被瞬间撤销。</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p1cc47482d7">
+   <rect x="0" y="0" width="864" height="590.4"/>
+  </clipPath>
+ </defs>
+</svg>

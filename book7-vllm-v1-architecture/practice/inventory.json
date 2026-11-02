@@ -1,0 +1,259 @@
+[
+  {
+    "path": "legacy/00-feasibility/llama215_vllm.py",
+    "original": "code/Book7-vLLM源码剖析上/00-feasibility/llama215_vllm.py",
+    "sha256": "3f9460470faa0d7d25dc4edaaeb2ed92ba2105518df7e26b9b60a987d7edb339",
+    "validation": "static only; not executed",
+    "syntax": "parsed",
+    "main_guard": false,
+    "vllm_import": true,
+    "workspace_path_assumptions": false,
+    "limitations": [
+      "须核对原工作区路径、模型与运行版本；未宣称快照可独立运行"
+    ]
+  },
+  {
+    "path": "legacy/00-feasibility/make_hf207m.py",
+    "original": "code/Book7-vLLM源码剖析上/00-feasibility/make_hf207m.py",
+    "sha256": "43f98b7fa4dc8a877ce9a788115f6dc0da83e916f555d8bcd7542d8823aa3d1e",
+    "validation": "static only; not executed",
+    "syntax": "parsed",
+    "main_guard": true,
+    "vllm_import": false,
+    "workspace_path_assumptions": true,
+    "limitations": [
+      "须核对原工作区路径、模型与运行版本；未宣称快照可独立运行"
+    ]
+  },
+  {
+    "path": "legacy/00-feasibility/vllm_smoke.py",
+    "original": "code/Book7-vLLM源码剖析上/00-feasibility/vllm_smoke.py",
+    "sha256": "4e0623abc75aeaff632835f01cc9a6b0ab3b41130cb0bbbf3cf32447facc085c",
+    "validation": "static only; not executed",
+    "syntax": "parsed",
+    "main_guard": true,
+    "vllm_import": true,
+    "workspace_path_assumptions": true,
+    "limitations": [
+      "须核对原工作区路径、模型与运行版本；未宣称快照可独立运行"
+    ]
+  },
+  {
+    "path": "legacy/00-feasibility/vllm_smoke_reg.py",
+    "original": "code/Book7-vLLM源码剖析上/00-feasibility/vllm_smoke_reg.py",
+    "sha256": "f0353084ae0c4d08f9f23c1a086e4c17f6963bf522e51aeeba27ca325e34c75b",
+    "validation": "static only; not executed",
+    "syntax": "parsed",
+    "main_guard": true,
+    "vllm_import": true,
+    "workspace_path_assumptions": true,
+    "limitations": [
+      "须核对原工作区路径、模型与运行版本；未宣称快照可独立运行"
+    ]
+  },
+  {
+    "path": "legacy/ch03/entry_probe.py",
+    "original": "code/Book7-vLLM源码剖析上/ch03/entry_probe.py",
+    "sha256": "6430cb0a381cb79e40ac50baa5fca1e50c34b3f81b34967567f660b9d12583cc",
+    "validation": "static only; not executed",
+    "syntax": "parsed",
+    "main_guard": true,
+    "vllm_import": true,
+    "workspace_path_assumptions": true,
+    "limitations": [
+      "须核对原工作区路径、模型与运行版本；未宣称快照可独立运行"
+    ]
+  },
+  {
+    "path": "legacy/ch04/exp_ch04.py",
+    "original": "code/Book7-vLLM源码剖析上/ch04/exp_ch04.py",
+    "sha256": "73dc66a09ac5eb3107334406fe15bcafcad94ecd0d46ccc761df4ee7ad073263",
+    "validation": "static only; not executed",
+    "syntax": "parsed",
+    "main_guard": true,
+    "vllm_import": false,
+    "workspace_path_assumptions": true,
+    "limitations": [
+      "须核对原工作区路径、模型与运行版本；未宣称快照可独立运行"
+    ]
+  },
+  {
+    "path": "legacy/ch05/apc_same_seed.py",
+    "original": "code/Book7-vLLM源码剖析上/ch05/apc_same_seed.py",
+    "sha256": "091f81b4a2c166993cd5571a31a2c6a465ec41f34c039e0c74ed05807ec47a90",
+    "validation": "static only; not executed",
+    "syntax": "parsed",
+    "main_guard": true,
+    "vllm_import": true,
+    "workspace_path_assumptions": true,
+    "limitations": [
+      "须核对原工作区路径、模型与运行版本；未宣称快照可独立运行"
+    ]
+  },
+  {
+    "path": "legacy/ch05/exp_ch05.py",
+    "original": "code/Book7-vLLM源码剖析上/ch05/exp_ch05.py",
+    "sha256": "9319793b8103c8aa26b8df539f71cb5d0ab7ac3128fb6db31c81ddb1da2ab83e",
+    "validation": "static only; not executed",
+    "syntax": "parsed",
+    "main_guard": true,
+    "vllm_import": true,
+    "workspace_path_assumptions": true,
+    "limitations": [
+      "须核对原工作区路径、模型与运行版本；未宣称快照可独立运行"
+    ]
+  },
+  {
+    "path": "legacy/ch06/exp_ch06.py",
+    "original": "code/Book7-vLLM源码剖析上/ch06/exp_ch06.py",
+    "sha256": "f4ac8b367cb47da37df14e2f5d50b8c4514361edc624e7bd08345f77d923f8a1",
+    "validation": "static only; not executed",
+    "syntax": "parsed",
+    "main_guard": true,
+    "vllm_import": true,
+    "workspace_path_assumptions": true,
+    "limitations": [
+      "须核对原工作区路径、模型与运行版本；未宣称快照可独立运行"
+    ]
+  },
+  {
+    "path": "legacy/ch07/exp_ngram_capture.py",
+    "original": "code/Book7-vLLM源码剖析上/ch07/exp_ngram_capture.py",
+    "sha256": "460c819ed26da7a03ca559990963d0329ca0ba9f7a226798dc487a56311e67d6",
+    "validation": "static only; not executed",
+    "syntax": "parsed",
+    "main_guard": true,
+    "vllm_import": false,
+    "workspace_path_assumptions": true,
+    "limitations": [
+      "须核对原工作区路径、模型与运行版本；未宣称快照可独立运行"
+    ]
+  },
+  {
+    "path": "legacy/ch07/exp_runner_attr.py",
+    "original": "code/Book7-vLLM源码剖析上/ch07/exp_runner_attr.py",
+    "sha256": "bdadfdcb5198ed8a453970e1af46517bb02ee9ea428a13740fbc6ac773012bba",
+    "validation": "static only; not executed",
+    "syntax": "parsed",
+    "main_guard": true,
+    "vllm_import": true,
+    "workspace_path_assumptions": true,
+    "limitations": [
+      "须核对原工作区路径、模型与运行版本；未宣称快照可独立运行"
+    ]
+  },
+  {
+    "path": "legacy/ch08/exp_aclgraph.py",
+    "original": "code/Book7-vLLM源码剖析上/ch08/exp_aclgraph.py",
+    "sha256": "b1ae59dc352011a46da87f74c3c20a57e8e0028474c4e3dc4e01b1f83fbbe304",
+    "validation": "static only; not executed",
+    "syntax": "parsed",
+    "main_guard": true,
+    "vllm_import": false,
+    "workspace_path_assumptions": true,
+    "limitations": [
+      "须核对原工作区路径、模型与运行版本；未宣称快照可独立运行"
+    ]
+  },
+  {
+    "path": "legacy/ch09/exp_backend_probe.py",
+    "original": "code/Book7-vLLM源码剖析上/ch09/exp_backend_probe.py",
+    "sha256": "1f657b20741c02e8cf46864b4b2f7ce2df9bdb40333c52303d714756ab1244ab",
+    "validation": "static only; not executed",
+    "syntax": "parsed",
+    "main_guard": true,
+    "vllm_import": true,
+    "workspace_path_assumptions": true,
+    "limitations": [
+      "须核对原工作区路径、模型与运行版本；未宣称快照可独立运行"
+    ]
+  },
+  {
+    "path": "legacy/ch10/bench_207m.py",
+    "original": "code/Book7-vLLM源码剖析上/ch10/bench_207m.py",
+    "sha256": "305379155b5ab15d87ee0e7da5c7f3a7f323ab0f3f3396f79111fc499f9a198a",
+    "validation": "static only; not executed",
+    "syntax": "parsed",
+    "main_guard": true,
+    "vllm_import": true,
+    "workspace_path_assumptions": true,
+    "limitations": [
+      "须核对原工作区路径、模型与运行版本；未宣称快照可独立运行"
+    ]
+  },
+  {
+    "path": "legacy/ch11/exp_patch_probe.py",
+    "original": "code/Book7-vLLM源码剖析上/ch11/exp_patch_probe.py",
+    "sha256": "5b1386898535c8a612adb950fecfa667381ff7ee55432258fd3e98a0978e0008",
+    "validation": "static only; not executed",
+    "syntax": "parsed",
+    "main_guard": true,
+    "vllm_import": true,
+    "workspace_path_assumptions": true,
+    "limitations": [
+      "须核对原工作区路径、模型与运行版本；未宣称快照可独立运行"
+    ]
+  },
+  {
+    "path": "legacy/ch11/exp_sse_capture.sh",
+    "original": "code/Book7-vLLM源码剖析上/ch11/exp_sse_capture.sh",
+    "sha256": "da156479805b4c6279267db8eb2fe297d1c96513f3d72d9717a84411b9f07b40",
+    "validation": "static only; not executed",
+    "workspace_path_assumptions": true,
+    "limitations": [
+      "须核对原工作区路径、模型与运行版本；未宣称快照可独立运行"
+    ]
+  },
+  {
+    "path": "legacy/ch11/exp_template_diff.py",
+    "original": "code/Book7-vLLM源码剖析上/ch11/exp_template_diff.py",
+    "sha256": "a97b3b90dc93c32e508160699e9a2e91f2ed134ae1b96c7bbc052476be2ba00f",
+    "validation": "static only; not executed",
+    "syntax": "parsed",
+    "main_guard": true,
+    "vllm_import": false,
+    "workspace_path_assumptions": true,
+    "limitations": [
+      "须核对原工作区路径、模型与运行版本；未宣称快照可独立运行"
+    ]
+  },
+  {
+    "path": "legacy/ch12/inproc_trace_demo.py",
+    "original": "code/Book7-vLLM源码剖析上/ch12/inproc_trace_demo.py",
+    "sha256": "e25916df7097b36f258d205013b8d714bc5af408ca08752b273fe8d1a3d09b36",
+    "validation": "static only; not executed",
+    "syntax": "parsed",
+    "main_guard": true,
+    "vllm_import": true,
+    "workspace_path_assumptions": true,
+    "limitations": [
+      "须核对原工作区路径、模型与运行版本；未宣称快照可独立运行"
+    ]
+  },
+  {
+    "path": "legacy/ch12/mp_default_demo.py",
+    "original": "code/Book7-vLLM源码剖析上/ch12/mp_default_demo.py",
+    "sha256": "30848273e14c447d4fbdbc17cafca358e30c26060c7e95340dcca0536e4c7abb",
+    "validation": "static only; not executed",
+    "syntax": "parsed",
+    "main_guard": true,
+    "vllm_import": true,
+    "workspace_path_assumptions": true,
+    "limitations": [
+      "须核对原工作区路径、模型与运行版本；未宣称快照可独立运行"
+    ]
+  },
+  {
+    "path": "legacy/ch12/sweep_min.py",
+    "original": "code/Book7-vLLM源码剖析上/ch12/sweep_min.py",
+    "sha256": "071e996bc2eb31986ecc73afc9b39207984d784e527b58b8b26afb4a2f314a22",
+    "validation": "static only; not executed",
+    "syntax": "parsed",
+    "main_guard": true,
+    "vllm_import": false,
+    "workspace_path_assumptions": true,
+    "limitations": [
+      "须核对原工作区路径、模型与运行版本；未宣称快照可独立运行"
+    ]
+  }
+]

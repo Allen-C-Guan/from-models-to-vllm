@@ -8,7 +8,7 @@ Book7 开篇立「第五个名字」时留了存照句：「但把『拆开部�
 
 还要先立一块官方压舱石——上游文档开宗明义的自白：「Disaggregated prefill **DOES NOT improve throughput**」（`docs/features/disagg_prefill.md#L16`；两条理由=分别调 TTFT 与 ITL、控制尾部 ITL）。**PD 分离买的是 SLO 可调性，不是吞吐**——与 Book6「分池买按段独立扩缩的自由」互证；把这句立在开篇，后面所有传输账的斤斤计较才有了正确的天平（不是为了快，是为了两段 SLO 各自可调）。三段定位：专题=PD 分离与 KV 传输（connector 生态）；站段=站 8（调度侧决策）+9（块账协商）+11/12（worker 侧搬运）；模块=`vllm/distributed/kv_transfer/`（全树 37,362 行、75 个 .py——两支分节见 7.2）+`distributed/kv_transfer/kv_connector/v1/base.py`（契约正身，两轨共有）+vllm-ascend 的 `distributed/kv_transfer/`（NPU 实做）。本章问题：**KV 从 P 搬到 D 的传输带由哪些件拼成、账怎么算、坏了怎么办？**
 
-> **最小背景栏**：PD 分离的动机与 DistServe 理论账（7.4×/12.6×/混跑 1.6 vs 分池 10 rps/KV 1.13GB@11GB/s）=Book6 ch12 已教（指回）；chunked prefill 与连续批处理=Book6 ch04；P/D 实例角色与 prefill/decode **阶段**的区别本章 7.2 立即消歧。记号契约：connector（KV 传输器）与 attention/量化 backend、结构化输出 backend、LoRA adapter 是四样东西（前七章已陆续消歧，此处收拢一句）。
+> **最小背景栏**：PD分离的动机、KV传输与布局转换的理论账=Book6 §13.13已教（指回；原第12章的历史论文数字不再作为本章前置）；chunked prefill 与连续批处理=Book6 ch04；P/D 实例角色与 prefill/decode **阶段**的区别本章 7.2 立即消歧。记号契约：connector（KV 传输器）与 attention/量化 backend、结构化输出 backend、LoRA adapter 是四样东西（前七章已陆续消歧，此处收拢一句）。
 
 ## 7.2 拓扑与角色：xPyD、kv_role 与 17 个连接器
 

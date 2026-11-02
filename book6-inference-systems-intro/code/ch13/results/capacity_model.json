@@ -1,0 +1,16 @@
+{
+  "model_revision": "604d5664dddd88a0433dbae533b7fe9472482de0",
+  "parameters": 15706484224,
+  "parameter_groups": {
+    "other": 861793792,
+    "routed_experts": 14394851328,
+    "shared_experts": 449839104
+  },
+  "parameter_dtypes": {
+    "BF16": 15706484224
+  },
+  "weight_payload_bytes": 31412968448,
+  "logical_bf16_mla_kv_bytes_per_token_all_layers": 31104,
+  "logical_kv_bytes_8192_tokens": 254803968,
+  "note": "KV formula excludes padding, alignment, cache metadata and runtime replication"
+}

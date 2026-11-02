@@ -1,0 +1,583 @@
+{
+  "format": 1,
+  "book": "Book7 V1 architecture",
+  "files": {
+    "README.md": "8967af5aca6b8bbdb2a4c4f584ff6305c6dcee7b4da53e108338c22dd66d772f",
+    "appendix-a-术语与阅读约定.md": "aa46d8a8b066cc51d5d7354f726f110a27ad8688bcf0b95fe3c281613e42e975",
+    "appendix-b-源码地图.md": "2bff392a2c06d6cbb74b4a7cb386d777a7155a488b9fb3a85d5d5e7393f0f729",
+    "appendix-c-版本边界与跨册衔接.md": "3b06a3d3332566ee8078ad66e6b92e2987c1e2e3609ae0976560a167c9e6ff98",
+    "appendix-d-选读实践与历史资产.md": "3069c89127ca5e2fae02942f30d0fe0164a5b9104f5ed74fb66c13b091ce98bc",
+    "ch01-vLLM全景.md": "6f9d32af3ff07e27c6c0fc3f67914cddb436911760f65ce007306c1deee3041b",
+    "ch02-请求的进入与返回.md": "0f05657de23b5cecf5232c9e2db45f37c075f3436252ef28a4606d98911ddc7e",
+    "ch03-组件的运行位置.md": "90bfdaa255e312294f30df5d4da89a2d3b75b65b9478a966da49ad4b195a7fb5",
+    "ch04-引擎的启动与就绪.md": "02c01ebfd411928f5655d43c2f0c2ca9019bb2d21faf2792ae8126418020c01b",
+    "ch05-调度的决策与约束.md": "916afd58144d513b2e6db491555edda1d3f19de4d370ee7b4d5c577738b49f6c",
+    "ch06-KV状态的管理与复用.md": "b8de5e6a40fc029d3f3ebb578875ac453e08270025264ee98d7212c1aeb18c46",
+    "ch07-计划如何变成模型计算.md": "ac903a54a6fb7d9d1599c7e95be76a11a6a36500c0feb9908ff5fa683dbf83c4",
+    "ch08-模型与硬件的适配边界.md": "502b12715b41a01b81d15f5fa7a7ca999a5b4999672ffb131f27660ef1a745aa",
+    "ch09-性能优化的架构落点.md": "ca30a192e9e7d25ce0b07982e822f1a3b77dc931ca0aaf53c32c1c4a6eafe2db",
+    "ch10-从单设备到多设备.md": "5de6b6803cd388e82f6f60ed8ac3db4d40b3f07602bcffe8fd6e664c1088396f",
+    "ch11-扩展功能的接入地图.md": "de421e746e1b78e01c8c39f8b2be736bbf68f8a8e22830cf10b68494e60150b9",
+    "ch12-带着地图阅读源码.md": "37183932040c1dbd07e56b41489911f6f02f09565a11c768df6e14da46461c60",
+    "code/README.md": "8b5f87af950608e0c5f5b38b2793be88244f3c8ed27b22c9f057ea086486a3c6",
+    "code/build_full_reader.py": "774fafb6fecde3f36ff5b5ea2771910c65638eb201812cd7b2b7966a1283422c",
+    "code/build_reader.py": "6d9081e39b0666ed171d3de58b72c0f33f2faa58b567b176ea69c54381e4ccf9",
+    "code/render_figures.py": "23981b85c7b0096af8181934cd8f6a777321e077f915ae460f5dfef8f42c1289",
+    "code/render_full_figures.py": "cbdd8db6e8ad83f85e1bff0df408fbdc2889d64e4ca79533e08b61b48d11a901",
+    "figures/fig-1-1-boundary.png": "373de4b1bd0b322d03074174d2eb7b5fefa23d90340d49c414a43dd22d42fe9c",
+    "figures/fig-1-1-boundary.svg": "7476be2f6112d8885eac34d5f5acbf62aea492c733feb62f5a50269b96e38da6",
+    "figures/fig-1-2-components.png": "357994e07616f382eb819faa302e11ef373714d4a24b9e3f868c927472b43bfe",
+    "figures/fig-1-2-components.svg": "7b2bdb9a074fac87fd5eb161ce311132d7d5711fb91849fa52a6decbf7136684",
+    "figures/fig-1-3-iteration.png": "0fa64e19642072548b617e23babc185191d3ed09ad82d3f6d54ef503c92266c2",
+    "figures/fig-1-3-iteration.svg": "1108765d405316057cb01814a487f108053eab6d5f9497b4a87be74c3d12756e",
+    "figures/fig-1-4-deployment.png": "bd7828592ba5f2a43b620a5a604242ca7c9bb28ad6fab2f4a9e45012d7054c29",
+    "figures/fig-1-4-deployment.svg": "e88f2248674dcd1a9b01bb09e03463eb1c36105c05b4d85f5691f21b91b11a42",
+    "figures/fig-10-1-topology.png": "949409b9956fb319eb80843acb3abfb213262df9b636f9beb245f05c364026c4",
+    "figures/fig-10-1-topology.svg": "6cc164ceb700f79c5cf72d2d9b336fd69ca064ddea4bf202c80d76d298054ae3",
+    "figures/fig-10-2-communication.png": "f008b54a61e897fd67928ee07d8b950df85219ee96311cb85c78b5eba01e2cff",
+    "figures/fig-10-2-communication.svg": "bb0c06e634f9c910c3ffee67f4f5402a802ab5e7ccd4f73f1518ec4363f884c9",
+    "figures/fig-11-1-extensions.png": "7ff7fb3f70f701f844960a1f78043e2c0673a3093cecdef1e6ec8cf52676f68d",
+    "figures/fig-11-1-extensions.svg": "e6a2465c73581b648d3ef817afce9c1699f348594cf18f9f8deac0a286b322a8",
+    "figures/fig-11-2-speculation.png": "2010517d0e7866de5a8bf2b7d51dbebc198e8ccaa6b3a70a292d54af03b18989",
+    "figures/fig-11-2-speculation.svg": "4bdffee49f59d7b387f056acc07af1548bb69a12f387aab805df64320517729d",
+    "figures/fig-11-3-pd.png": "96a9d72ff7b9f502a760e83e5d11d83ee927e86274fe84ecc84a5301cf8f8834",
+    "figures/fig-11-3-pd.svg": "6d74880f425a4d170567a6957441f8c81e3d65f08771bb5bcb12d0c6fad9d0c0",
+    "figures/fig-12-1-map.png": "6fcc6bdf9d79e264e58c4847cb7a3eab13f0e7e5d0bf52b767e04299af15ac5a",
+    "figures/fig-12-1-map.svg": "1a207b24159f5702abc7d97cf63fa734890d56608de7b6c88d096ab181a93b65",
+    "figures/fig-12-2-investigation.png": "5892592300437c51aa42707f6fdb84095c73a9499e094dd7f4065a7d39852566",
+    "figures/fig-12-2-investigation.svg": "44ef934bc8c9231dc437ead7ac81dab011b9920b425f8431e69949b130b8636c",
+    "figures/fig-2-1-focus.png": "c5d0dec291927c28feda8b64a3d5a44b43084af2d1a0c855baf98123fcf8d96a",
+    "figures/fig-2-1-focus.svg": "81a09f4f51f016a119e1c21fb30cc75bd4d383c8f9a65614bdf8eed903a2e6d4",
+    "figures/fig-2-2-representations.png": "efe382e9b45fba7b52dde0770df6d63617ce81418d644760c4d81a51447c838b",
+    "figures/fig-2-2-representations.svg": "98558912208d4823d4954c5778a0b3d5d9009cc1a0d254422305e0f8c2033b1f",
+    "figures/fig-2-3-offline.png": "aaa565175ce3830cc577c34d3b3ed64ed03561ad6de95b73457d54dd53fa047e",
+    "figures/fig-2-3-offline.svg": "43ad390a012ab910487c1d99b73772769423a9b60d39a387b56e710207a77128",
+    "figures/fig-2-4-online.png": "36d6bb28fc218c96938a250aa59c165fb8f0dc36a9e6c4767d6ab4e75ddc13db",
+    "figures/fig-2-4-online.svg": "92126e22cce94a46cb66e551ee9a1cc39636946bf70573822e042980bbb0f847",
+    "figures/fig-2-5-cancel.png": "7a991ca489592121d7dcf9d914bd9dc36f60155894c15a15594c7835fb8470f1",
+    "figures/fig-2-5-cancel.svg": "36f34bdc6b4c1a31b032983052511e7f914d3d8914f67a4dfde402e076d5e00e",
+    "figures/fig-3-1-deployment.png": "4b53771544c96611a45db763d8aa4cc6d0769fa22a56cd605393bae65b1abd3f",
+    "figures/fig-3-1-deployment.svg": "a3e4d266bde8bf9ae694ff91d789f8aa12dba835209e56f46db0ce97ea6808d8",
+    "figures/fig-3-2-lanes.png": "ab369800a669e17cc4938386841415aa3fa0e717177d62b500303cfc4066bdcf",
+    "figures/fig-3-2-lanes.svg": "b936749ee84e5e995fbd5b2871b1590a7fc36211c1607cb4a019bb046553b0f8",
+    "figures/fig-3-3-states.png": "c4a2e7647bf1af59181d8845f88e4dacc9d20c0cc5826d0fc67cb5a5961369b0",
+    "figures/fig-3-3-states.svg": "18b7ad91eaa0140eca1b65844106537277f40444b38360b5c2066706fbf04937",
+    "figures/fig-4-1-config.png": "91eb77d9d4c5924b122e951bc63a21a9e4046fe368de7de9d0af768e16970bc0",
+    "figures/fig-4-1-config.svg": "1c52a4f1cbba6adf56849cc895558cfbb584930bf30bfd0c3b7391814f55b5dc",
+    "figures/fig-4-2-startup.png": "a6690c49c6b82b920d7c2b093bd6afdd4c246201dfd8c088ddd59a5318c9776a",
+    "figures/fig-4-2-startup.svg": "892dbe32d83f422cac381a61db20f6770d423e436e3b27c08455fb42aa863796",
+    "figures/fig-4-3-lifetimes.png": "c692cc3927b4447fc0899cc52f5e979b3ac7b62f1047aa8ea71bf9b46bd4f86e",
+    "figures/fig-4-3-lifetimes.svg": "fcc48fd5c9850da19b23a8bffbfbca5186f6770c9e33dec219969c990ee7f0d4",
+    "figures/fig-5-1-focus.png": "9043ef699e0967556d8f626fa7a1e1609d0d3ac8d7e772c400357012fdfa7e9d",
+    "figures/fig-5-1-focus.svg": "69c88cd5faddb6d253e833ce11547bb5a16d5806d4e31f66fef5fdfd61012101",
+    "figures/fig-5-2-decision.png": "73bcef251b2e896aca408105700f29360a31a9b77a80b06cc42ac0933ca59e08",
+    "figures/fig-5-2-decision.svg": "453d9f9f42daab17b833019e1b4b8b5a7c7d10a9609c389f50b6159c05b5307f",
+    "figures/fig-6-1-ownership.png": "f97d9f8cf3df99b4d6c375d191c3d243120b822037c11bf850b96c2432239a31",
+    "figures/fig-6-1-ownership.svg": "ff91c69cb77b41ae6bd089bbd1e132dc6281f481d932f93ce10e1348ab014d90",
+    "figures/fig-6-2-blocks.png": "4c5892b42cae9520149ee33863fe4f8ced2f4cbb9f7b95370fa69c1929e96425",
+    "figures/fig-6-2-blocks.svg": "ffa5235c6055645b58a83d334dddb9dbde916902448f180b8baa5a9faa54dbb3",
+    "figures/fig-6-3-lifecycle.png": "bd086faaafa94e0b1f3e01aa24e230c8c90e8a3f5190ed4a27fabebd308131a5",
+    "figures/fig-6-3-lifecycle.svg": "92b40d3b62bd8a186acaad175d9e7d9de3c859631cc91c6f3499b8d6b2c67240",
+    "figures/fig-7-1-roles.png": "1bd7e70bfd11358d4f5dc45cc3af53fce4fcb0bb18dc59537d830eea9f209939",
+    "figures/fig-7-1-roles.svg": "068cff6a3aafa7808c7fea2f38b64e0e70d7497d368726cb878f9a8c5e20146d",
+    "figures/fig-7-2-tensors.png": "29410ae3ec41f7d3788cfeb59e64edb5c9f9f1e205e7f3570e1340a8bb84ca9a",
+    "figures/fig-7-2-tensors.svg": "cfd02d66e6560552beb90a565892bfad579763e96dc97ca93c554f4b032eb865",
+    "figures/fig-7-3-state.png": "e393807367defce50ebbb37f52048991c2a6e0ba8234a4aea54087d899ba5b02",
+    "figures/fig-7-3-state.svg": "4b4dc5a7165c7565956cf085c51cea21bcc5bd41dc37212c6a1f39eac48c6f96",
+    "figures/fig-8-1-boundary.png": "42b47bc537b80b6da95454d63df861f163ee9156bc0e316079e3329a764424c1",
+    "figures/fig-8-1-boundary.svg": "f3bffdf80f92b9ae64c51e78cc885311317dde84ff4f55bc4501507cb610a5ff",
+    "figures/fig-8-2-metadata.png": "eb9a3df3cba7caddbadf96fd2ac77cbfe3d1cc61cde1aeb9c19343a5ee8484df",
+    "figures/fig-8-2-metadata.svg": "a21ac8799fb44fe2ac017558df53190ea26d0b33a440872692da75ca6655f73c",
+    "figures/fig-8-3-platform.png": "904a078416c99e0ee4001f77c37c1afe119143d7c777dd630a4c81a78b6b7596",
+    "figures/fig-8-3-platform.svg": "babf8d0667e95c6ab12e7f13bbcf80dabc8b6db692d9fb493d4c7bddc54e8e91",
+    "figures/fig-9-1-timeline.png": "5f381fbae1cfc8c2b4b421935ce48b163d7d1ed4599adc670f85eb2eb3470f36",
+    "figures/fig-9-1-timeline.svg": "817203166c87d938dca31822c3a9b869e458c670d7cd4a56c606d0ce12cfb9ec",
+    "figures/fig-9-2-compile.png": "53386a5ff1d37e9c282862d2a6d66dffe4faac818a92712da2460ace838798e0",
+    "figures/fig-9-2-compile.svg": "458fc9f182b53aaafeb5c14ee2302d496136d60fa4d1ff405d238f947d4303a1",
+    "figures/fig-9-3-dispatch.png": "9d1133b0ea19b7a32c569d99deedf5f2390d7b6e9efbc602084407c6b7ed6238",
+    "figures/fig-9-3-dispatch.svg": "2842d3979cc79551d4767be657a9886363f909bc8ea018fcf136c15332bd7326",
+    "practice/README.md": "617bd97edd873f0ab49846770a8ee7348cbd0b5f8b52e1fb54f18f396ed553ab",
+    "practice/inventory.json": "52b8b2aa15375a43146580ebaa3990241cb0e18f08157f330590e982211a635a",
+    "practice/legacy/00-feasibility/llama215_vllm.py": "3f9460470faa0d7d25dc4edaaeb2ed92ba2105518df7e26b9b60a987d7edb339",
+    "practice/legacy/00-feasibility/make_hf207m.py": "43f98b7fa4dc8a877ce9a788115f6dc0da83e916f555d8bcd7542d8823aa3d1e",
+    "practice/legacy/00-feasibility/vllm_smoke.py": "4e0623abc75aeaff632835f01cc9a6b0ab3b41130cb0bbbf3cf32447facc085c",
+    "practice/legacy/00-feasibility/vllm_smoke_reg.py": "f0353084ae0c4d08f9f23c1a086e4c17f6963bf522e51aeeba27ca325e34c75b",
+    "practice/legacy/ch03/entry_probe.py": "6430cb0a381cb79e40ac50baa5fca1e50c34b3f81b34967567f660b9d12583cc",
+    "practice/legacy/ch04/exp_ch04.py": "73dc66a09ac5eb3107334406fe15bcafcad94ecd0d46ccc761df4ee7ad073263",
+    "practice/legacy/ch05/apc_same_seed.py": "091f81b4a2c166993cd5571a31a2c6a465ec41f34c039e0c74ed05807ec47a90",
+    "practice/legacy/ch05/exp_ch05.py": "9319793b8103c8aa26b8df539f71cb5d0ab7ac3128fb6db31c81ddb1da2ab83e",
+    "practice/legacy/ch06/exp_ch06.py": "f4ac8b367cb47da37df14e2f5d50b8c4514361edc624e7bd08345f77d923f8a1",
+    "practice/legacy/ch07/exp_ngram_capture.py": "460c819ed26da7a03ca559990963d0329ca0ba9f7a226798dc487a56311e67d6",
+    "practice/legacy/ch07/exp_runner_attr.py": "bdadfdcb5198ed8a453970e1af46517bb02ee9ea428a13740fbc6ac773012bba",
+    "practice/legacy/ch08/exp_aclgraph.py": "b1ae59dc352011a46da87f74c3c20a57e8e0028474c4e3dc4e01b1f83fbbe304",
+    "practice/legacy/ch09/exp_backend_probe.py": "1f657b20741c02e8cf46864b4b2f7ce2df9bdb40333c52303d714756ab1244ab",
+    "practice/legacy/ch10/bench_207m.py": "305379155b5ab15d87ee0e7da5c7f3a7f323ab0f3f3396f79111fc499f9a198a",
+    "practice/legacy/ch11/exp_patch_probe.py": "5b1386898535c8a612adb950fecfa667381ff7ee55432258fd3e98a0978e0008",
+    "practice/legacy/ch11/exp_sse_capture.sh": "da156479805b4c6279267db8eb2fe297d1c96513f3d72d9717a84411b9f07b40",
+    "practice/legacy/ch11/exp_template_diff.py": "a97b3b90dc93c32e508160699e9a2e91f2ed134ae1b96c7bbc052476be2ba00f",
+    "practice/legacy/ch12/inproc_trace_demo.py": "e25916df7097b36f258d205013b8d714bc5af408ca08752b273fe8d1a3d09b36",
+    "practice/legacy/ch12/mp_default_demo.py": "30848273e14c447d4fbdbc17cafca358e30c26060c7e95340dcca0536e4c7abb",
+    "practice/legacy/ch12/sweep_min.py": "071e996bc2eb31986ecc73afc9b39207984d784e527b58b8b26afb4a2f314a22",
+    "全书连续阅读.html": "c013c586e342197931b2b8ecc301995de80366e76df726963abeee5db3e0838a"
+  },
+  "sources": {
+    "ch01-vLLM全景.md": {
+      "source": "drafts/Book7-vLLM架构剖析/ch01-vLLM全景.md",
+      "sha256": "6f9d32af3ff07e27c6c0fc3f67914cddb436911760f65ce007306c1deee3041b"
+    },
+    "ch02-请求的进入与返回.md": {
+      "source": "drafts/Book7-vLLM架构剖析/ch02-请求的进入与返回.md",
+      "sha256": "0f05657de23b5cecf5232c9e2db45f37c075f3436252ef28a4606d98911ddc7e"
+    },
+    "ch03-组件的运行位置.md": {
+      "source": "drafts/Book7-vLLM架构剖析/ch03-组件的运行位置.md",
+      "sha256": "90bfdaa255e312294f30df5d4da89a2d3b75b65b9478a966da49ad4b195a7fb5"
+    },
+    "ch04-引擎的启动与就绪.md": {
+      "source": "drafts/Book7-vLLM架构剖析/ch04-引擎的启动与就绪.md",
+      "sha256": "02c01ebfd411928f5655d43c2f0c2ca9019bb2d21faf2792ae8126418020c01b"
+    },
+    "ch05-调度的决策与约束.md": {
+      "source": "drafts/Book7-vLLM架构剖析/ch05-调度的决策与约束.md",
+      "sha256": "916afd58144d513b2e6db491555edda1d3f19de4d370ee7b4d5c577738b49f6c"
+    },
+    "ch06-KV状态的管理与复用.md": {
+      "source": "drafts/Book7-vLLM架构剖析/ch06-KV状态的管理与复用.md",
+      "sha256": "b8de5e6a40fc029d3f3ebb578875ac453e08270025264ee98d7212c1aeb18c46"
+    },
+    "ch07-计划如何变成模型计算.md": {
+      "source": "drafts/Book7-vLLM架构剖析/ch07-计划如何变成模型计算.md",
+      "sha256": "ac903a54a6fb7d9d1599c7e95be76a11a6a36500c0feb9908ff5fa683dbf83c4"
+    },
+    "ch08-模型与硬件的适配边界.md": {
+      "source": "drafts/Book7-vLLM架构剖析/ch08-模型与硬件的适配边界.md",
+      "sha256": "502b12715b41a01b81d15f5fa7a7ca999a5b4999672ffb131f27660ef1a745aa"
+    },
+    "ch09-性能优化的架构落点.md": {
+      "source": "drafts/Book7-vLLM架构剖析/ch09-性能优化的架构落点.md",
+      "sha256": "ca30a192e9e7d25ce0b07982e822f1a3b77dc931ca0aaf53c32c1c4a6eafe2db"
+    },
+    "ch10-从单设备到多设备.md": {
+      "source": "drafts/Book7-vLLM架构剖析/ch10-从单设备到多设备.md",
+      "sha256": "5de6b6803cd388e82f6f60ed8ac3db4d40b3f07602bcffe8fd6e664c1088396f"
+    },
+    "ch11-扩展功能的接入地图.md": {
+      "source": "drafts/Book7-vLLM架构剖析/ch11-扩展功能的接入地图.md",
+      "sha256": "de421e746e1b78e01c8c39f8b2be736bbf68f8a8e22830cf10b68494e60150b9"
+    },
+    "ch12-带着地图阅读源码.md": {
+      "source": "drafts/Book7-vLLM架构剖析/ch12-带着地图阅读源码.md",
+      "sha256": "37183932040c1dbd07e56b41489911f6f02f09565a11c768df6e14da46461c60"
+    },
+    "appendix-a-术语与阅读约定.md": {
+      "source": "drafts/Book7-vLLM架构剖析/appendix-a-术语与阅读约定.md",
+      "sha256": "aa46d8a8b066cc51d5d7354f726f110a27ad8688bcf0b95fe3c281613e42e975"
+    },
+    "appendix-b-源码地图.md": {
+      "source": "drafts/Book7-vLLM架构剖析/appendix-b-源码地图.md",
+      "sha256": "2bff392a2c06d6cbb74b4a7cb386d777a7155a488b9fb3a85d5d5e7393f0f729"
+    },
+    "appendix-c-版本边界与跨册衔接.md": {
+      "source": "drafts/Book7-vLLM架构剖析/appendix-c-版本边界与跨册衔接.md",
+      "sha256": "3b06a3d3332566ee8078ad66e6b92e2987c1e2e3609ae0976560a167c9e6ff98"
+    },
+    "appendix-d-选读实践与历史资产.md": {
+      "source": "drafts/Book7-vLLM架构剖析/appendix-d-选读实践与历史资产.md",
+      "sha256": "3069c89127ca5e2fae02942f30d0fe0164a5b9104f5ed74fb66c13b091ce98bc"
+    },
+    "全书连续阅读.html": {
+      "source": "drafts/Book7-vLLM架构剖析/全书连续阅读.html",
+      "sha256": "c013c586e342197931b2b8ecc301995de80366e76df726963abeee5db3e0838a"
+    },
+    "figures/fig-1-1-boundary.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-1-1-boundary.png",
+      "sha256": "373de4b1bd0b322d03074174d2eb7b5fefa23d90340d49c414a43dd22d42fe9c"
+    },
+    "figures/fig-1-2-components.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-1-2-components.png",
+      "sha256": "357994e07616f382eb819faa302e11ef373714d4a24b9e3f868c927472b43bfe"
+    },
+    "figures/fig-1-3-iteration.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-1-3-iteration.png",
+      "sha256": "0fa64e19642072548b617e23babc185191d3ed09ad82d3f6d54ef503c92266c2"
+    },
+    "figures/fig-1-4-deployment.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-1-4-deployment.png",
+      "sha256": "bd7828592ba5f2a43b620a5a604242ca7c9bb28ad6fab2f4a9e45012d7054c29"
+    },
+    "figures/fig-10-1-topology.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-10-1-topology.png",
+      "sha256": "949409b9956fb319eb80843acb3abfb213262df9b636f9beb245f05c364026c4"
+    },
+    "figures/fig-10-2-communication.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-10-2-communication.png",
+      "sha256": "f008b54a61e897fd67928ee07d8b950df85219ee96311cb85c78b5eba01e2cff"
+    },
+    "figures/fig-11-1-extensions.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-11-1-extensions.png",
+      "sha256": "7ff7fb3f70f701f844960a1f78043e2c0673a3093cecdef1e6ec8cf52676f68d"
+    },
+    "figures/fig-11-2-speculation.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-11-2-speculation.png",
+      "sha256": "2010517d0e7866de5a8bf2b7d51dbebc198e8ccaa6b3a70a292d54af03b18989"
+    },
+    "figures/fig-11-3-pd.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-11-3-pd.png",
+      "sha256": "96a9d72ff7b9f502a760e83e5d11d83ee927e86274fe84ecc84a5301cf8f8834"
+    },
+    "figures/fig-12-1-map.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-12-1-map.png",
+      "sha256": "6fcc6bdf9d79e264e58c4847cb7a3eab13f0e7e5d0bf52b767e04299af15ac5a"
+    },
+    "figures/fig-12-2-investigation.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-12-2-investigation.png",
+      "sha256": "5892592300437c51aa42707f6fdb84095c73a9499e094dd7f4065a7d39852566"
+    },
+    "figures/fig-2-1-focus.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-2-1-focus.png",
+      "sha256": "c5d0dec291927c28feda8b64a3d5a44b43084af2d1a0c855baf98123fcf8d96a"
+    },
+    "figures/fig-2-2-representations.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-2-2-representations.png",
+      "sha256": "efe382e9b45fba7b52dde0770df6d63617ce81418d644760c4d81a51447c838b"
+    },
+    "figures/fig-2-3-offline.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-2-3-offline.png",
+      "sha256": "aaa565175ce3830cc577c34d3b3ed64ed03561ad6de95b73457d54dd53fa047e"
+    },
+    "figures/fig-2-4-online.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-2-4-online.png",
+      "sha256": "36d6bb28fc218c96938a250aa59c165fb8f0dc36a9e6c4767d6ab4e75ddc13db"
+    },
+    "figures/fig-2-5-cancel.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-2-5-cancel.png",
+      "sha256": "7a991ca489592121d7dcf9d914bd9dc36f60155894c15a15594c7835fb8470f1"
+    },
+    "figures/fig-3-1-deployment.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-3-1-deployment.png",
+      "sha256": "4b53771544c96611a45db763d8aa4cc6d0769fa22a56cd605393bae65b1abd3f"
+    },
+    "figures/fig-3-2-lanes.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-3-2-lanes.png",
+      "sha256": "ab369800a669e17cc4938386841415aa3fa0e717177d62b500303cfc4066bdcf"
+    },
+    "figures/fig-3-3-states.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-3-3-states.png",
+      "sha256": "c4a2e7647bf1af59181d8845f88e4dacc9d20c0cc5826d0fc67cb5a5961369b0"
+    },
+    "figures/fig-4-1-config.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-4-1-config.png",
+      "sha256": "91eb77d9d4c5924b122e951bc63a21a9e4046fe368de7de9d0af768e16970bc0"
+    },
+    "figures/fig-4-2-startup.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-4-2-startup.png",
+      "sha256": "a6690c49c6b82b920d7c2b093bd6afdd4c246201dfd8c088ddd59a5318c9776a"
+    },
+    "figures/fig-4-3-lifetimes.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-4-3-lifetimes.png",
+      "sha256": "c692cc3927b4447fc0899cc52f5e979b3ac7b62f1047aa8ea71bf9b46bd4f86e"
+    },
+    "figures/fig-5-1-focus.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-5-1-focus.png",
+      "sha256": "9043ef699e0967556d8f626fa7a1e1609d0d3ac8d7e772c400357012fdfa7e9d"
+    },
+    "figures/fig-5-2-decision.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-5-2-decision.png",
+      "sha256": "73bcef251b2e896aca408105700f29360a31a9b77a80b06cc42ac0933ca59e08"
+    },
+    "figures/fig-6-1-ownership.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-6-1-ownership.png",
+      "sha256": "f97d9f8cf3df99b4d6c375d191c3d243120b822037c11bf850b96c2432239a31"
+    },
+    "figures/fig-6-2-blocks.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-6-2-blocks.png",
+      "sha256": "4c5892b42cae9520149ee33863fe4f8ced2f4cbb9f7b95370fa69c1929e96425"
+    },
+    "figures/fig-6-3-lifecycle.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-6-3-lifecycle.png",
+      "sha256": "bd086faaafa94e0b1f3e01aa24e230c8c90e8a3f5190ed4a27fabebd308131a5"
+    },
+    "figures/fig-7-1-roles.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-7-1-roles.png",
+      "sha256": "1bd7e70bfd11358d4f5dc45cc3af53fce4fcb0bb18dc59537d830eea9f209939"
+    },
+    "figures/fig-7-2-tensors.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-7-2-tensors.png",
+      "sha256": "29410ae3ec41f7d3788cfeb59e64edb5c9f9f1e205e7f3570e1340a8bb84ca9a"
+    },
+    "figures/fig-7-3-state.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-7-3-state.png",
+      "sha256": "e393807367defce50ebbb37f52048991c2a6e0ba8234a4aea54087d899ba5b02"
+    },
+    "figures/fig-8-1-boundary.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-8-1-boundary.png",
+      "sha256": "42b47bc537b80b6da95454d63df861f163ee9156bc0e316079e3329a764424c1"
+    },
+    "figures/fig-8-2-metadata.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-8-2-metadata.png",
+      "sha256": "eb9a3df3cba7caddbadf96fd2ac77cbfe3d1cc61cde1aeb9c19343a5ee8484df"
+    },
+    "figures/fig-8-3-platform.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-8-3-platform.png",
+      "sha256": "904a078416c99e0ee4001f77c37c1afe119143d7c777dd630a4c81a78b6b7596"
+    },
+    "figures/fig-9-1-timeline.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-9-1-timeline.png",
+      "sha256": "5f381fbae1cfc8c2b4b421935ce48b163d7d1ed4599adc670f85eb2eb3470f36"
+    },
+    "figures/fig-9-2-compile.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-9-2-compile.png",
+      "sha256": "53386a5ff1d37e9c282862d2a6d66dffe4faac818a92712da2460ace838798e0"
+    },
+    "figures/fig-9-3-dispatch.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-9-3-dispatch.png",
+      "sha256": "9d1133b0ea19b7a32c569d99deedf5f2390d7b6e9efbc602084407c6b7ed6238"
+    },
+    "figures/fig-1-1-boundary.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-1-1-boundary.svg",
+      "sha256": "7476be2f6112d8885eac34d5f5acbf62aea492c733feb62f5a50269b96e38da6"
+    },
+    "figures/fig-1-2-components.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-1-2-components.svg",
+      "sha256": "7b2bdb9a074fac87fd5eb161ce311132d7d5711fb91849fa52a6decbf7136684"
+    },
+    "figures/fig-1-3-iteration.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-1-3-iteration.svg",
+      "sha256": "1108765d405316057cb01814a487f108053eab6d5f9497b4a87be74c3d12756e"
+    },
+    "figures/fig-1-4-deployment.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-1-4-deployment.svg",
+      "sha256": "e88f2248674dcd1a9b01bb09e03463eb1c36105c05b4d85f5691f21b91b11a42"
+    },
+    "figures/fig-10-1-topology.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-10-1-topology.svg",
+      "sha256": "6cc164ceb700f79c5cf72d2d9b336fd69ca064ddea4bf202c80d76d298054ae3"
+    },
+    "figures/fig-10-2-communication.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-10-2-communication.svg",
+      "sha256": "bb0c06e634f9c910c3ffee67f4f5402a802ab5e7ccd4f73f1518ec4363f884c9"
+    },
+    "figures/fig-11-1-extensions.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-11-1-extensions.svg",
+      "sha256": "e6a2465c73581b648d3ef817afce9c1699f348594cf18f9f8deac0a286b322a8"
+    },
+    "figures/fig-11-2-speculation.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-11-2-speculation.svg",
+      "sha256": "4bdffee49f59d7b387f056acc07af1548bb69a12f387aab805df64320517729d"
+    },
+    "figures/fig-11-3-pd.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-11-3-pd.svg",
+      "sha256": "6d74880f425a4d170567a6957441f8c81e3d65f08771bb5bcb12d0c6fad9d0c0"
+    },
+    "figures/fig-12-1-map.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-12-1-map.svg",
+      "sha256": "1a207b24159f5702abc7d97cf63fa734890d56608de7b6c88d096ab181a93b65"
+    },
+    "figures/fig-12-2-investigation.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-12-2-investigation.svg",
+      "sha256": "44ef934bc8c9231dc437ead7ac81dab011b9920b425f8431e69949b130b8636c"
+    },
+    "figures/fig-2-1-focus.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-2-1-focus.svg",
+      "sha256": "81a09f4f51f016a119e1c21fb30cc75bd4d383c8f9a65614bdf8eed903a2e6d4"
+    },
+    "figures/fig-2-2-representations.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-2-2-representations.svg",
+      "sha256": "98558912208d4823d4954c5778a0b3d5d9009cc1a0d254422305e0f8c2033b1f"
+    },
+    "figures/fig-2-3-offline.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-2-3-offline.svg",
+      "sha256": "43ad390a012ab910487c1d99b73772769423a9b60d39a387b56e710207a77128"
+    },
+    "figures/fig-2-4-online.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-2-4-online.svg",
+      "sha256": "92126e22cce94a46cb66e551ee9a1cc39636946bf70573822e042980bbb0f847"
+    },
+    "figures/fig-2-5-cancel.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-2-5-cancel.svg",
+      "sha256": "36f34bdc6b4c1a31b032983052511e7f914d3d8914f67a4dfde402e076d5e00e"
+    },
+    "figures/fig-3-1-deployment.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-3-1-deployment.svg",
+      "sha256": "a3e4d266bde8bf9ae694ff91d789f8aa12dba835209e56f46db0ce97ea6808d8"
+    },
+    "figures/fig-3-2-lanes.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-3-2-lanes.svg",
+      "sha256": "b936749ee84e5e995fbd5b2871b1590a7fc36211c1607cb4a019bb046553b0f8"
+    },
+    "figures/fig-3-3-states.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-3-3-states.svg",
+      "sha256": "18b7ad91eaa0140eca1b65844106537277f40444b38360b5c2066706fbf04937"
+    },
+    "figures/fig-4-1-config.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-4-1-config.svg",
+      "sha256": "1c52a4f1cbba6adf56849cc895558cfbb584930bf30bfd0c3b7391814f55b5dc"
+    },
+    "figures/fig-4-2-startup.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-4-2-startup.svg",
+      "sha256": "892dbe32d83f422cac381a61db20f6770d423e436e3b27c08455fb42aa863796"
+    },
+    "figures/fig-4-3-lifetimes.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-4-3-lifetimes.svg",
+      "sha256": "fcc48fd5c9850da19b23a8bffbfbca5186f6770c9e33dec219969c990ee7f0d4"
+    },
+    "figures/fig-5-1-focus.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-5-1-focus.svg",
+      "sha256": "69c88cd5faddb6d253e833ce11547bb5a16d5806d4e31f66fef5fdfd61012101"
+    },
+    "figures/fig-5-2-decision.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-5-2-decision.svg",
+      "sha256": "453d9f9f42daab17b833019e1b4b8b5a7c7d10a9609c389f50b6159c05b5307f"
+    },
+    "figures/fig-6-1-ownership.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-6-1-ownership.svg",
+      "sha256": "ff91c69cb77b41ae6bd089bbd1e132dc6281f481d932f93ce10e1348ab014d90"
+    },
+    "figures/fig-6-2-blocks.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-6-2-blocks.svg",
+      "sha256": "ffa5235c6055645b58a83d334dddb9dbde916902448f180b8baa5a9faa54dbb3"
+    },
+    "figures/fig-6-3-lifecycle.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-6-3-lifecycle.svg",
+      "sha256": "92b40d3b62bd8a186acaad175d9e7d9de3c859631cc91c6f3499b8d6b2c67240"
+    },
+    "figures/fig-7-1-roles.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-7-1-roles.svg",
+      "sha256": "068cff6a3aafa7808c7fea2f38b64e0e70d7497d368726cb878f9a8c5e20146d"
+    },
+    "figures/fig-7-2-tensors.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-7-2-tensors.svg",
+      "sha256": "cfd02d66e6560552beb90a565892bfad579763e96dc97ca93c554f4b032eb865"
+    },
+    "figures/fig-7-3-state.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-7-3-state.svg",
+      "sha256": "4b4dc5a7165c7565956cf085c51cea21bcc5bd41dc37212c6a1f39eac48c6f96"
+    },
+    "figures/fig-8-1-boundary.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-8-1-boundary.svg",
+      "sha256": "f3bffdf80f92b9ae64c51e78cc885311317dde84ff4f55bc4501507cb610a5ff"
+    },
+    "figures/fig-8-2-metadata.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-8-2-metadata.svg",
+      "sha256": "a21ac8799fb44fe2ac017558df53190ea26d0b33a440872692da75ca6655f73c"
+    },
+    "figures/fig-8-3-platform.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-8-3-platform.svg",
+      "sha256": "babf8d0667e95c6ab12e7f13bbcf80dabc8b6db692d9fb493d4c7bddc54e8e91"
+    },
+    "figures/fig-9-1-timeline.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-9-1-timeline.svg",
+      "sha256": "817203166c87d938dca31822c3a9b869e458c670d7cd4a56c606d0ce12cfb9ec"
+    },
+    "figures/fig-9-2-compile.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-9-2-compile.svg",
+      "sha256": "458fc9f182b53aaafeb5c14ee2302d496136d60fa4d1ff405d238f947d4303a1"
+    },
+    "figures/fig-9-3-dispatch.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-9-3-dispatch.svg",
+      "sha256": "2842d3979cc79551d4767be657a9886363f909bc8ea018fcf136c15332bd7326"
+    },
+    "practice/README.md": {
+      "source": "drafts/Book7-vLLM架构剖析/practice/README.md",
+      "sha256": "617bd97edd873f0ab49846770a8ee7348cbd0b5f8b52e1fb54f18f396ed553ab"
+    },
+    "practice/inventory.json": {
+      "source": "drafts/Book7-vLLM架构剖析/practice/inventory.json",
+      "sha256": "52b8b2aa15375a43146580ebaa3990241cb0e18f08157f330590e982211a635a"
+    },
+    "practice/legacy/00-feasibility/llama215_vllm.py": {
+      "source": "drafts/Book7-vLLM架构剖析/practice/legacy/00-feasibility/llama215_vllm.py",
+      "sha256": "3f9460470faa0d7d25dc4edaaeb2ed92ba2105518df7e26b9b60a987d7edb339"
+    },
+    "practice/legacy/00-feasibility/make_hf207m.py": {
+      "source": "drafts/Book7-vLLM架构剖析/practice/legacy/00-feasibility/make_hf207m.py",
+      "sha256": "43f98b7fa4dc8a877ce9a788115f6dc0da83e916f555d8bcd7542d8823aa3d1e"
+    },
+    "practice/legacy/00-feasibility/vllm_smoke.py": {
+      "source": "drafts/Book7-vLLM架构剖析/practice/legacy/00-feasibility/vllm_smoke.py",
+      "sha256": "4e0623abc75aeaff632835f01cc9a6b0ab3b41130cb0bbbf3cf32447facc085c"
+    },
+    "practice/legacy/00-feasibility/vllm_smoke_reg.py": {
+      "source": "drafts/Book7-vLLM架构剖析/practice/legacy/00-feasibility/vllm_smoke_reg.py",
+      "sha256": "f0353084ae0c4d08f9f23c1a086e4c17f6963bf522e51aeeba27ca325e34c75b"
+    },
+    "practice/legacy/ch03/entry_probe.py": {
+      "source": "drafts/Book7-vLLM架构剖析/practice/legacy/ch03/entry_probe.py",
+      "sha256": "6430cb0a381cb79e40ac50baa5fca1e50c34b3f81b34967567f660b9d12583cc"
+    },
+    "practice/legacy/ch04/exp_ch04.py": {
+      "source": "drafts/Book7-vLLM架构剖析/practice/legacy/ch04/exp_ch04.py",
+      "sha256": "73dc66a09ac5eb3107334406fe15bcafcad94ecd0d46ccc761df4ee7ad073263"
+    },
+    "practice/legacy/ch05/apc_same_seed.py": {
+      "source": "drafts/Book7-vLLM架构剖析/practice/legacy/ch05/apc_same_seed.py",
+      "sha256": "091f81b4a2c166993cd5571a31a2c6a465ec41f34c039e0c74ed05807ec47a90"
+    },
+    "practice/legacy/ch05/exp_ch05.py": {
+      "source": "drafts/Book7-vLLM架构剖析/practice/legacy/ch05/exp_ch05.py",
+      "sha256": "9319793b8103c8aa26b8df539f71cb5d0ab7ac3128fb6db31c81ddb1da2ab83e"
+    },
+    "practice/legacy/ch06/exp_ch06.py": {
+      "source": "drafts/Book7-vLLM架构剖析/practice/legacy/ch06/exp_ch06.py",
+      "sha256": "f4ac8b367cb47da37df14e2f5d50b8c4514361edc624e7bd08345f77d923f8a1"
+    },
+    "practice/legacy/ch07/exp_ngram_capture.py": {
+      "source": "drafts/Book7-vLLM架构剖析/practice/legacy/ch07/exp_ngram_capture.py",
+      "sha256": "460c819ed26da7a03ca559990963d0329ca0ba9f7a226798dc487a56311e67d6"
+    },
+    "practice/legacy/ch07/exp_runner_attr.py": {
+      "source": "drafts/Book7-vLLM架构剖析/practice/legacy/ch07/exp_runner_attr.py",
+      "sha256": "bdadfdcb5198ed8a453970e1af46517bb02ee9ea428a13740fbc6ac773012bba"
+    },
+    "practice/legacy/ch08/exp_aclgraph.py": {
+      "source": "drafts/Book7-vLLM架构剖析/practice/legacy/ch08/exp_aclgraph.py",
+      "sha256": "b1ae59dc352011a46da87f74c3c20a57e8e0028474c4e3dc4e01b1f83fbbe304"
+    },
+    "practice/legacy/ch09/exp_backend_probe.py": {
+      "source": "drafts/Book7-vLLM架构剖析/practice/legacy/ch09/exp_backend_probe.py",
+      "sha256": "1f657b20741c02e8cf46864b4b2f7ce2df9bdb40333c52303d714756ab1244ab"
+    },
+    "practice/legacy/ch10/bench_207m.py": {
+      "source": "drafts/Book7-vLLM架构剖析/practice/legacy/ch10/bench_207m.py",
+      "sha256": "305379155b5ab15d87ee0e7da5c7f3a7f323ab0f3f3396f79111fc499f9a198a"
+    },
+    "practice/legacy/ch11/exp_patch_probe.py": {
+      "source": "drafts/Book7-vLLM架构剖析/practice/legacy/ch11/exp_patch_probe.py",
+      "sha256": "5b1386898535c8a612adb950fecfa667381ff7ee55432258fd3e98a0978e0008"
+    },
+    "practice/legacy/ch11/exp_sse_capture.sh": {
+      "source": "drafts/Book7-vLLM架构剖析/practice/legacy/ch11/exp_sse_capture.sh",
+      "sha256": "da156479805b4c6279267db8eb2fe297d1c96513f3d72d9717a84411b9f07b40"
+    },
+    "practice/legacy/ch11/exp_template_diff.py": {
+      "source": "drafts/Book7-vLLM架构剖析/practice/legacy/ch11/exp_template_diff.py",
+      "sha256": "a97b3b90dc93c32e508160699e9a2e91f2ed134ae1b96c7bbc052476be2ba00f"
+    },
+    "practice/legacy/ch12/inproc_trace_demo.py": {
+      "source": "drafts/Book7-vLLM架构剖析/practice/legacy/ch12/inproc_trace_demo.py",
+      "sha256": "e25916df7097b36f258d205013b8d714bc5af408ca08752b273fe8d1a3d09b36"
+    },
+    "practice/legacy/ch12/mp_default_demo.py": {
+      "source": "drafts/Book7-vLLM架构剖析/practice/legacy/ch12/mp_default_demo.py",
+      "sha256": "30848273e14c447d4fbdbc17cafca358e30c26060c7e95340dcca0536e4c7abb"
+    },
+    "practice/legacy/ch12/sweep_min.py": {
+      "source": "drafts/Book7-vLLM架构剖析/practice/legacy/ch12/sweep_min.py",
+      "sha256": "071e996bc2eb31986ecc73afc9b39207984d784e527b58b8b26afb4a2f314a22"
+    }
+  },
+  "build_inputs": {
+    "drafts/Book7-vLLM架构剖析/README.md": "1de8fe80a3745101f0ccb72aececbee6bc67609e334f58fbb29c25235e9c0b4b",
+    "code/Book7-vLLM架构剖析/render_figures.py": "23981b85c7b0096af8181934cd8f6a777321e077f915ae460f5dfef8f42c1289",
+    "code/Book7-vLLM架构剖析/render_full_figures.py": "cbdd8db6e8ad83f85e1bff0df408fbdc2889d64e4ca79533e08b61b48d11a901",
+    "code/Book7-vLLM架构剖析/build_reader.py": "6d9081e39b0666ed171d3de58b72c0f33f2faa58b567b176ea69c54381e4ccf9",
+    "code/Book7-vLLM架构剖析/build_full_reader.py": "774fafb6fecde3f36ff5b5ea2771910c65638eb201812cd7b2b7966a1283422c"
+  },
+  "validation": {
+    "chapters": 12,
+    "appendices": 4,
+    "figures": 36,
+    "source_anchors": 49
+  },
+  "retained_previous_files": []
+}

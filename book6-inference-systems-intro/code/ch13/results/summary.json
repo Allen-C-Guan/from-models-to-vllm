@@ -1,0 +1,1879 @@
+{
+  "run": "matrix1",
+  "cases": {
+    "tp1": {
+      "state": "pass",
+      "cards": 1,
+      "tp": 1,
+      "pp": 1,
+      "dp": 1,
+      "dcp": 1,
+      "ep": false,
+      "sp_requested": false,
+      "error": null,
+      "runtime_evidence_lines": [
+        "(APIServer pid=920260) INFO 10-30 12:01:30 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "(EngineCore pid=920772) INFO 10-30 12:01:48 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "(EngineCore pid=920772) INFO 10-30 12:01:50 [parallel_state.py:1977] rank 0 in world size 1 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, EP rank 0, EPLB rank N/A",
+        "(EngineCore pid=920772) INFO 10-30 12:01:58 [kv_cache_utils.py:2235] GPU KV cache size: 657,920 tokens",
+        "(EngineCore pid=920772) INFO 10-30 12:01:59 [worker.py:826] Free memory on device (60.6/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 29.43 GiB for weights, 0.24 GiB for peak activation, 0.04 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=20308435968` (18.91 GiB) to fit into requested memory, or `--kv-cache-memory=33018770432` (30.75 GiB) to fully utilize NPU free memory. Current KV cache memory: 19.06 GiB. After warmup: torch reserved memory 48.63 GiB, torch allocated memory 48.56 GiB."
+      ],
+      "kv_capacity_log_tokens": [
+        657920
+      ],
+      "sp_log_states": [
+        "disabled"
+      ],
+      "weight_memory_log_GB": [
+        29.4263
+      ],
+      "sampled_driver_hbm_peak_mib": {
+        "0": 53706
+      },
+      "measurements": [
+        {
+          "input_tokens": 128,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 13.870794310001656,
+          "output_tokens_per_s": 11.53502794606583,
+          "ttft_ms": {
+            "mean": 186.45221400656737,
+            "p50": 185.1865700155031,
+            "p95": 190.4082300083246
+          },
+          "tpot_ms": {
+            "mean": 83.45236199956778,
+            "p50": 83.35299451550048,
+            "p95": 84.16663858074425
+          },
+          "e2e_ms": {
+            "mean": 2773.4754359931685,
+            "p50": 2769.129399996018,
+            "p95": 2796.806826000102
+          },
+          "output_tokens_per_s_per_card": 11.53502794606583,
+          "exact_greedy_sequence_matches_vs_tp1": 5
+        },
+        {
+          "input_tokens": 4096,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 14.537189969996689,
+          "output_tokens_per_s": 11.006253638442097,
+          "ttft_ms": {
+            "mean": 518.4022639936302,
+            "p50": 517.7214099967387,
+            "p95": 521.2818119965959
+          },
+          "tpot_ms": {
+            "mean": 77.03359051637592,
+            "p50": 77.04385000021918,
+            "p95": 77.33871787129301
+          },
+          "e2e_ms": {
+            "mean": 2906.4435700012837,
+            "p50": 2906.5572299878113,
+            "p95": 2915.745970007265
+          },
+          "output_tokens_per_s_per_card": 11.006253638442097,
+          "exact_greedy_sequence_matches_vs_tp1": 5
+        },
+        {
+          "input_tokens": 128,
+          "concurrency": 8,
+          "requests": 16,
+          "wall_s": 5.968188959988765,
+          "output_tokens_per_s": 85.78816847665021,
+          "ttft_ms": {
+            "mean": 312.17268374894047,
+            "p50": 323.43092499650083,
+            "p95": 332.15744500921573
+          },
+          "tpot_ms": {
+            "mean": 85.99757191528155,
+            "p50": 85.6696129030165,
+            "p95": 88.4058595167458
+          },
+          "e2e_ms": {
+            "mean": 2978.0974131226685,
+            "p50": 2980.115710000973,
+            "p95": 2992.116037508822
+          },
+          "output_tokens_per_s_per_card": 85.78816847665021,
+          "exact_greedy_sequence_matches_vs_tp1": 12
+        }
+      ],
+      "teacher_forced_logprob_max_abs_delta": 0.0,
+      "teacher_forced_logprob_mean_abs_delta": 0.0
+    },
+    "tp2": {
+      "state": "pass",
+      "cards": 2,
+      "tp": 2,
+      "pp": 1,
+      "dp": 1,
+      "dcp": 1,
+      "ep": false,
+      "sp_requested": false,
+      "error": null,
+      "runtime_evidence_lines": [
+        "(APIServer pid=922793) INFO 10-30 12:03:14 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:03:47 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:03:47 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "(Worker pid=923417) INFO 10-30 12:03:53 [parallel_state.py:1977] rank 0 in world size 2 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, EP rank 0, EPLB rank N/A",
+        "(EngineCore pid=923188) INFO 10-30 12:04:02 [kv_cache_utils.py:2235] GPU KV cache size: 1,152,640 tokens",
+        "(Worker_TP1 pid=923418) INFO 10-30 12:04:03 [worker.py:826] Free memory on device (60.61/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 14.78 GiB for weights, 0.16 GiB for peak activation, 0.44 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=35695839232` (33.24 GiB) to fit into requested memory, or `--kv-cache-memory=48411850752` (45.09 GiB) to fully utilize NPU free memory. Current KV cache memory: 33.39 GiB. After warmup: torch reserved memory 48.3 GiB, torch allocated memory 48.25 GiB.",
+        "(Worker_TP0 pid=923417) INFO 10-30 12:04:03 [worker.py:826] Free memory on device (60.6/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 14.78 GiB for weights, 0.16 GiB for peak activation, 0.44 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=35696277504` (33.24 GiB) to fit into requested memory, or `--kv-cache-memory=48406579200` (45.08 GiB) to fully utilize NPU free memory. Current KV cache memory: 33.39 GiB. After warmup: torch reserved memory 48.3 GiB, torch allocated memory 48.25 GiB.",
+        "(EngineCore pid=923188) INFO 10-30 12:04:08 [ascend_config.py:542] Sequence-parallel MoE is disabled."
+      ],
+      "kv_capacity_log_tokens": [
+        1152640
+      ],
+      "sp_log_states": [
+        "disabled"
+      ],
+      "weight_memory_log_GB": [
+        14.7787,
+        14.7787
+      ],
+      "sampled_driver_hbm_peak_mib": {
+        "0": 53713,
+        "1": 53708
+      },
+      "measurements": [
+        {
+          "input_tokens": 128,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 15.368561949988361,
+          "output_tokens_per_s": 10.410863457535216,
+          "ttft_ms": {
+            "mean": 107.37626599729992,
+            "p50": 107.25567999179475,
+            "p95": 108.00464799976908
+          },
+          "tpot_ms": {
+            "mean": 95.67285148396847,
+            "p50": 95.54392451536842,
+            "p95": 95.99244800047018
+          },
+          "e2e_ms": {
+            "mean": 3073.2346620003227,
+            "p50": 3069.4051799946465,
+            "p95": 3082.8329300158657
+          },
+          "output_tokens_per_s_per_card": 5.205431728767608,
+          "exact_greedy_sequence_matches_vs_tp1": 0
+        },
+        {
+          "input_tokens": 4096,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 15.954306130006444,
+          "output_tokens_per_s": 10.028640462092937,
+          "ttft_ms": {
+            "mean": 445.84619200322777,
+            "p50": 445.54975000210106,
+            "p95": 447.1929839986842
+          },
+          "tpot_ms": {
+            "mean": 88.53379438702588,
+            "p50": 88.41778548441887,
+            "p95": 88.97720387096577
+          },
+          "e2e_ms": {
+            "mean": 3190.39381800103,
+            "p50": 3188.4245900146198,
+            "p95": 3204.192840005271
+          },
+          "output_tokens_per_s_per_card": 5.014320231046469,
+          "exact_greedy_sequence_matches_vs_tp1": 5
+        },
+        {
+          "input_tokens": 128,
+          "concurrency": 8,
+          "requests": 16,
+          "wall_s": 6.703352629992878,
+          "output_tokens_per_s": 76.3796906206535,
+          "ttft_ms": {
+            "mean": 315.14995936959167,
+            "p50": 328.24479999544565,
+            "p95": 344.42253999441164
+          },
+          "tpot_ms": {
+            "mean": 97.37090193553858,
+            "p50": 97.26887435517123,
+            "p95": 98.0985730648465
+          },
+          "e2e_ms": {
+            "mean": 3333.6479193712876,
+            "p50": 3344.4583300006343,
+            "p95": 3355.1903825064073
+          },
+          "output_tokens_per_s_per_card": 38.18984531032675,
+          "exact_greedy_sequence_matches_vs_tp1": 2
+        }
+      ],
+      "teacher_forced_logprob_max_abs_delta": 0.1539630889892578,
+      "teacher_forced_logprob_mean_abs_delta": 0.013374238533692228
+    },
+    "tp4": {
+      "state": "pass",
+      "cards": 4,
+      "tp": 4,
+      "pp": 1,
+      "dp": 1,
+      "dcp": 1,
+      "ep": false,
+      "sp_requested": false,
+      "error": null,
+      "runtime_evidence_lines": [
+        "(APIServer pid=925695) INFO 10-30 12:05:21 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:05:55 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:05:55 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:05:55 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:05:55 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "(Worker pid=926310) INFO 10-30 12:06:59 [parallel_state.py:1977] rank 0 in world size 4 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, EP rank 0, EPLB rank N/A",
+        "(EngineCore pid=926083) INFO 10-30 12:07:17 [kv_cache_utils.py:2235] GPU KV cache size: 1,405,696 tokens",
+        "(Worker_TP1 pid=926311) INFO 10-30 12:07:19 [worker.py:826] Free memory on device (60.61/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 7.45 GiB for weights, 0.15 GiB for peak activation, 0.44 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=43568343040` (40.58 GiB) to fit into requested memory, or `--kv-cache-memory=56284182528` (52.42 GiB) to fully utilize NPU free memory. Current KV cache memory: 40.72 GiB. After warmup: torch reserved memory 48.3 GiB, torch allocated memory 48.25 GiB.",
+        "(Worker_TP3 pid=926313) INFO 10-30 12:07:19 [worker.py:826] Free memory on device (60.61/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 7.45 GiB for weights, 0.15 GiB for peak activation, 0.44 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=43568109568` (40.58 GiB) to fit into requested memory, or `--kv-cache-memory=56283895808` (52.42 GiB) to fully utilize NPU free memory. Current KV cache memory: 40.72 GiB. After warmup: torch reserved memory 48.3 GiB, torch allocated memory 48.25 GiB.",
+        "(Worker_TP2 pid=926312) INFO 10-30 12:07:19 [worker.py:826] Free memory on device (60.61/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 7.45 GiB for weights, 0.15 GiB for peak activation, 0.44 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=43570169856` (40.58 GiB) to fit into requested memory, or `--kv-cache-memory=56284841984` (52.42 GiB) to fully utilize NPU free memory. Current KV cache memory: 40.72 GiB. After warmup: torch reserved memory 48.3 GiB, torch allocated memory 48.25 GiB.",
+        "(Worker_TP0 pid=926310) INFO 10-30 12:07:19 [worker.py:826] Free memory on device (60.6/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 7.45 GiB for weights, 0.15 GiB for peak activation, 0.44 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=43568969728` (40.58 GiB) to fit into requested memory, or `--kv-cache-memory=56279304192` (52.41 GiB) to fully utilize NPU free memory. Current KV cache memory: 40.72 GiB. After warmup: torch reserved memory 48.3 GiB, torch allocated memory 48.25 GiB.",
+        "(EngineCore pid=926083) INFO 10-30 12:07:23 [ascend_config.py:542] Sequence-parallel MoE is disabled."
+      ],
+      "kv_capacity_log_tokens": [
+        1405696
+      ],
+      "sp_log_states": [
+        "disabled"
+      ],
+      "weight_memory_log_GB": [
+        7.4549,
+        7.4549,
+        7.4549,
+        7.4549
+      ],
+      "sampled_driver_hbm_peak_mib": {
+        "0": 53709,
+        "1": 53702,
+        "2": 53704,
+        "3": 53704
+      },
+      "measurements": [
+        {
+          "input_tokens": 128,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 15.685033840010874,
+          "output_tokens_per_s": 10.200806809345659,
+          "ttft_ms": {
+            "mean": 110.04604000481777,
+            "p50": 109.6167599898763,
+            "p95": 112.50878400169313
+          },
+          "tpot_ms": {
+            "mean": 97.6289099998652,
+            "p50": 97.61306967759025,
+            "p95": 98.38267780630098
+          },
+          "e2e_ms": {
+            "mean": 3136.542250000639,
+            "p50": 3136.802560009528,
+            "p95": 3162.1356679941528
+          },
+          "output_tokens_per_s_per_card": 2.5502017023364147,
+          "exact_greedy_sequence_matches_vs_tp1": 2
+        },
+        {
+          "input_tokens": 4096,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 16.128512380004395,
+          "output_tokens_per_s": 9.920319756108617,
+          "ttft_ms": {
+            "mean": 447.427449998213,
+            "p50": 447.19546000123955,
+            "p95": 449.6129599981941
+          },
+          "tpot_ms": {
+            "mean": 89.60675406476273,
+            "p50": 89.2474609680639,
+            "p95": 90.86943503296483
+          },
+          "e2e_ms": {
+            "mean": 3225.2368260058574,
+            "p50": 3216.365880012745,
+            "p95": 3264.5661420188844
+          },
+          "output_tokens_per_s_per_card": 2.480079939027154,
+          "exact_greedy_sequence_matches_vs_tp1": 5
+        },
+        {
+          "input_tokens": 128,
+          "concurrency": 8,
+          "requests": 16,
+          "wall_s": 6.7023862400092185,
+          "output_tokens_per_s": 76.3907034995488,
+          "ttft_ms": {
+            "mean": 314.29266375380394,
+            "p50": 328.5631950129755,
+            "p95": 339.54222501051845
+          },
+          "tpot_ms": {
+            "mean": 97.38221800410341,
+            "p50": 97.24507435467169,
+            "p95": 98.01291467714867
+          },
+          "e2e_ms": {
+            "mean": 3333.1414218810096,
+            "p50": 3344.983940012753,
+            "p95": 3352.6331025132095
+          },
+          "output_tokens_per_s_per_card": 19.0976758748872,
+          "exact_greedy_sequence_matches_vs_tp1": 8
+        }
+      ],
+      "teacher_forced_logprob_max_abs_delta": 0.20281219482421875,
+      "teacher_forced_logprob_mean_abs_delta": 0.022096316089912776
+    },
+    "tp8": {
+      "state": "pass",
+      "cards": 8,
+      "tp": 8,
+      "pp": 1,
+      "dp": 1,
+      "dcp": 1,
+      "ep": false,
+      "sp_requested": false,
+      "error": null,
+      "runtime_evidence_lines": [
+        "(APIServer pid=930297) INFO 10-30 12:08:38 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:09:12 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:09:12 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:09:12 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:09:12 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:09:12 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:09:12 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:09:13 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:09:13 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "(Worker pid=930829) INFO 10-30 12:09:29 [parallel_state.py:1977] rank 0 in world size 8 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, EP rank 0, EPLB rank N/A",
+        "(EngineCore pid=930552) INFO 10-30 12:09:40 [kv_cache_utils.py:2235] GPU KV cache size: 1,532,032 tokens",
+        "(Worker_TP2 pid=930831) INFO 10-30 12:09:43 [worker.py:826] Free memory on device (60.61/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 3.79 GiB for weights, 0.15 GiB for peak activation, 0.44 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=47498782720` (44.24 GiB) to fit into requested memory, or `--kv-cache-memory=60214396928` (56.08 GiB) to fully utilize NPU free memory. Current KV cache memory: 44.38 GiB. After warmup: torch reserved memory 48.3 GiB, torch allocated memory 48.25 GiB.",
+        "(Worker_TP5 pid=930841) INFO 10-30 12:09:43 [worker.py:826] Free memory on device (60.61/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 3.79 GiB for weights, 0.15 GiB for peak activation, 0.44 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=47498610688` (44.24 GiB) to fit into requested memory, or `--kv-cache-memory=60214765568` (56.08 GiB) to fully utilize NPU free memory. Current KV cache memory: 44.38 GiB. After warmup: torch reserved memory 48.3 GiB, torch allocated memory 48.25 GiB.",
+        "(Worker_TP7 pid=930890) INFO 10-30 12:09:43 [worker.py:826] Free memory on device (60.61/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 3.79 GiB for weights, 0.15 GiB for peak activation, 0.44 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=47499163648` (44.24 GiB) to fit into requested memory, or `--kv-cache-memory=60214904832` (56.08 GiB) to fully utilize NPU free memory. Current KV cache memory: 44.38 GiB. After warmup: torch reserved memory 48.3 GiB, torch allocated memory 48.25 GiB.",
+        "(Worker_TP4 pid=930840) INFO 10-30 12:09:43 [worker.py:826] Free memory on device (60.61/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 3.79 GiB for weights, 0.15 GiB for peak activation, 0.44 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=47498942464` (44.24 GiB) to fit into requested memory, or `--kv-cache-memory=60214413312` (56.08 GiB) to fully utilize NPU free memory. Current KV cache memory: 44.38 GiB. After warmup: torch reserved memory 48.3 GiB, torch allocated memory 48.25 GiB.",
+        "(Worker_TP1 pid=930830) INFO 10-30 12:09:43 [worker.py:826] Free memory on device (60.61/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 3.79 GiB for weights, 0.15 GiB for peak activation, 0.44 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=47498389504` (44.24 GiB) to fit into requested memory, or `--kv-cache-memory=60214257664` (56.08 GiB) to fully utilize NPU free memory. Current KV cache memory: 44.38 GiB. After warmup: torch reserved memory 48.3 GiB, torch allocated memory 48.25 GiB.",
+        "(Worker_TP3 pid=930835) INFO 10-30 12:09:43 [worker.py:826] Free memory on device (60.61/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 3.79 GiB for weights, 0.15 GiB for peak activation, 0.44 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=47499212800` (44.24 GiB) to fit into requested memory, or `--kv-cache-memory=60214364160` (56.08 GiB) to fully utilize NPU free memory. Current KV cache memory: 44.38 GiB. After warmup: torch reserved memory 48.3 GiB, torch allocated memory 48.25 GiB.",
+        "(Worker_TP0 pid=930829) INFO 10-30 12:09:43 [worker.py:826] Free memory on device (60.6/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 3.79 GiB for weights, 0.15 GiB for peak activation, 0.44 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=47498987520` (44.24 GiB) to fit into requested memory, or `--kv-cache-memory=60208642048` (56.07 GiB) to fully utilize NPU free memory. Current KV cache memory: 44.38 GiB. After warmup: torch reserved memory 48.3 GiB, torch allocated memory 48.25 GiB.",
+        "(Worker_TP6 pid=930842) INFO 10-30 12:09:43 [worker.py:826] Free memory on device (60.61/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 3.79 GiB for weights, 0.15 GiB for peak activation, 0.44 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=47501416448` (44.24 GiB) to fit into requested memory, or `--kv-cache-memory=60216506368` (56.08 GiB) to fully utilize NPU free memory. Current KV cache memory: 44.39 GiB. After warmup: torch reserved memory 48.3 GiB, torch allocated memory 48.25 GiB.",
+        "(EngineCore pid=930552) INFO 10-30 12:09:48 [ascend_config.py:542] Sequence-parallel MoE is disabled."
+      ],
+      "kv_capacity_log_tokens": [
+        1532032
+      ],
+      "sp_log_states": [
+        "disabled"
+      ],
+      "weight_memory_log_GB": [
+        3.793,
+        3.793,
+        3.793,
+        3.793,
+        3.793,
+        3.793,
+        3.793,
+        3.793
+      ],
+      "sampled_driver_hbm_peak_mib": {
+        "0": 53730,
+        "1": 53724,
+        "2": 53724,
+        "3": 53724,
+        "4": 53724,
+        "5": 53724,
+        "6": 53722,
+        "7": 53724
+      },
+      "measurements": [
+        {
+          "input_tokens": 128,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 15.77924552001059,
+          "output_tokens_per_s": 10.139901796768076,
+          "ttft_ms": {
+            "mean": 110.91617600759491,
+            "p50": 110.40301001048647,
+            "p95": 115.06037000217475
+          },
+          "tpot_ms": {
+            "mean": 98.20832883875306,
+            "p50": 98.54328903208126,
+            "p95": 99.5842676129072
+          },
+          "e2e_ms": {
+            "mean": 3155.37437000894,
+            "p50": 3163.0590400018264,
+            "p95": 3199.2687860154547
+          },
+          "output_tokens_per_s_per_card": 1.2674877245960094,
+          "exact_greedy_sequence_matches_vs_tp1": 3
+        },
+        {
+          "input_tokens": 4096,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 17.8322378199955,
+          "output_tokens_per_s": 8.972513804217558,
+          "ttft_ms": {
+            "mean": 470.0138719927054,
+            "p50": 469.291429995792,
+            "p95": 471.6160779935308
+          },
+          "tpot_ms": {
+            "mean": 99.8688314192658,
+            "p50": 99.79077516078588,
+            "p95": 100.33508445147515
+          },
+          "e2e_ms": {
+            "mean": 3565.947645989945,
+            "p50": 3562.8054599801544,
+            "p95": 3581.1955499928445
+          },
+          "output_tokens_per_s_per_card": 1.1215642255271947,
+          "exact_greedy_sequence_matches_vs_tp1": 5
+        },
+        {
+          "input_tokens": 128,
+          "concurrency": 8,
+          "requests": 16,
+          "wall_s": 7.495026310003595,
+          "output_tokens_per_s": 68.31196834047597,
+          "ttft_ms": {
+            "mean": 352.79117312529706,
+            "p50": 364.4603550055763,
+            "p95": 385.0285949956742
+          },
+          "tpot_ms": {
+            "mean": 108.8972461893718,
+            "p50": 109.12450725792893,
+            "p95": 109.7141839514558
+          },
+          "e2e_ms": {
+            "mean": 3728.605804995823,
+            "p50": 3732.0772649982246,
+            "p95": 3768.5237400000915
+          },
+          "output_tokens_per_s_per_card": 8.538996042559496,
+          "exact_greedy_sequence_matches_vs_tp1": 6
+        }
+      ],
+      "teacher_forced_logprob_max_abs_delta": 0.24416255950927734,
+      "teacher_forced_logprob_mean_abs_delta": 0.01779806025193206
+    },
+    "pp2": {
+      "state": "pass",
+      "cards": 2,
+      "tp": 1,
+      "pp": 2,
+      "dp": 1,
+      "dcp": 1,
+      "ep": false,
+      "sp_requested": false,
+      "error": null,
+      "runtime_evidence_lines": [
+        "(APIServer pid=935297) INFO 10-30 12:11:06 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:11:39 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:11:39 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "(Worker pid=935929) INFO 10-30 12:11:45 [parallel_state.py:1977] rank 0 in world size 2 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, EP rank 0, EPLB rank N/A",
+        "(EngineCore pid=935581) INFO 10-30 12:11:51 [kv_cache_utils.py:2235] GPU KV cache size: 2,241,536 tokens",
+        "(Worker_PP0 pid=935929) INFO 10-30 12:11:53 [worker.py:826] Free memory on device (60.6/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 14.82 GiB for weights, 0.24 GiB for peak activation, 0.03 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=35995952128` (33.52 GiB) to fit into requested memory, or `--kv-cache-memory=48705651712` (45.36 GiB) to fully utilize NPU free memory. Current KV cache memory: 33.67 GiB. After warmup: torch reserved memory 48.62 GiB, torch allocated memory 48.57 GiB.",
+        "(Worker_PP1 pid=935930) INFO 10-30 12:11:53 [worker.py:826] Free memory on device (60.61/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 14.67 GiB for weights, 0.21 GiB for peak activation, 0.04 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=36194452992` (33.71 GiB) to fit into requested memory, or `--kv-cache-memory=48909825536` (45.55 GiB) to fully utilize NPU free memory. Current KV cache memory: 33.86 GiB. After warmup: torch reserved memory 46.08 GiB, torch allocated memory 46.02 GiB.",
+        "(EngineCore pid=935581) INFO 10-30 12:11:57 [ascend_config.py:542] Sequence-parallel MoE is disabled."
+      ],
+      "kv_capacity_log_tokens": [
+        2241536
+      ],
+      "sp_log_states": [
+        "disabled"
+      ],
+      "weight_memory_log_GB": [
+        14.8198,
+        14.665
+      ],
+      "sampled_driver_hbm_peak_mib": {
+        "0": 53748,
+        "1": 51168
+      },
+      "measurements": [
+        {
+          "input_tokens": 128,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 14.876376789994538,
+          "output_tokens_per_s": 10.755307038714683,
+          "ttft_ms": {
+            "mean": 102.39141999045387,
+            "p50": 101.99125998769887,
+            "p95": 103.68363598827273
+          },
+          "tpot_ms": {
+            "mean": 92.65910399995083,
+            "p50": 92.5727232261711,
+            "p95": 92.97463154840854
+          },
+          "e2e_ms": {
+            "mean": 2974.8236439889297,
+            "p50": 2973.362899996573,
+            "p95": 2985.4060479905456
+          },
+          "output_tokens_per_s_per_card": 5.377653519357342,
+          "exact_greedy_sequence_matches_vs_tp1": 5
+        },
+        {
+          "input_tokens": 4096,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 8.260083139990456,
+          "output_tokens_per_s": 19.370265079460793,
+          "ttft_ms": {
+            "mean": 388.4566460037604,
+            "p50": 388.5910600074567,
+            "p95": 391.10208599595353
+          },
+          "tpot_ms": {
+            "mean": 40.74685819345647,
+            "p50": 39.817685806830866,
+            "p95": 43.02182961274089
+          },
+          "e2e_ms": {
+            "mean": 1651.6092500009108,
+            "p50": 1623.711970023578,
+            "p95": 1724.5314959902316
+          },
+          "output_tokens_per_s_per_card": 9.685132539730397,
+          "exact_greedy_sequence_matches_vs_tp1": 0
+        },
+        {
+          "input_tokens": 128,
+          "concurrency": 8,
+          "requests": 16,
+          "wall_s": 6.304615830013063,
+          "output_tokens_per_s": 81.21034077328375,
+          "ttft_ms": {
+            "mean": 222.02482250395406,
+            "p50": 224.79916000156663,
+            "p95": 248.79200500436127
+          },
+          "tpot_ms": {
+            "mean": 94.15474171363448,
+            "p50": 94.43893241968321,
+            "p95": 95.34265870963517
+          },
+          "e2e_ms": {
+            "mean": 3140.821815626623,
+            "p50": 3112.235660009901,
+            "p95": 3188.65494250349
+          },
+          "output_tokens_per_s_per_card": 40.60517038664187,
+          "exact_greedy_sequence_matches_vs_tp1": 12
+        }
+      ],
+      "teacher_forced_logprob_max_abs_delta": 0.0,
+      "teacher_forced_logprob_mean_abs_delta": 0.0
+    },
+    "tp2pp2": {
+      "state": "pass",
+      "cards": 4,
+      "tp": 2,
+      "pp": 2,
+      "dp": 1,
+      "dcp": 1,
+      "ep": false,
+      "sp_requested": false,
+      "error": null,
+      "runtime_evidence_lines": [
+        "(APIServer pid=938178) INFO 10-30 12:13:05 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:13:39 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:13:39 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:13:39 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:13:39 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "(Worker pid=938697) INFO 10-30 12:13:52 [parallel_state.py:1977] rank 0 in world size 4 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, EP rank 0, EPLB rank N/A",
+        "(EngineCore pid=938453) INFO 10-30 12:14:01 [kv_cache_utils.py:2235] GPU KV cache size: 2,710,656 tokens",
+        "(Worker_PP0_TP0 pid=938697) INFO 10-30 12:14:03 [worker.py:826] Free memory on device (60.6/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 7.46 GiB for weights, 0.16 GiB for peak activation, 0.43 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=43561748480` (40.57 GiB) to fit into requested memory, or `--kv-cache-memory=56271226880` (52.41 GiB) to fully utilize NPU free memory. Current KV cache memory: 40.72 GiB. After warmup: torch reserved memory 48.29 GiB, torch allocated memory 48.25 GiB.",
+        "(Worker_PP1_TP0 pid=938699) INFO 10-30 12:14:03 [worker.py:826] Free memory on device (60.61/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 7.38 GiB for weights, 0.17 GiB for peak activation, 0.44 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=43626730496` (40.63 GiB) to fit into requested memory, or `--kv-cache-memory=56341758976` (52.47 GiB) to fully utilize NPU free memory. Current KV cache memory: 40.78 GiB. After warmup: torch reserved memory 45.32 GiB, torch allocated memory 45.28 GiB.",
+        "(Worker_PP1_TP1 pid=938700) INFO 10-30 12:14:03 [worker.py:826] Free memory on device (60.61/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 7.38 GiB for weights, 0.17 GiB for peak activation, 0.44 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=43626144768` (40.63 GiB) to fit into requested memory, or `--kv-cache-memory=56342082560` (52.47 GiB) to fully utilize NPU free memory. Current KV cache memory: 40.78 GiB. After warmup: torch reserved memory 45.32 GiB, torch allocated memory 45.28 GiB.",
+        "(Worker_PP0_TP1 pid=938698) INFO 10-30 12:14:03 [worker.py:826] Free memory on device (60.61/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 7.46 GiB for weights, 0.16 GiB for peak activation, 0.43 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=43560560640` (40.57 GiB) to fit into requested memory, or `--kv-cache-memory=56276572160` (52.41 GiB) to fully utilize NPU free memory. Current KV cache memory: 40.72 GiB. After warmup: torch reserved memory 48.29 GiB, torch allocated memory 48.25 GiB.",
+        "(EngineCore pid=938453) INFO 10-30 12:14:08 [ascend_config.py:542] Sequence-parallel MoE is disabled."
+      ],
+      "kv_capacity_log_tokens": [
+        2710656
+      ],
+      "sp_log_states": [
+        "disabled"
+      ],
+      "weight_memory_log_GB": [
+        7.3794,
+        7.3794,
+        7.4579,
+        7.4579
+      ],
+      "sampled_driver_hbm_peak_mib": {
+        "0": 53776,
+        "1": 53770,
+        "2": 50856,
+        "3": 50856
+      },
+      "measurements": [
+        {
+          "input_tokens": 128,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 15.717832260008436,
+          "output_tokens_per_s": 10.179520773172708,
+          "ttft_ms": {
+            "mean": 106.54215801041573,
+            "p50": 106.59346001921222,
+            "p95": 107.47061801375821
+          },
+          "tpot_ms": {
+            "mean": 97.95380780631076,
+            "p50": 98.0212380649567,
+            "p95": 98.69649703220104
+          },
+          "e2e_ms": {
+            "mean": 3143.110200006049,
+            "p50": 3144.8346500110347,
+            "p95": 3167.0620260119904
+          },
+          "output_tokens_per_s_per_card": 2.544880193293177,
+          "exact_greedy_sequence_matches_vs_tp1": 0
+        },
+        {
+          "input_tokens": 4096,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 8.729213180020452,
+          "output_tokens_per_s": 18.329257941163622,
+          "ttft_ms": {
+            "mean": 397.95342800207436,
+            "p50": 397.4247300066054,
+            "p95": 401.0838479967788
+          },
+          "tpot_ms": {
+            "mean": 43.466048580293936,
+            "p50": 43.499285483830455,
+            "p95": 44.13052038646364
+          },
+          "e2e_ms": {
+            "mean": 1745.4009339911863,
+            "p50": 1745.1952999981586,
+            "p95": 1764.2346179869492
+          },
+          "output_tokens_per_s_per_card": 4.5823144852909055,
+          "exact_greedy_sequence_matches_vs_tp1": 0
+        },
+        {
+          "input_tokens": 128,
+          "concurrency": 8,
+          "requests": 16,
+          "wall_s": 6.650666130008176,
+          "output_tokens_per_s": 76.98476964432592,
+          "ttft_ms": {
+            "mean": 230.3936225034704,
+            "p50": 232.77623501780909,
+            "p95": 257.2191699873656
+          },
+          "tpot_ms": {
+            "mean": 99.47006953623185,
+            "p50": 99.74433580646291,
+            "p95": 100.25857338698715
+          },
+          "e2e_ms": {
+            "mean": 3313.965778126658,
+            "p50": 3295.418020003126,
+            "p95": 3353.2858850085177
+          },
+          "output_tokens_per_s_per_card": 19.24619241108148,
+          "exact_greedy_sequence_matches_vs_tp1": 2
+        }
+      ],
+      "teacher_forced_logprob_max_abs_delta": 0.1539630889892578,
+      "teacher_forced_logprob_mean_abs_delta": 0.013374238533692228
+    },
+    "tp2dcp2": {
+      "state": "pass",
+      "cards": 2,
+      "tp": 2,
+      "pp": 1,
+      "dp": 1,
+      "dcp": 2,
+      "ep": false,
+      "sp_requested": false,
+      "error": null,
+      "runtime_evidence_lines": [
+        "(APIServer pid=958709) INFO 10-30 12:27:12 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:27:45 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:27:45 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "(Worker pid=959231) INFO 10-30 12:27:51 [parallel_state.py:1977] rank 0 in world size 2 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, EP rank 0, EPLB rank N/A",
+        "(EngineCore pid=958985) INFO 10-30 12:27:59 [kv_cache_utils.py:2235] GPU KV cache size: 2,305,280 tokens",
+        "(Worker_TP0_DCP0 pid=959231) INFO 10-30 12:28:01 [worker.py:826] Free memory on device (60.6/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 14.78 GiB for weights, 0.16 GiB for peak activation, 0.44 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=35695822848` (33.24 GiB) to fit into requested memory, or `--kv-cache-memory=48405665792` (45.08 GiB) to fully utilize NPU free memory. Current KV cache memory: 33.39 GiB. After warmup: torch reserved memory 48.34 GiB, torch allocated memory 48.28 GiB.",
+        "(Worker_TP1_DCP1 pid=959232) INFO 10-30 12:28:01 [worker.py:826] Free memory on device (60.61/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 14.78 GiB for weights, 0.16 GiB for peak activation, 0.44 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=35696744448` (33.25 GiB) to fit into requested memory, or `--kv-cache-memory=48411535360` (45.09 GiB) to fully utilize NPU free memory. Current KV cache memory: 33.39 GiB. After warmup: torch reserved memory 48.34 GiB, torch allocated memory 48.28 GiB.",
+        "(EngineCore pid=958985) INFO 10-30 12:28:05 [ascend_config.py:542] Sequence-parallel MoE is disabled."
+      ],
+      "kv_capacity_log_tokens": [
+        2305280
+      ],
+      "sp_log_states": [
+        "disabled"
+      ],
+      "weight_memory_log_GB": [
+        14.7787,
+        14.7787
+      ],
+      "sampled_driver_hbm_peak_mib": {
+        "0": 54178,
+        "1": 54173
+      },
+      "measurements": [
+        {
+          "input_tokens": 128,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 18.445338930003345,
+          "output_tokens_per_s": 8.674278125610511,
+          "ttft_ms": {
+            "mean": 109.9303980008699,
+            "p50": 109.59156000171788,
+            "p95": 111.34882799815387
+          },
+          "tpot_ms": {
+            "mean": 115.4405688388168,
+            "p50": 115.2215016134564,
+            "p95": 116.26573341951195
+          },
+          "e2e_ms": {
+            "mean": 3688.5880320041906,
+            "p50": 3681.2962600088213,
+            "p95": 3714.92646401166
+          },
+          "output_tokens_per_s_per_card": 4.337139062805256,
+          "exact_greedy_sequence_matches_vs_tp1": 0
+        },
+        {
+          "input_tokens": 4096,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 19.043774000019766,
+          "output_tokens_per_s": 8.401696008356009,
+          "ttft_ms": {
+            "mean": 459.5052460033912,
+            "p50": 458.9484100288246,
+            "p95": 464.3039779912215
+          },
+          "tpot_ms": {
+            "mean": 108.02562948383931,
+            "p50": 107.89906741927318,
+            "p95": 108.66171890332724
+          },
+          "e2e_ms": {
+            "mean": 3808.29976000241,
+            "p50": 3804.330690007191,
+            "p95": 3832.6754080015235
+          },
+          "output_tokens_per_s_per_card": 4.200848004178004,
+          "exact_greedy_sequence_matches_vs_tp1": 5
+        },
+        {
+          "input_tokens": 128,
+          "concurrency": 8,
+          "requests": 16,
+          "wall_s": 8.102143160009291,
+          "output_tokens_per_s": 63.19315641411264,
+          "ttft_ms": {
+            "mean": 354.84319062379654,
+            "p50": 368.3160200016573,
+            "p95": 386.5945524958079
+          },
+          "tpot_ms": {
+            "mean": 118.57969570572153,
+            "p50": 118.66166112914442,
+            "p95": 119.22550895166839
+          },
+          "e2e_ms": {
+            "mean": 4030.813757501164,
+            "p50": 4032.840899992152,
+            "p95": 4069.35582501319
+          },
+          "output_tokens_per_s_per_card": 31.59657820705632,
+          "exact_greedy_sequence_matches_vs_tp1": 4
+        }
+      ],
+      "teacher_forced_logprob_max_abs_delta": 0.1539630889892578,
+      "teacher_forced_logprob_mean_abs_delta": 0.013374238533692228
+    },
+    "tp4dcp4": {
+      "state": "pass",
+      "cards": 4,
+      "tp": 4,
+      "pp": 1,
+      "dp": 1,
+      "dcp": 4,
+      "ep": false,
+      "sp_requested": false,
+      "error": null,
+      "runtime_evidence_lines": [
+        "(APIServer pid=961759) INFO 10-30 12:29:27 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:30:00 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:30:00 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:30:01 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:30:01 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "(Worker pid=962366) INFO 10-30 12:30:57 [parallel_state.py:1977] rank 0 in world size 4 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, EP rank 0, EPLB rank N/A",
+        "(EngineCore pid=962053) INFO 10-30 12:31:15 [kv_cache_utils.py:2235] GPU KV cache size: 5,622,784 tokens",
+        "(Worker_TP1_DCP1 pid=962367) INFO 10-30 12:31:17 [worker.py:826] Free memory on device (60.61/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 7.45 GiB for weights, 0.15 GiB for peak activation, 0.44 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=43568257024` (40.58 GiB) to fit into requested memory, or `--kv-cache-memory=56283330560` (52.42 GiB) to fully utilize NPU free memory. Current KV cache memory: 40.72 GiB. After warmup: torch reserved memory 48.3 GiB, torch allocated memory 48.27 GiB.",
+        "(Worker_TP2_DCP2 pid=962368) INFO 10-30 12:31:17 [worker.py:826] Free memory on device (60.61/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 7.45 GiB for weights, 0.15 GiB for peak activation, 0.44 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=43569174528` (40.58 GiB) to fit into requested memory, or `--kv-cache-memory=56284403712` (52.42 GiB) to fully utilize NPU free memory. Current KV cache memory: 40.72 GiB. After warmup: torch reserved memory 48.3 GiB, torch allocated memory 48.27 GiB.",
+        "(Worker_TP3_DCP3 pid=962369) INFO 10-30 12:31:17 [worker.py:826] Free memory on device (60.61/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 7.45 GiB for weights, 0.15 GiB for peak activation, 0.44 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=43568654336` (40.58 GiB) to fit into requested memory, or `--kv-cache-memory=56284071936` (52.42 GiB) to fully utilize NPU free memory. Current KV cache memory: 40.72 GiB. After warmup: torch reserved memory 48.3 GiB, torch allocated memory 48.27 GiB.",
+        "(Worker_TP0_DCP0 pid=962366) INFO 10-30 12:31:17 [worker.py:826] Free memory on device (60.6/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 7.45 GiB for weights, 0.15 GiB for peak activation, 0.44 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=43568908288` (40.58 GiB) to fit into requested memory, or `--kv-cache-memory=56278648832` (52.41 GiB) to fully utilize NPU free memory. Current KV cache memory: 40.72 GiB. After warmup: torch reserved memory 48.3 GiB, torch allocated memory 48.27 GiB.",
+        "(EngineCore pid=962053) INFO 10-30 12:31:21 [ascend_config.py:542] Sequence-parallel MoE is disabled."
+      ],
+      "kv_capacity_log_tokens": [
+        5622784
+      ],
+      "sp_log_states": [
+        "disabled"
+      ],
+      "weight_memory_log_GB": [
+        7.4549,
+        7.4549,
+        7.4549,
+        7.4549
+      ],
+      "sampled_driver_hbm_peak_mib": {
+        "0": 54144,
+        "1": 54139,
+        "2": 54138,
+        "3": 54138
+      },
+      "measurements": [
+        {
+          "input_tokens": 128,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 19.02396083000349,
+          "output_tokens_per_s": 8.410446248798896,
+          "ttft_ms": {
+            "mean": 113.27175800106488,
+            "p50": 113.35639000753872,
+            "p95": 113.9451359922532
+          },
+          "tpot_ms": {
+            "mean": 119.06558961303334,
+            "p50": 119.04145161350888,
+            "p95": 119.93016393596096
+          },
+          "e2e_ms": {
+            "mean": 3804.3050360050984,
+            "p50": 3803.4136000205763,
+            "p95": 3831.6788720083423
+          },
+          "output_tokens_per_s_per_card": 2.102611562199724,
+          "exact_greedy_sequence_matches_vs_tp1": 2
+        },
+        {
+          "input_tokens": 4096,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 19.847736769996118,
+          "output_tokens_per_s": 8.061372530991669,
+          "ttft_ms": {
+            "mean": 472.78657000279054,
+            "p50": 472.79834002256393,
+            "p95": 475.3150260017719
+          },
+          "tpot_ms": {
+            "mean": 112.78400045177419,
+            "p50": 112.8410648389329,
+            "p95": 113.08877761344304
+          },
+          "e2e_ms": {
+            "mean": 3969.0905840077903,
+            "p50": 3971.150140016107,
+            "p95": 3980.974966014037
+          },
+          "output_tokens_per_s_per_card": 2.015343132747917,
+          "exact_greedy_sequence_matches_vs_tp1": 5
+        },
+        {
+          "input_tokens": 128,
+          "concurrency": 8,
+          "requests": 16,
+          "wall_s": 8.538779960013926,
+          "output_tokens_per_s": 59.96172783437846,
+          "ttft_ms": {
+            "mean": 389.3129512471205,
+            "p50": 404.83883998240344,
+            "p95": 449.0015925039188
+          },
+          "tpot_ms": {
+            "mean": 124.28888159258584,
+            "p50": 124.78396677432747,
+            "p95": 126.60711677369451
+          },
+          "e2e_ms": {
+            "mean": 4242.268280617282,
+            "p50": 4214.075484997011,
+            "p95": 4323.376084998017
+          },
+          "output_tokens_per_s_per_card": 14.990431958594614,
+          "exact_greedy_sequence_matches_vs_tp1": 6
+        }
+      ],
+      "teacher_forced_logprob_max_abs_delta": 0.2886476516723633,
+      "teacher_forced_logprob_mean_abs_delta": 0.019762691409726228
+    },
+    "dp2ep2": {
+      "state": "pass",
+      "cards": 2,
+      "tp": 1,
+      "pp": 1,
+      "dp": 2,
+      "dcp": 1,
+      "ep": true,
+      "sp_requested": false,
+      "error": null,
+      "runtime_evidence_lines": [
+        "(APIServer pid=945142) INFO 10-30 12:17:54 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:18:41 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:18:41 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "(Worker pid=946031) INFO 10-30 12:18:47 [parallel_state.py:1977] rank 1 in world size 2 is assigned as DP rank 1, PP rank 0, PCP rank 0, TP rank 0, EP rank 1, EPLB rank N/A",
+        "(Worker pid=946030) INFO 10-30 12:18:47 [parallel_state.py:1977] rank 0 in world size 2 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, EP rank 0, EPLB rank N/A",
+        "(EngineCore_DP1 pid=945629) INFO 10-30 12:18:55 [kv_cache_utils.py:2235] GPU KV cache size: 1,112,832 tokens",
+        "(EngineCore_DP0 pid=945628) INFO 10-30 12:18:55 [kv_cache_utils.py:2235] GPU KV cache size: 1,112,832 tokens",
+        "(Worker_DP1_EP1 pid=946031) INFO 10-30 12:18:57 [worker.py:826] Free memory on device (60.61/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 16.02 GiB for weights, 0.35 GiB for peak activation, 0.16 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=34458951168` (32.09 GiB) to fit into requested memory, or `--kv-cache-memory=47173774848` (43.93 GiB) to fully utilize NPU free memory. Current KV cache memory: 32.24 GiB. After warmup: torch reserved memory 48.39 GiB, torch allocated memory 48.34 GiB.",
+        "(Worker_DP0_EP0 pid=946030) INFO 10-30 12:18:57 [worker.py:826] Free memory on device (60.6/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 16.02 GiB for weights, 0.35 GiB for peak activation, 0.16 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=34458521088` (32.09 GiB) to fit into requested memory, or `--kv-cache-memory=47168544256` (43.93 GiB) to fully utilize NPU free memory. Current KV cache memory: 32.24 GiB. After warmup: torch reserved memory 48.39 GiB, torch allocated memory 48.34 GiB.",
+        "(EngineCore_DP0 pid=945628) INFO 10-30 12:19:01 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "(EngineCore_DP1 pid=945629) INFO 10-30 12:19:01 [ascend_config.py:542] Sequence-parallel MoE is disabled."
+      ],
+      "kv_capacity_log_tokens": [
+        1112832,
+        1112832
+      ],
+      "sp_log_states": [
+        "disabled"
+      ],
+      "weight_memory_log_GB": [
+        16.0201,
+        16.0201
+      ],
+      "sampled_driver_hbm_peak_mib": {
+        "0": 53692,
+        "1": 53683
+      },
+      "measurements": [
+        {
+          "input_tokens": 128,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 18.102030099980766,
+          "output_tokens_per_s": 8.83878764515865,
+          "ttft_ms": {
+            "mean": 200.29887999990024,
+            "p50": 201.39617001404986,
+            "p95": 202.42030199151486
+          },
+          "tpot_ms": {
+            "mean": 110.3112717420088,
+            "p50": 109.9801467742861,
+            "p95": 111.58324406471013
+          },
+          "e2e_ms": {
+            "mean": 3619.9483040021732,
+            "p50": 3610.780720016919,
+            "p95": 3661.1817340017296
+          },
+          "output_tokens_per_s_per_card": 4.419393822579325,
+          "exact_greedy_sequence_matches_vs_tp1": 5
+        },
+        {
+          "input_tokens": 4096,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 18.654587519995403,
+          "output_tokens_per_s": 8.576978709848174,
+          "ttft_ms": {
+            "mean": 555.1924639963545,
+            "p50": 552.7657500060741,
+            "p95": 571.6061320039444
+          },
+          "tpot_ms": {
+            "mean": 102.42891748390731,
+            "p50": 102.84691871023706,
+            "p95": 103.80691593557957
+          },
+          "e2e_ms": {
+            "mean": 3730.488905997481,
+            "p50": 3739.8676199954934,
+            "p95": 3789.5711920049507
+          },
+          "output_tokens_per_s_per_card": 4.288489354924087,
+          "exact_greedy_sequence_matches_vs_tp1": 5
+        },
+        {
+          "input_tokens": 128,
+          "concurrency": 8,
+          "requests": 16,
+          "wall_s": 7.3404315799998585,
+          "output_tokens_per_s": 69.75066716717627,
+          "ttft_ms": {
+            "mean": 207.49742125553894,
+            "p50": 208.27153000573162,
+            "p95": 216.1862175198621
+          },
+          "tpot_ms": {
+            "mean": 111.5361981450288,
+            "p50": 111.54731774173166,
+            "p95": 112.23265790284776
+          },
+          "e2e_ms": {
+            "mean": 3665.119563751432,
+            "p50": 3664.3748649948975,
+            "p95": 3690.556044995901
+          },
+          "output_tokens_per_s_per_card": 34.87533358358814,
+          "exact_greedy_sequence_matches_vs_tp1": 0
+        }
+      ],
+      "teacher_forced_logprob_max_abs_delta": 0.14366388320922852,
+      "teacher_forced_logprob_mean_abs_delta": 0.014627246056786843
+    },
+    "dp2tp2ep4": {
+      "state": "pass",
+      "cards": 4,
+      "tp": 2,
+      "pp": 1,
+      "dp": 2,
+      "dcp": 1,
+      "ep": true,
+      "sp_requested": false,
+      "error": null,
+      "runtime_evidence_lines": [
+        "(APIServer pid=949080) INFO 10-30 12:20:22 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:21:09 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:21:09 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:21:09 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "INFO 10-30 12:21:09 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "(Worker pid=949855) INFO 10-30 12:21:33 [parallel_state.py:1977] rank 2 in world size 4 is assigned as DP rank 1, PP rank 0, PCP rank 0, TP rank 0, EP rank 2, EPLB rank N/A",
+        "(Worker pid=949854) INFO 10-30 12:21:33 [parallel_state.py:1977] rank 0 in world size 4 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, EP rank 0, EPLB rank N/A",
+        "(EngineCore_DP1 pid=949566) INFO 10-30 12:21:51 [kv_cache_utils.py:2235] GPU KV cache size: 1,373,312 tokens",
+        "(EngineCore_DP0 pid=949565) INFO 10-30 12:21:51 [kv_cache_utils.py:2235] GPU KV cache size: 1,373,312 tokens",
+        "(Worker_DP1_TP0_EP2 pid=949855) INFO 10-30 12:21:53 [worker.py:826] Free memory on device (60.61/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 8.08 GiB for weights, 0.35 GiB for peak activation, 0.56 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=42559442432` (39.64 GiB) to fit into requested memory, or `--kv-cache-memory=55274573312` (51.48 GiB) to fully utilize NPU free memory. Current KV cache memory: 39.78 GiB. After warmup: torch reserved memory 47.98 GiB, torch allocated memory 47.94 GiB.",
+        "(Worker_DP1_TP1_EP3 pid=949857) INFO 10-30 12:21:53 [worker.py:826] Free memory on device (60.61/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 8.08 GiB for weights, 0.35 GiB for peak activation, 0.56 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=42559929856` (39.64 GiB) to fit into requested memory, or `--kv-cache-memory=55275261440` (51.48 GiB) to fully utilize NPU free memory. Current KV cache memory: 39.78 GiB. After warmup: torch reserved memory 47.98 GiB, torch allocated memory 47.94 GiB.",
+        "(Worker_DP0_TP1_EP1 pid=949856) INFO 10-30 12:21:53 [worker.py:826] Free memory on device (60.61/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 8.08 GiB for weights, 0.35 GiB for peak activation, 0.56 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=42559421952` (39.64 GiB) to fit into requested memory, or `--kv-cache-memory=55274065408` (51.48 GiB) to fully utilize NPU free memory. Current KV cache memory: 39.78 GiB. After warmup: torch reserved memory 47.98 GiB, torch allocated memory 47.94 GiB.",
+        "(Worker_DP0_TP0_EP0 pid=949854) INFO 10-30 12:21:53 [worker.py:826] Free memory on device (60.6/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 8.08 GiB for weights, 0.35 GiB for peak activation, 0.56 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=42559053312` (39.64 GiB) to fit into requested memory, or `--kv-cache-memory=55269031424` (51.47 GiB) to fully utilize NPU free memory. Current KV cache memory: 39.78 GiB. After warmup: torch reserved memory 47.98 GiB, torch allocated memory 47.94 GiB.",
+        "(EngineCore_DP1 pid=949566) INFO 10-30 12:21:57 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "(EngineCore_DP0 pid=949565) INFO 10-30 12:21:57 [ascend_config.py:542] Sequence-parallel MoE is disabled."
+      ],
+      "kv_capacity_log_tokens": [
+        1373312,
+        1373312
+      ],
+      "sp_log_states": [
+        "disabled"
+      ],
+      "weight_memory_log_GB": [
+        8.0756,
+        8.0756,
+        8.0756,
+        8.0756
+      ],
+      "sampled_driver_hbm_peak_mib": {
+        "0": 53658,
+        "1": 53654,
+        "2": 53646,
+        "3": 53647
+      },
+      "measurements": [
+        {
+          "input_tokens": 128,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 19.749905600008788,
+          "output_tokens_per_s": 8.101304544965966,
+          "ttft_ms": {
+            "mean": 217.19118599430658,
+            "p50": 216.49972000159323,
+            "p95": 224.57139998441562
+          },
+          "tpot_ms": {
+            "mean": 120.39814277424387,
+            "p50": 119.92345225805747,
+            "p95": 122.86530941961364
+          },
+          "e2e_ms": {
+            "mean": 3949.5336119958665,
+            "p50": 3943.018089979887,
+            "p95": 4026.2829120096285
+          },
+          "output_tokens_per_s_per_card": 2.0253261362414916,
+          "exact_greedy_sequence_matches_vs_tp1": 5
+        },
+        {
+          "input_tokens": 4096,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 20.37727955999435,
+          "output_tokens_per_s": 7.85188226568377,
+          "ttft_ms": {
+            "mean": 577.7741420082748,
+            "p50": 574.5977199985646,
+            "p95": 590.5970520048868
+          },
+          "tpot_ms": {
+            "mean": 112.81467135488657,
+            "p50": 112.85069677415454,
+            "p95": 114.08718587105884
+          },
+          "e2e_ms": {
+            "mean": 4075.0289540097583,
+            "p50": 4091.103810002096,
+            "p95": 4117.267442011507
+          },
+          "output_tokens_per_s_per_card": 1.9629705664209425,
+          "exact_greedy_sequence_matches_vs_tp1": 5
+        },
+        {
+          "input_tokens": 128,
+          "concurrency": 8,
+          "requests": 16,
+          "wall_s": 7.897197940008482,
+          "output_tokens_per_s": 64.83312231622374,
+          "ttft_ms": {
+            "mean": 216.8868943772395,
+            "p50": 216.77434499724768,
+            "p95": 228.00742499384796
+          },
+          "tpot_ms": {
+            "mean": 120.21709578625779,
+            "p50": 120.23655177355039,
+            "p95": 121.10620612938581
+          },
+          "e2e_ms": {
+            "mean": 3943.616863751231,
+            "p50": 3944.9028199887834,
+            "p95": 3970.172717512469
+          },
+          "output_tokens_per_s_per_card": 16.208280579055934,
+          "exact_greedy_sequence_matches_vs_tp1": 0
+        }
+      ],
+      "teacher_forced_logprob_max_abs_delta": 0.10651326179504395,
+      "teacher_forced_logprob_mean_abs_delta": 0.020309788429932224
+    },
+    "dp2tp2ep4sp": {
+      "state": "pass",
+      "cards": 4,
+      "tp": 2,
+      "pp": 1,
+      "dp": 2,
+      "dcp": 1,
+      "ep": true,
+      "sp_requested": true,
+      "error": null,
+      "runtime_evidence_lines": [
+        "(APIServer pid=953549) INFO 10-30 12:23:23 [ascend_config.py:542] Sequence-parallel MoE is enabled.",
+        "INFO 10-30 12:24:09 [ascend_config.py:542] Sequence-parallel MoE is enabled.",
+        "INFO 10-30 12:24:09 [ascend_config.py:542] Sequence-parallel MoE is enabled.",
+        "INFO 10-30 12:24:09 [ascend_config.py:542] Sequence-parallel MoE is enabled.",
+        "INFO 10-30 12:24:09 [ascend_config.py:542] Sequence-parallel MoE is enabled.",
+        "(Worker pid=954568) INFO 10-30 12:25:10 [parallel_state.py:1977] rank 0 in world size 4 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, EP rank 0, EPLB rank N/A",
+        "(Worker pid=954569) INFO 10-30 12:25:10 [parallel_state.py:1977] rank 2 in world size 4 is assigned as DP rank 1, PP rank 0, PCP rank 0, TP rank 0, EP rank 2, EPLB rank N/A",
+        "(EngineCore_DP0 pid=954165) INFO 10-30 12:25:28 [kv_cache_utils.py:2235] GPU KV cache size: 1,363,584 tokens",
+        "(EngineCore_DP1 pid=954166) INFO 10-30 12:25:28 [kv_cache_utils.py:2235] GPU KV cache size: 1,363,584 tokens",
+        "(Worker_DP0_TP0_EP0 pid=954568) INFO 10-30 12:25:30 [worker.py:826] Free memory on device (60.6/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 8.08 GiB for weights, 0.34 GiB for peak activation, 0.84 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=42257788416` (39.36 GiB) to fit into requested memory, or `--kv-cache-memory=54967680512` (51.19 GiB) to fully utilize NPU free memory. Current KV cache memory: 39.5 GiB. After warmup: torch reserved memory 47.69 GiB, torch allocated memory 47.65 GiB.",
+        "(Worker_DP0_TP1_EP1 pid=954570) INFO 10-30 12:25:30 [worker.py:826] Free memory on device (60.61/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 8.08 GiB for weights, 0.34 GiB for peak activation, 0.84 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=42258238976` (39.36 GiB) to fit into requested memory, or `--kv-cache-memory=54972530176` (51.2 GiB) to fully utilize NPU free memory. Current KV cache memory: 39.5 GiB. After warmup: torch reserved memory 47.69 GiB, torch allocated memory 47.65 GiB.",
+        "(Worker_DP1_TP0_EP2 pid=954569) INFO 10-30 12:25:30 [worker.py:826] Free memory on device (60.61/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 8.08 GiB for weights, 0.34 GiB for peak activation, 0.84 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=42257825280` (39.36 GiB) to fit into requested memory, or `--kv-cache-memory=54973206016` (51.2 GiB) to fully utilize NPU free memory. Current KV cache memory: 39.5 GiB. After warmup: torch reserved memory 47.69 GiB, torch allocated memory 47.65 GiB.",
+        "(Worker_DP1_TP1_EP3 pid=954571) INFO 10-30 12:25:30 [worker.py:826] Free memory on device (60.61/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 8.08 GiB for weights, 0.34 GiB for peak activation, 0.84 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=42257829376` (39.36 GiB) to fit into requested memory, or `--kv-cache-memory=54973459968` (51.2 GiB) to fully utilize NPU free memory. Current KV cache memory: 39.5 GiB. After warmup: torch reserved memory 47.69 GiB, torch allocated memory 47.65 GiB.",
+        "(EngineCore_DP1 pid=954166) INFO 10-30 12:25:35 [ascend_config.py:542] Sequence-parallel MoE is enabled.",
+        "(EngineCore_DP0 pid=954165) INFO 10-30 12:25:35 [ascend_config.py:542] Sequence-parallel MoE is enabled."
+      ],
+      "kv_capacity_log_tokens": [
+        1363584,
+        1363584
+      ],
+      "sp_log_states": [
+        "enabled"
+      ],
+      "weight_memory_log_GB": [
+        8.0756,
+        8.0756,
+        8.0756,
+        8.0756
+      ],
+      "sampled_driver_hbm_peak_mib": {
+        "0": 53674,
+        "1": 53669,
+        "2": 53664,
+        "3": 53664
+      },
+      "measurements": [
+        {
+          "input_tokens": 128,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 23.690677109989338,
+          "output_tokens_per_s": 6.753711565826664,
+          "ttft_ms": {
+            "mean": 267.8877279977314,
+            "p50": 266.5305100090336,
+            "p95": 275.6104239844717
+          },
+          "tpot_ms": {
+            "mean": 144.18097967751353,
+            "p50": 145.8223154834066,
+            "p95": 148.1713865164502
+          },
+          "e2e_ms": {
+            "mean": 4737.498098000651,
+            "p50": 4787.022289994638,
+            "p95": 4866.2885780096985
+          },
+          "output_tokens_per_s_per_card": 1.688427891456666,
+          "exact_greedy_sequence_matches_vs_tp1": 2
+        },
+        {
+          "input_tokens": 4096,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 24.404350989992963,
+          "output_tokens_per_s": 6.55620795101694,
+          "ttft_ms": {
+            "mean": 657.1725179965142,
+            "p50": 667.1689999930095,
+            "p95": 674.4609599991236
+          },
+          "tpot_ms": {
+            "mean": 136.2234348389921,
+            "p50": 139.8448645167293,
+            "p95": 141.40571412938317
+          },
+          "e2e_ms": {
+            "mean": 4880.098998005269,
+            "p50": 5010.8786600176245,
+            "p95": 5052.653626009123
+          },
+          "output_tokens_per_s_per_card": 1.639051987754235,
+          "exact_greedy_sequence_matches_vs_tp1": 5
+        },
+        {
+          "input_tokens": 128,
+          "concurrency": 8,
+          "requests": 16,
+          "wall_s": 9.773854500002926,
+          "output_tokens_per_s": 52.38465540896345,
+          "ttft_ms": {
+            "mean": 274.96443249947333,
+            "p50": 274.0166800067527,
+            "p95": 289.22538249753416
+          },
+          "tpot_ms": {
+            "mean": 148.57677207674573,
+            "p50": 148.55314080646608,
+            "p95": 148.8702073392849
+          },
+          "e2e_ms": {
+            "mean": 4880.844366878591,
+            "p50": 4880.295584996929,
+            "p95": 4887.939975014888
+          },
+          "output_tokens_per_s_per_card": 13.096163852240862,
+          "exact_greedy_sequence_matches_vs_tp1": 2
+        }
+      ],
+      "teacher_forced_logprob_max_abs_delta": 0.2046194076538086,
+      "teacher_forced_logprob_mean_abs_delta": 0.019139093106671695
+    },
+    "replicas2": {
+      "state": "pass",
+      "cards": 2,
+      "tp": 1,
+      "pp": 1,
+      "dp": 1,
+      "dcp": 1,
+      "ep": false,
+      "sp_requested": false,
+      "error": null,
+      "runtime_evidence_lines": [
+        "(APIServer pid=941363) INFO 10-30 12:15:17 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "(EngineCore pid=941688) INFO 10-30 12:15:36 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "(EngineCore pid=941688) INFO 10-30 12:16:16 [parallel_state.py:1977] rank 0 in world size 1 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, EP rank 0, EPLB rank N/A",
+        "(EngineCore pid=941688) INFO 10-30 12:16:35 [kv_cache_utils.py:2235] GPU KV cache size: 657,920 tokens",
+        "(EngineCore pid=941688) INFO 10-30 12:16:36 [worker.py:826] Free memory on device (60.6/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 29.43 GiB for weights, 0.24 GiB for peak activation, 0.04 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=20307280896` (18.91 GiB) to fit into requested memory, or `--kv-cache-memory=33017541632` (30.75 GiB) to fully utilize NPU free memory. Current KV cache memory: 19.06 GiB. After warmup: torch reserved memory 48.63 GiB, torch allocated memory 48.56 GiB.",
+        "(APIServer pid=941365) INFO 10-30 12:15:17 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "(EngineCore pid=941695) INFO 10-30 12:15:36 [ascend_config.py:542] Sequence-parallel MoE is disabled.",
+        "(EngineCore pid=941695) INFO 10-30 12:15:41 [parallel_state.py:1977] rank 0 in world size 1 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, EP rank 0, EPLB rank N/A",
+        "(EngineCore pid=941695) INFO 10-30 12:15:50 [kv_cache_utils.py:2235] GPU KV cache size: 657,920 tokens",
+        "(EngineCore pid=941695) INFO 10-30 12:15:51 [worker.py:826] Free memory on device (60.61/60.96 GiB) on startup. Desired GPU memory utilization is (0.8, 48.77 GiB). Actual usage: 29.43 GiB for weights, 0.24 GiB for peak activation, 0.04 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=20307977216` (18.91 GiB) to fit into requested memory, or `--kv-cache-memory=33023112192` (30.76 GiB) to fully utilize NPU free memory. Current KV cache memory: 19.06 GiB. After warmup: torch reserved memory 48.63 GiB, torch allocated memory 48.56 GiB."
+      ],
+      "kv_capacity_log_tokens": [
+        657920,
+        657920
+      ],
+      "sp_log_states": [
+        "disabled"
+      ],
+      "weight_memory_log_GB": [
+        29.4263,
+        29.4263
+      ],
+      "sampled_driver_hbm_peak_mib": {
+        "0": 53713,
+        "1": 53702
+      },
+      "measurements": [
+        {
+          "input_tokens": 128,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 14.070069339999463,
+          "output_tokens_per_s": 11.371656822268802,
+          "ttft_ms": {
+            "mean": 188.0502339976374,
+            "p50": 186.03049000375904,
+            "p95": 194.4921460119076
+          },
+          "tpot_ms": {
+            "mean": 84.6943071611496,
+            "p50": 84.28671612918768,
+            "p95": 86.4423678061294
+          },
+          "e2e_ms": {
+            "mean": 2813.573755993275,
+            "p50": 2797.990029997891,
+            "p95": 2874.205548001919
+          },
+          "output_tokens_per_s_per_card": 5.685828411134401,
+          "exact_greedy_sequence_matches_vs_tp1": 5
+        },
+        {
+          "input_tokens": 4096,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 14.480393099976936,
+          "output_tokens_per_s": 11.049423789486408,
+          "ttft_ms": {
+            "mean": 516.1459580005612,
+            "p50": 515.9155900182668,
+            "p95": 519.626055995468
+          },
+          "tpot_ms": {
+            "mean": 76.75726987091043,
+            "p50": 76.65225290392917,
+            "p95": 78.42107774134004
+          },
+          "e2e_ms": {
+            "mean": 2895.6213239987846,
+            "p50": 2893.2863600202836,
+            "p95": 2950.449279980967
+          },
+          "output_tokens_per_s_per_card": 5.524711894743204,
+          "exact_greedy_sequence_matches_vs_tp1": 5
+        },
+        {
+          "input_tokens": 128,
+          "concurrency": 8,
+          "requests": 16,
+          "wall_s": 6.13897009001812,
+          "output_tokens_per_s": 83.40161175121294,
+          "ttft_ms": {
+            "mean": 290.8878275011375,
+            "p50": 308.8893550011562,
+            "p95": 336.99313748365967
+          },
+          "tpot_ms": {
+            "mean": 88.27760935480089,
+            "p50": 89.11057612896266,
+            "p95": 91.14330306422949
+          },
+          "e2e_ms": {
+            "mean": 3027.493717499965,
+            "p50": 3018.7306349980645,
+            "p95": 3105.956525010697
+          },
+          "output_tokens_per_s_per_card": 41.70080587560647,
+          "exact_greedy_sequence_matches_vs_tp1": 5
+        }
+      ],
+      "teacher_forced_logprob_max_abs_delta": 0.0,
+      "teacher_forced_logprob_mean_abs_delta": 0.0
+    }
+  },
+  "repeats": {
+    "tp1": {
+      "state": "pass",
+      "measurements": [
+        {
+          "input_tokens": 128,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 13.956919730000664,
+          "output_tokens_per_s": 11.463847546251698,
+          "ttft_ms": {
+            "mean": 185.57432199595496,
+            "p50": 183.86964002274908,
+            "p95": 189.8573219892569
+          },
+          "tpot_ms": {
+            "mean": 84.04182806468359,
+            "p50": 84.41385516104468,
+            "p95": 84.65812193556509
+          },
+          "e2e_ms": {
+            "mean": 2790.870992001146,
+            "p50": 2800.6991500151344,
+            "p95": 2811.545111995656
+          }
+        },
+        {
+          "input_tokens": 4096,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 14.482770050002728,
+          "output_tokens_per_s": 11.04761032921115,
+          "ttft_ms": {
+            "mean": 513.5468239954207,
+            "p50": 514.216520008631,
+            "p95": 516.0430199815892
+          },
+          "tpot_ms": {
+            "mean": 76.85754851629626,
+            "p50": 76.7999532258874,
+            "p95": 77.5676978070424
+          },
+          "e2e_ms": {
+            "mean": 2896.130828000605,
+            "p50": 2890.0783399876673,
+            "p95": 2920.641651999904
+          }
+        },
+        {
+          "input_tokens": 128,
+          "concurrency": 8,
+          "requests": 16,
+          "wall_s": 5.914709589997074,
+          "output_tokens_per_s": 86.56384429522825,
+          "ttft_ms": {
+            "mean": 308.56918562130886,
+            "p50": 319.19838998874184,
+            "p95": 330.36153750435915
+          },
+          "tpot_ms": {
+            "mean": 85.23578913304992,
+            "p50": 85.4090840321958,
+            "p95": 87.41634790297418
+          },
+          "e2e_ms": {
+            "mean": 2950.8786487458565,
+            "p50": 2953.5106399998767,
+            "p95": 2981.461502495222
+          }
+        }
+      ],
+      "long_prefix_comparison": {
+        "prefix_tokens": 4096,
+        "max_abs_logprob_delta": 0.0,
+        "mean_abs_logprob_delta": 0.0,
+        "generated_ids_equal": true,
+        "generated_ids": [
+          72462,
+          12141,
+          2472,
+          1439,
+          6211,
+          13,
+          207,
+          99297
+        ],
+        "reference_generated_ids": [
+          72462,
+          12141,
+          2472,
+          1439,
+          6211,
+          13,
+          207,
+          99297
+        ]
+      },
+      "long_generation_exact_matches": 5
+    },
+    "tp2pp2": {
+      "state": "pass",
+      "measurements": [
+        {
+          "input_tokens": 128,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 15.961716769990744,
+          "output_tokens_per_s": 10.0239844062897,
+          "ttft_ms": {
+            "mean": 110.71776999742724,
+            "p50": 110.8845799753908,
+            "p95": 112.37658800091594
+          },
+          "tpot_ms": {
+            "mean": 99.38641561292893,
+            "p50": 99.64471709756782,
+            "p95": 100.35263077419762
+          },
+          "e2e_ms": {
+            "mean": 3191.696653998224,
+            "p50": 3199.870809999993,
+            "p95": 3220.862562005641
+          }
+        },
+        {
+          "input_tokens": 4096,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 8.809385030006524,
+          "output_tokens_per_s": 18.16244828157789,
+          "ttft_ms": {
+            "mean": 404.75329199107364,
+            "p50": 403.4444299759343,
+            "p95": 408.52153198211454
+          },
+          "tpot_ms": {
+            "mean": 43.75390858077745,
+            "p50": 43.679952581090134,
+            "p95": 44.191017806259616
+          },
+          "e2e_ms": {
+            "mean": 1761.1244579951745,
+            "p50": 1756.181420001667,
+            "p95": 1772.8245560021605
+          }
+        },
+        {
+          "input_tokens": 128,
+          "concurrency": 8,
+          "requests": 16,
+          "wall_s": 6.753834239993012,
+          "output_tokens_per_s": 75.8087897639208,
+          "ttft_ms": {
+            "mean": 237.70017500100948,
+            "p50": 237.50647500855848,
+            "p95": 270.9207875013817
+          },
+          "tpot_ms": {
+            "mean": 100.84173264095303,
+            "p50": 100.8039598382311,
+            "p95": 101.59363516093788
+          },
+          "e2e_ms": {
+            "mean": 3363.7938868705533,
+            "p50": 3348.2462499960093,
+            "p95": 3398.2132699893555
+          }
+        }
+      ],
+      "long_prefix_comparison": {
+        "prefix_tokens": 4096,
+        "max_abs_logprob_delta": 0.2974419593811035,
+        "mean_abs_logprob_delta": 0.0013621534836664132,
+        "generated_ids_equal": false,
+        "generated_ids": [
+          72462,
+          72462,
+          12141,
+          12141,
+          2472,
+          2472,
+          1439,
+          1439
+        ],
+        "reference_generated_ids": [
+          72462,
+          12141,
+          2472,
+          1439,
+          6211,
+          13,
+          207,
+          99297
+        ]
+      },
+      "long_generation_exact_matches": 0
+    }
+  },
+  "controls": {
+    "tp1": {
+      "state": "pass",
+      "measurements": [
+        {
+          "input_tokens": 128,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 14.006069589988329,
+          "output_tokens_per_s": 11.423618808403575,
+          "ttft_ms": {
+            "mean": 98.63079598871991,
+            "p50": 98.89682999346405,
+            "p95": 100.42099397978745
+          },
+          "tpot_ms": {
+            "mean": 87.16621890311099,
+            "p50": 86.79358709618569,
+            "p95": 88.51206606468035
+          },
+          "e2e_ms": {
+            "mean": 2800.7835819851607,
+            "p50": 2789.4980299752206,
+            "p95": 2844.2950419848785
+          }
+        },
+        {
+          "input_tokens": 4096,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 14.412088400014909,
+          "output_tokens_per_s": 11.101791465547386,
+          "ttft_ms": {
+            "mean": 428.1909999961499,
+            "p50": 428.00652000005357,
+            "p95": 429.5771880133543
+          },
+          "tpot_ms": {
+            "mean": 79.15429670979539,
+            "p50": 79.13006354788048,
+            "p95": 79.35338458102648
+          },
+          "e2e_ms": {
+            "mean": 2881.974197999807,
+            "p50": 2882.783470005961,
+            "p95": 2887.4528860033024
+          }
+        },
+        {
+          "input_tokens": 128,
+          "concurrency": 8,
+          "requests": 16,
+          "wall_s": 5.856791609985521,
+          "output_tokens_per_s": 87.41987663127146,
+          "ttft_ms": {
+            "mean": 207.65950187160342,
+            "p50": 212.7346599882003,
+            "p95": 234.43307751585962
+          },
+          "tpot_ms": {
+            "mean": 87.41569800411291,
+            "p50": 87.3876758062491,
+            "p95": 88.21864580644497
+          },
+          "e2e_ms": {
+            "mean": 2917.5461399991036,
+            "p50": 2912.7743099961663,
+            "p95": 2939.4791000013356
+          }
+        }
+      ],
+      "long_prefix_comparison": {
+        "prefix_tokens": 4096,
+        "max_abs_logprob_delta": 0.0,
+        "mean_abs_logprob_delta": 0.0,
+        "generated_ids_equal": true,
+        "generated_ids": [
+          72462,
+          12141,
+          2472,
+          1439,
+          6211,
+          13,
+          207,
+          99297
+        ],
+        "reference_generated_ids": [
+          72462,
+          12141,
+          2472,
+          1439,
+          6211,
+          13,
+          207,
+          99297
+        ]
+      },
+      "long_generation_exact_matches": 5
+    },
+    "tp2pp2": {
+      "state": "pass",
+      "measurements": [
+        {
+          "input_tokens": 128,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 15.650736009993125,
+          "output_tokens_per_s": 10.223161383454341,
+          "ttft_ms": {
+            "mean": 107.10471400525421,
+            "p50": 106.80109000531957,
+            "p95": 107.93074000393972
+          },
+          "tpot_ms": {
+            "mean": 97.50217690297794,
+            "p50": 97.39323516072135,
+            "p95": 98.35737703176545
+          },
+          "e2e_ms": {
+            "mean": 3129.67219799757,
+            "p50": 3125.7933900051285,
+            "p95": 3156.8065079976805
+          }
+        },
+        {
+          "input_tokens": 4096,
+          "concurrency": 1,
+          "requests": 5,
+          "wall_s": 15.96950793999713,
+          "output_tokens_per_s": 10.019093925822537,
+          "ttft_ms": {
+            "mean": 395.8024880033918,
+            "p50": 396.0986400197726,
+            "p95": 396.96206398657523
+          },
+          "tpot_ms": {
+            "mean": 90.24664335489844,
+            "p50": 89.99752516167298,
+            "p95": 90.9976843228158
+          },
+          "e2e_ms": {
+            "mean": 3193.4484320052434,
+            "p50": 3186.21952002286,
+            "p95": 3215.299492009217
+          }
+        },
+        {
+          "input_tokens": 128,
+          "concurrency": 8,
+          "requests": 16,
+          "wall_s": 6.577802309999242,
+          "output_tokens_per_s": 77.8375475379799,
+          "ttft_ms": {
+            "mean": 226.0753893715446,
+            "p50": 231.36083999997936,
+            "p95": 250.9893699825625
+          },
+          "tpot_ms": {
+            "mean": 98.42946897192779,
+            "p50": 98.41014451634575,
+            "p95": 99.16804217749403
+          },
+          "e2e_ms": {
+            "mean": 3277.388927501306,
+            "p50": 3283.8770499947714,
+            "p95": 3290.773259999696
+          }
+        }
+      ],
+      "long_prefix_comparison": {
+        "prefix_tokens": 4096,
+        "max_abs_logprob_delta": 0.2974419593811035,
+        "mean_abs_logprob_delta": 0.0013621534836664132,
+        "generated_ids_equal": true,
+        "generated_ids": [
+          72462,
+          12141,
+          2472,
+          1439,
+          6211,
+          13,
+          207,
+          99297
+        ],
+        "reference_generated_ids": [
+          72462,
+          12141,
+          2472,
+          1439,
+          6211,
+          13,
+          207,
+          99297
+        ]
+      },
+      "long_generation_exact_matches": 5
+    }
+  },
+  "evidence_sha256": {
+    "log/book6-ch13/hardware.txt": "8d5760b8ecf10461f7bf5de4c0a17d2d3c5a545dbbdba7b501419359fef6fd86",
+    "log/book6-ch13/topology.txt": "538f9eed17ec2ffb3e4d9a1644a249ee0045625326c525553b8ab108fa57602d",
+    "log/book6-ch13/matrix1/tp1/status.json": "8676dca728beeae92b5cb21bed0f4ce75e943c3b08320994da8034113d8a6efd",
+    "log/book6-ch13/matrix1/tp1/server-0.log": "412c73d44575ba633b42d00dd94985786e41e3f4817d1603b53ef6bc1693c680",
+    "log/book6-ch13/matrix1/tp1/hbm-samples.jsonl": "eb47cc68577402a44a755e845c6d74852899ed26d26136f0e1ab0c9c4e2563e3",
+    "log/book6-ch13/serving_matrix1_tp1.json": "d404900fe822f794ea987d373b4e35a21e1b2a5d6d6931e87d58d3a92ded6bc8",
+    "log/book6-ch13/serving_probes_tp1.json": "2aa259bea985382d071d935663ecffd706e5ad1eb227868b93af0156c2920018",
+    "log/book6-ch13/matrix1/tp2/status.json": "a907289b8150fa375f1a708f382676c2ebbddcece50bba5c050e83ee710d515e",
+    "log/book6-ch13/matrix1/tp2/server-0.log": "ead132d1e2392c807feddf6ba09867f7126a79cc1ef569426894c567fba5fb85",
+    "log/book6-ch13/matrix1/tp2/hbm-samples.jsonl": "5ac638c7e26b29dbde7f293bcb9473b1eb506a3c812fff690793e4a80fa4a014",
+    "log/book6-ch13/serving_matrix1_tp2.json": "d9ff5f66b6b03ee08cbab31755bd612d627e5ea7673c676acce50382a1e2a3bf",
+    "log/book6-ch13/serving_probes_tp2.json": "3ffb4b3fbc56b320562fa0be20947fd6f8d4a4875c605c30cbf35157f70b85e8",
+    "log/book6-ch13/matrix1/tp4/status.json": "b71fc523e34f7fa5a5875729d92b44f02aaf8b42358b7cc7d5c60416f4b1c69d",
+    "log/book6-ch13/matrix1/tp4/server-0.log": "86ec8624055a47a92063dee784ecdb43b52b43479e99876ba8f9efe30f265402",
+    "log/book6-ch13/matrix1/tp4/hbm-samples.jsonl": "521048018df543204a840d9717404a6eefb8609041c6e15d13c73108694fb01b",
+    "log/book6-ch13/serving_matrix1_tp4.json": "df09ed6af84cab1455d992014d4a067e77642c9f18eb247426f160996ddcfe9b",
+    "log/book6-ch13/matrix1/tp8/status.json": "fcf5e1ab5a4a3e0f713c6a3244b2c7e41a3b87df7397b0553c1234b9ff5338ee",
+    "log/book6-ch13/matrix1/tp8/server-0.log": "d93a68667f26b659f28095018c9ac319493aaf84950d8a67bd3d1a16f266f9c6",
+    "log/book6-ch13/matrix1/tp8/hbm-samples.jsonl": "7cb84de8cbac9e5ba10c946157df935561242f25db188d841e4ef30074b25152",
+    "log/book6-ch13/serving_matrix1_tp8.json": "42f9e7cc7bfef00ea18e60a6bcc7f0cf621c71ec7740256f6c7ef511112eb304",
+    "log/book6-ch13/matrix1/pp2/status.json": "adeffa93732a55cdf2f28d1fe9f1a057a0bc02e629904fdcddefff5f157b9e7f",
+    "log/book6-ch13/matrix1/pp2/server-0.log": "fcd90acf6d3ec8a5e708a25dcbc70fae3fafc4ed0820de9a0d009e8fe94d179f",
+    "log/book6-ch13/matrix1/pp2/hbm-samples.jsonl": "fa5b42de3b73b4779d85104f10129b737c42171a7ea1b45dd835f6b61a2b63c4",
+    "log/book6-ch13/serving_matrix1_pp2.json": "a7f0c6d8dc887cbe470d5cb5ce1ad40ad38519bc77d09046ef7dbbe10d0d8d35",
+    "log/book6-ch13/matrix1/tp2pp2/status.json": "1fe861eda0e2260eed537a08d2d787cc9ab7e325b7182d46ec4d8b43af4fd1cf",
+    "log/book6-ch13/matrix1/tp2pp2/server-0.log": "aa588c6366a409777128038c9a6b691733fa87310ad678773bc8c1074c2b70de",
+    "log/book6-ch13/matrix1/tp2pp2/hbm-samples.jsonl": "cbc4683569f056728f134bf95cb32a22695f6e38e93544a0587739454871acd1",
+    "log/book6-ch13/serving_matrix1_tp2pp2.json": "7182930731fd0e094110f04bf088c0a7af678a31b5e69f6bd33f2e00857ae1a6",
+    "log/book6-ch13/matrix1/tp2dcp2/status.json": "9a7293c104af16d9ab7ff4ff3ad9d794664eec052dd6968e194875fbcf67a77e",
+    "log/book6-ch13/matrix1/tp2dcp2/server-0.log": "b58cadc2880c5b752d0d24a128624ff0e657d005208a86dde4e4ddaf455f4f84",
+    "log/book6-ch13/matrix1/tp2dcp2/hbm-samples.jsonl": "ec1161bbc0b722924772343eb317d92bb13d54f8c8ec2a36894229f8ddd9c740",
+    "log/book6-ch13/serving_matrix1_tp2dcp2.json": "df1bae43923a15bf9ac9f7d42cbae371c9f57cd9ea8ae1fc8cc7b6c4f6832bf6",
+    "log/book6-ch13/matrix1/tp4dcp4/status.json": "9dddddb00f5df62ee447f5c1a9c1e3880c5c38e257756b64c105cd35d94ec86c",
+    "log/book6-ch13/matrix1/tp4dcp4/server-0.log": "c5d29c91bbce3d64154fb7b9e9f36779d3ec2fee515581660d02286762aa7baa",
+    "log/book6-ch13/matrix1/tp4dcp4/hbm-samples.jsonl": "cc664bf80e89ef8cec09525a323d7c09ced3b381964b7a55db6a06cf81f2c9c2",
+    "log/book6-ch13/serving_matrix1_tp4dcp4.json": "96e7c6910205a41f13d2b43f8c8abd11bf8fdf0e2c5163f314759670e6f5f395",
+    "log/book6-ch13/matrix1/dp2ep2/status.json": "fbc038fc157707490379d4e6c8511cf4f2a1d85cad0e6e6db79cdee1f91330bb",
+    "log/book6-ch13/matrix1/dp2ep2/server-0.log": "84b42a48f96672278f502ffc86c533bff2bdae72fc11fcb4cbb9edc743bbc8a1",
+    "log/book6-ch13/matrix1/dp2ep2/hbm-samples.jsonl": "57f595ef85a739cd87e30e221005611d9bf030ce6b56b2b16548916550290a98",
+    "log/book6-ch13/serving_matrix1_dp2ep2.json": "32af81320b8718de78af3afe52a25fa48fa1e30dd1d970b3369a0db1c895cac0",
+    "log/book6-ch13/matrix1/dp2tp2ep4/status.json": "c298fb68255dbe99a1946a3edf272ce3217ed7eb584c7737c017ce97ba927634",
+    "log/book6-ch13/matrix1/dp2tp2ep4/server-0.log": "9b42856e4b9763da78181ff9587855f1ffece9d36daee9c29e1c517bb3a631d4",
+    "log/book6-ch13/matrix1/dp2tp2ep4/hbm-samples.jsonl": "1d5a56cb2dade874e7c773fa916c8f98a7043c7253b57ddc99a13f566f79ddfc",
+    "log/book6-ch13/serving_matrix1_dp2tp2ep4.json": "f4d6284cd5e07848245f6114fc72fe1ab4e3d18e3d324cc3589d49cd0d85e1d7",
+    "log/book6-ch13/matrix1/dp2tp2ep4sp/status.json": "24a7a5cf36aafc836c35ff7700f4d3b184096a3e60caf26bc848245b7e66669a",
+    "log/book6-ch13/matrix1/dp2tp2ep4sp/server-0.log": "54d809573466c30f24b9ca2aadc2350dfc23219f1c222dba9b59eac402aaddf3",
+    "log/book6-ch13/matrix1/dp2tp2ep4sp/hbm-samples.jsonl": "3e732c32fac8d0d4655e5c21758012f64e3fd5e1d35d8cd53bbfa8a56deac89f",
+    "log/book6-ch13/serving_matrix1_dp2tp2ep4sp.json": "bf26dd1ce8d8c8ba2ebefb67b316ce2b7de495d51897d5cdc79eda42b7025c82",
+    "log/book6-ch13/matrix1/replicas2/status.json": "72c49d072d0d6a62d6c0bb6fdd4d1f0af70b7911f92041243f2b7df4184d819b",
+    "log/book6-ch13/matrix1/replicas2/server-0.log": "89a806cc632cd403ce41522d16d0507f7f9001c0d82bc9039b8cfcec7a9443bf",
+    "log/book6-ch13/matrix1/replicas2/server-1.log": "794f785aa7a159b6919bfb6da8c7215d15f0d8ee5ca3a7b485579ed55c41045a",
+    "log/book6-ch13/matrix1/replicas2/hbm-samples.jsonl": "60d6be6e7853e95deedbfe974e49765fa2751f9516170c29298fe1ad53e6b2d2",
+    "log/book6-ch13/serving_matrix1_replicas2.json": "0305a64cf0000c6c84ba88dfe49db6ea126dfb028b488a8264ac9327fd7febbe",
+    "log/book6-ch13/serving_repeat_tp1.json": "5a698da050adc46015b0b846b54b2218096cbc7a4c718a8a57a6aaf83f8d92d8",
+    "log/book6-ch13/repeat/tp1/status.json": "f148923d1e5a94e946ebc2da15bcc65bd06dc8e8fb6be2fced4deeae718756e6",
+    "log/book6-ch13/repeat/tp1/server-0.log": "36e313471c325649f9f990b8c33f9fa0c5ced51c3444b2f31f822b7812ba68ed",
+    "log/book6-ch13/serving_repeat_tp2pp2.json": "46bccb7c43e7a12e64b4622dfe2d4126346bdab40f580bee4eb1adcc2dbe21eb",
+    "log/book6-ch13/repeat/tp2pp2/status.json": "cee3e7b9c12904877e267574df0ee36b3d1f1ed3803b6fb6d4795f4d5cf23b6c",
+    "log/book6-ch13/repeat/tp2pp2/server-0.log": "a6fc273e9c61ce347f5c7a817a7526d30e3209d327e8999813f3f242be8ff621",
+    "log/book6-ch13/serving_sync_tp1.json": "0e4c4b30bf5827f3675249543b06c38ebfcc2e95f9dd1be4a2b8355266fdf28d",
+    "log/book6-ch13/sync/tp1/status.json": "d4564dec46cea53fbde4f86f11d4b5aed24fe4165c43045b880f41ebd4425c70",
+    "log/book6-ch13/sync/tp1/server-0.log": "c402d7bb442e210609cb5d5939be0feacea6385f7bbcd14124486daaca68eb70",
+    "log/book6-ch13/serving_sync_tp2pp2.json": "c8855c81bc5e418586f57506309fe91e21197c0d2f2ab8c5506dc8223a02eace",
+    "log/book6-ch13/sync/tp2pp2/status.json": "2ae62fcf4c25e41c204d0c870a5a80364299221c7861a34fc7f5bbb39c98ad20",
+    "log/book6-ch13/sync/tp2pp2/server-0.log": "f76f1f8adca72ee161fd482f412eacee7359f6365857ea8800d44ca786b992c6"
+  },
+  "interpretation_notes": {
+    "pass_scope": "Health check and prescribed requests completed; not accuracy certification",
+    "pipeline_review": "Default-scheduling PP long-input generation repeats adjacent tokens. See repeat/sync controls; do not rank it as valid acceleration.",
+    "precision_scope": "Synthetic fixed-prefix logprob and generation comparisons; no task-level quality evaluation"
+  }
+}
