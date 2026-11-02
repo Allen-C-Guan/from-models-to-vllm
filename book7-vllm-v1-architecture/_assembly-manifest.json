@@ -8,20 +8,20 @@
     "appendix-c-版本边界与跨册衔接.md": "3b06a3d3332566ee8078ad66e6b92e2987c1e2e3609ae0976560a167c9e6ff98",
     "appendix-d-选读实践与历史资产.md": "3069c89127ca5e2fae02942f30d0fe0164a5b9104f5ed74fb66c13b091ce98bc",
     "ch01-vLLM全景.md": "6f9d32af3ff07e27c6c0fc3f67914cddb436911760f65ce007306c1deee3041b",
-    "ch02-请求的进入与返回.md": "0f05657de23b5cecf5232c9e2db45f37c075f3436252ef28a4606d98911ddc7e",
-    "ch03-组件的运行位置.md": "90bfdaa255e312294f30df5d4da89a2d3b75b65b9478a966da49ad4b195a7fb5",
-    "ch04-引擎的启动与就绪.md": "02c01ebfd411928f5655d43c2f0c2ca9019bb2d21faf2792ae8126418020c01b",
-    "ch05-调度的决策与约束.md": "916afd58144d513b2e6db491555edda1d3f19de4d370ee7b4d5c577738b49f6c",
-    "ch06-KV状态的管理与复用.md": "b8de5e6a40fc029d3f3ebb578875ac453e08270025264ee98d7212c1aeb18c46",
-    "ch07-计划如何变成模型计算.md": "ac903a54a6fb7d9d1599c7e95be76a11a6a36500c0feb9908ff5fa683dbf83c4",
-    "ch08-模型与硬件的适配边界.md": "502b12715b41a01b81d15f5fa7a7ca999a5b4999672ffb131f27660ef1a745aa",
-    "ch09-性能优化的架构落点.md": "ca30a192e9e7d25ce0b07982e822f1a3b77dc931ca0aaf53c32c1c4a6eafe2db",
-    "ch10-从单设备到多设备.md": "5de6b6803cd388e82f6f60ed8ac3db4d40b3f07602bcffe8fd6e664c1088396f",
-    "ch11-扩展功能的接入地图.md": "de421e746e1b78e01c8c39f8b2be736bbf68f8a8e22830cf10b68494e60150b9",
-    "ch12-带着地图阅读源码.md": "37183932040c1dbd07e56b41489911f6f02f09565a11c768df6e14da46461c60",
+    "ch02-请求的进入与返回.md": "f3ee3e626251afa22290203202be1015e824220b0b2433508ed3cf2fad98f1c1",
+    "ch03-组件的运行位置.md": "c5a81ac4ac32705e22d9cb84d6a3505a6562494a4536459775b954137d0d74f0",
+    "ch04-引擎的启动与就绪.md": "26f01815ae7c0b928e9ed6737d43d887bf90737a895656997f39c772a58e6c87",
+    "ch05-调度的决策与约束.md": "621954b252cb551c2aa43f102b85dd8701708037776ba6451e4039443f818e52",
+    "ch06-KV状态的管理与复用.md": "2e013c6a11bebc14e79c7cb6be9bcdbe6e6d20e5a17514d984b66dcafdc706dc",
+    "ch07-计划如何变成模型计算.md": "5230dbebec8cd5192b13a1568cac5b1b18fa0d85bcd49b87105b5d15cc09513d",
+    "ch08-模型与硬件的适配边界.md": "5fb17085f8071dfd03eb6ac565b57e1c13c6b992bd3d39a094652833cb13449d",
+    "ch09-性能优化的架构落点.md": "4736528e0274b8ee4ac5c0d302ce26a68f37381b59d46171d77ff5ade7df5972",
+    "ch10-从单设备到多设备.md": "0ad01821a39886996c3dcf7e7e9dcaba6d5a924480c426e81933b3f82ea3d80f",
+    "ch11-扩展功能的接入地图.md": "8d3dba87d30087990af5446148a188cc4b65f4482b6283938a56cd5186c50702",
+    "ch12-带着地图阅读源码.md": "e35d15b40e0ac914c91258821fd322f86824186acdd6281acd966dd39d6c2ac1",
     "code/README.md": "8b5f87af950608e0c5f5b38b2793be88244f3c8ed27b22c9f057ea086486a3c6",
     "code/build_full_reader.py": "774fafb6fecde3f36ff5b5ea2771910c65638eb201812cd7b2b7966a1283422c",
-    "code/build_reader.py": "6d9081e39b0666ed171d3de58b72c0f33f2faa58b567b176ea69c54381e4ccf9",
+    "code/build_reader.py": "8751df2133a91f8b9ff7e47e90a6c47b6beeae958456c34d0028d9f748fe2ea6",
     "code/render_figures.py": "23981b85c7b0096af8181934cd8f6a777321e077f915ae460f5dfef8f42c1289",
     "code/render_full_figures.py": "cbdd8db6e8ad83f85e1bff0df408fbdc2889d64e4ca79533e08b61b48d11a901",
     "figures/fig-1-1-boundary.png": "373de4b1bd0b322d03074174d2eb7b5fefa23d90340d49c414a43dd22d42fe9c",
@@ -118,7 +118,7 @@
     "practice/legacy/ch12/inproc_trace_demo.py": "e25916df7097b36f258d205013b8d714bc5af408ca08752b273fe8d1a3d09b36",
     "practice/legacy/ch12/mp_default_demo.py": "30848273e14c447d4fbdbc17cafca358e30c26060c7e95340dcca0536e4c7abb",
     "practice/legacy/ch12/sweep_min.py": "071e996bc2eb31986ecc73afc9b39207984d784e527b58b8b26afb4a2f314a22",
-    "全书连续阅读.html": "c013c586e342197931b2b8ecc301995de80366e76df726963abeee5db3e0838a"
+    "全书连续阅读.html": "b9bbeb1dd6ad64700167d48ee68f997954b61e952dfd22b2844afb3bedb22477"
   },
   "sources": {
     "ch01-vLLM全景.md": {
@@ -127,47 +127,47 @@
     },
     "ch02-请求的进入与返回.md": {
       "source": "drafts/Book7-vLLM架构剖析/ch02-请求的进入与返回.md",
-      "sha256": "0f05657de23b5cecf5232c9e2db45f37c075f3436252ef28a4606d98911ddc7e"
+      "sha256": "f3ee3e626251afa22290203202be1015e824220b0b2433508ed3cf2fad98f1c1"
     },
     "ch03-组件的运行位置.md": {
       "source": "drafts/Book7-vLLM架构剖析/ch03-组件的运行位置.md",
-      "sha256": "90bfdaa255e312294f30df5d4da89a2d3b75b65b9478a966da49ad4b195a7fb5"
+      "sha256": "c5a81ac4ac32705e22d9cb84d6a3505a6562494a4536459775b954137d0d74f0"
     },
     "ch04-引擎的启动与就绪.md": {
       "source": "drafts/Book7-vLLM架构剖析/ch04-引擎的启动与就绪.md",
-      "sha256": "02c01ebfd411928f5655d43c2f0c2ca9019bb2d21faf2792ae8126418020c01b"
+      "sha256": "26f01815ae7c0b928e9ed6737d43d887bf90737a895656997f39c772a58e6c87"
     },
     "ch05-调度的决策与约束.md": {
       "source": "drafts/Book7-vLLM架构剖析/ch05-调度的决策与约束.md",
-      "sha256": "916afd58144d513b2e6db491555edda1d3f19de4d370ee7b4d5c577738b49f6c"
+      "sha256": "621954b252cb551c2aa43f102b85dd8701708037776ba6451e4039443f818e52"
     },
     "ch06-KV状态的管理与复用.md": {
       "source": "drafts/Book7-vLLM架构剖析/ch06-KV状态的管理与复用.md",
-      "sha256": "b8de5e6a40fc029d3f3ebb578875ac453e08270025264ee98d7212c1aeb18c46"
+      "sha256": "2e013c6a11bebc14e79c7cb6be9bcdbe6e6d20e5a17514d984b66dcafdc706dc"
     },
     "ch07-计划如何变成模型计算.md": {
       "source": "drafts/Book7-vLLM架构剖析/ch07-计划如何变成模型计算.md",
-      "sha256": "ac903a54a6fb7d9d1599c7e95be76a11a6a36500c0feb9908ff5fa683dbf83c4"
+      "sha256": "5230dbebec8cd5192b13a1568cac5b1b18fa0d85bcd49b87105b5d15cc09513d"
     },
     "ch08-模型与硬件的适配边界.md": {
       "source": "drafts/Book7-vLLM架构剖析/ch08-模型与硬件的适配边界.md",
-      "sha256": "502b12715b41a01b81d15f5fa7a7ca999a5b4999672ffb131f27660ef1a745aa"
+      "sha256": "5fb17085f8071dfd03eb6ac565b57e1c13c6b992bd3d39a094652833cb13449d"
     },
     "ch09-性能优化的架构落点.md": {
       "source": "drafts/Book7-vLLM架构剖析/ch09-性能优化的架构落点.md",
-      "sha256": "ca30a192e9e7d25ce0b07982e822f1a3b77dc931ca0aaf53c32c1c4a6eafe2db"
+      "sha256": "4736528e0274b8ee4ac5c0d302ce26a68f37381b59d46171d77ff5ade7df5972"
     },
     "ch10-从单设备到多设备.md": {
       "source": "drafts/Book7-vLLM架构剖析/ch10-从单设备到多设备.md",
-      "sha256": "5de6b6803cd388e82f6f60ed8ac3db4d40b3f07602bcffe8fd6e664c1088396f"
+      "sha256": "0ad01821a39886996c3dcf7e7e9dcaba6d5a924480c426e81933b3f82ea3d80f"
     },
     "ch11-扩展功能的接入地图.md": {
       "source": "drafts/Book7-vLLM架构剖析/ch11-扩展功能的接入地图.md",
-      "sha256": "de421e746e1b78e01c8c39f8b2be736bbf68f8a8e22830cf10b68494e60150b9"
+      "sha256": "8d3dba87d30087990af5446148a188cc4b65f4482b6283938a56cd5186c50702"
     },
     "ch12-带着地图阅读源码.md": {
       "source": "drafts/Book7-vLLM架构剖析/ch12-带着地图阅读源码.md",
-      "sha256": "37183932040c1dbd07e56b41489911f6f02f09565a11c768df6e14da46461c60"
+      "sha256": "e35d15b40e0ac914c91258821fd322f86824186acdd6281acd966dd39d6c2ac1"
     },
     "appendix-a-术语与阅读约定.md": {
       "source": "drafts/Book7-vLLM架构剖析/appendix-a-术语与阅读约定.md",
@@ -187,7 +187,7 @@
     },
     "全书连续阅读.html": {
       "source": "drafts/Book7-vLLM架构剖析/全书连续阅读.html",
-      "sha256": "c013c586e342197931b2b8ecc301995de80366e76df726963abeee5db3e0838a"
+      "sha256": "b9bbeb1dd6ad64700167d48ee68f997954b61e952dfd22b2844afb3bedb22477"
     },
     "figures/fig-1-1-boundary.png": {
       "source": "drafts/Book7-vLLM架构剖析/figures/fig-1-1-boundary.png",
@@ -570,14 +570,14 @@
     "drafts/Book7-vLLM架构剖析/README.md": "1de8fe80a3745101f0ccb72aececbee6bc67609e334f58fbb29c25235e9c0b4b",
     "code/Book7-vLLM架构剖析/render_figures.py": "23981b85c7b0096af8181934cd8f6a777321e077f915ae460f5dfef8f42c1289",
     "code/Book7-vLLM架构剖析/render_full_figures.py": "cbdd8db6e8ad83f85e1bff0df408fbdc2889d64e4ca79533e08b61b48d11a901",
-    "code/Book7-vLLM架构剖析/build_reader.py": "6d9081e39b0666ed171d3de58b72c0f33f2faa58b567b176ea69c54381e4ccf9",
+    "code/Book7-vLLM架构剖析/build_reader.py": "8751df2133a91f8b9ff7e47e90a6c47b6beeae958456c34d0028d9f748fe2ea6",
     "code/Book7-vLLM架构剖析/build_full_reader.py": "774fafb6fecde3f36ff5b5ea2771910c65638eb201812cd7b2b7966a1283422c"
   },
   "validation": {
     "chapters": 12,
     "appendices": 4,
     "figures": 36,
-    "source_anchors": 49
+    "source_anchors": 92
   },
   "retained_previous_files": []
 }

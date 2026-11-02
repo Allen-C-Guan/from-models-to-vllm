@@ -18,7 +18,7 @@ Book6 已解释分页存储和前缀缓存为什么有用。本章把它们放�
 
 ## 6.2 连续的 token 历史，为什么可以放在不连续的块里
 
-假设每个教学块容纳 2 个 token。A 有 3 个已处理 token，则需要两个逻辑块：第一个容纳位置 0、1，第二个容纳位置 2，并留一个槽位。逻辑块可以映射到物理块 7、2，无须在设备池中连续。
+本章为了把块内偏移画清，把第 1 章的教学块长 4 改为 2；它是独立的映射示例，不是运行中修改同一块池。假设每个教学块容纳 2 个 token。A 有 3 个已处理 token，则需要两个逻辑块：第一个容纳位置 0、1，第二个容纳位置 2，并留一个槽位。逻辑块可以映射到物理块 7、2，无须在设备池中连续。
 
 ![图 6.2 逻辑位置经过块表找到物理槽位](figures/fig-6-2-blocks.png)
 
@@ -35,6 +35,26 @@ Book6 已解释分页存储和前缀缓存为什么有用。本章把它们放�
 ## 6.3 分配、增长与释放是怎样一段生命周期
 
 请求第一次被安排时，管理器确认可复用的部分并为新增工作准备块。之后请求继续增长，只有跨过相应边界或需要额外预留时，才需要追加分配。请求结束或被抢占时，则释放相关引用。
+
+把本节的协作者明确到对象：Scheduler 持有一个 KVCacheManager。Scheduler 负责判断要推进多少 token，调用管理器申请位置；管理器维护分配与引用关系，返回 KVCacheBlocks 或分配失败。沿用本章块长 2 的设定，A 第一次处理 3 个提示词时，一次交接可以展开为：
+
+```python
+# Scheduler → KVCacheManager：request_a 是核心 Request 对象
+allocated = self.kv_cache_manager.allocate_slots(
+    request=request_a, num_new_tokens=3,
+)
+# 成功返回对象的结构视图；块号为教学构造
+KVCacheBlocks(blocks=(
+    [KVCacheBlock(block_id=7, ref_cnt=1),
+     KVCacheBlock(block_id=2, ref_cnt=1)],
+))
+# Scheduler 从返回对象提取可传给执行层的块号
+allocated.get_block_ids()  # ([7, 2],)
+```
+
+KVCacheBlocks 在核心侧装的是块管理对象，`get_block_ids()` 才将它们转为按 KV 组排列的整数列表元组。Scheduler 将这份块号放入 NewRequestData，交回 EngineCore，再由 Executor 传给执行侧；Runner 取得的是访问位置，不需要共享 CPU 上的引用计数对象。接口定义见 [KVCacheBlocks](https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/vllm/v1/core/kv_cache_manager.py#L35) 和 [KVCacheBlock](https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/vllm/v1/core/kv_cache_utils.py#L176)。
+
+A 下一轮只增长到第 4 个位置时，原有块足够，分配接口可以成功返回没有新增块的 `KVCacheBlocks(blocks=([],))`，其块号视图为 `([],)`；容量不足才返回顶层 `None`。调度器必须区分“无需新增，继续使用旧块”和“无法分配，本轮不能照此推进”。结束时调用 `kv_cache_manager.free(request_a)`，移交的是请求身份及其管理状态，而不是要求模型执行一次张量清零。
 
 “释放”最容易被误解。它通常不表示立刻清零每个设备字节，也不表示把整段设备内存归还给通用内存分配器。启动时建立的池仍然存在；变化的是其中某些块不再被这个请求持有。
 
@@ -55,6 +75,27 @@ Book6 已解释分页存储和前缀缓存为什么有用。本章把它们放�
 vLLM 的前缀缓存使用块级身份，把当前块的内容与此前上下文联系起来，并纳入必要的额外信息。这样寻找的是同一计算前缀的可复用状态，而不是仅凭某几个 token 相同就共享。具体哈希与附加键属于版本化实现，理解原则后再去章末导航查看。[官方前缀缓存设计](https://docs.vllm.ai/en/v0.30.0/design/prefix_caching/)
 
 继续使用块长 2 的构造例。此前请求处理过 `[11,12,21,22]`，两块 KV 仍可复用。新请求 U 的提示词是 `[11,12,21,22,31]`。若计算条件一致且查找命中，前四个 token 可由两块已有状态代表；U 仍需处理最后的 `31`，取得自己的首个输出。复用节省的是重复前缀的计算，不是免除后续所有计算。
+
+Scheduler 先向 KVCacheManager 查询历史命中；两者仍分别负责推进决策与状态位置。读取锚的查询返回三项，不能只看一个命中长度：
+
+```python
+cached_blocks, hit_tokens, shared_boundary = (
+    self.kv_cache_manager.get_computed_blocks(request_u)
+)
+# 本例条件下的返回视图
+cached_blocks.get_block_ids()  # ([7, 2],)
+hit_tokens                    # 4
+shared_boundary               # 0：本例无稀疏保留组的共享边界需求
+
+# 查询之后再申请最后一个待处理位置，接纳命中的块
+self.kv_cache_manager.allocate_slots(
+    request=request_u, num_new_tokens=1,
+    num_new_computed_tokens=hit_tokens,
+    new_computed_blocks=cached_blocks,
+)
+```
+
+查找让 Scheduler 知道“已有四个位置可以复用”，分配才进一步落实本次使用关系和新增空间。只有这两次交接完成，Scheduler 才能在计划里把 U 的计算起点设到复用前缀之后。返回值依据 [KVCacheManager.get_computed_blocks](https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/vllm/v1/core/kv_cache_manager.py#L265)；块号与命中内容仍是构造例。
 
 即使提示词完全命中，也不能简单宣称首 token 零前向。KV 不是最后位置的 logits。固定源码的普通查找路径会限制可复用长度，为取得输出所需信息保留重新计算的部分，还可能受块对齐影响。把缓存看成“历史状态复用”就能自然理解这一点；把它看成“整个回答缓存”则会得出错误结论。
 

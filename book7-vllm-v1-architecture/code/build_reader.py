@@ -27,6 +27,8 @@ img{display:block;max-width:100%;height:auto;margin:28px auto 18px;border:1px so
 table{border-collapse:collapse;width:100%;margin:22px 0;font-size:15px;line-height:1.8}
 th,td{padding:10px 12px;border:1px solid #dbe2ea;text-align:left;vertical-align:top;overflow-wrap:anywhere}th{background:#f1f5f9}
 code{font-size:.87em;background:#f1f4f8;border-radius:3px;padding:.1em .3em;overflow-wrap:anywhere}
+pre{background:#f1f4f8;border:1px solid #dbe2ea;border-radius:6px;padding:18px;overflow-x:auto;font-size:15px;line-height:1.65}
+pre code{font-size:inherit;background:none;padding:0;overflow-wrap:normal}
 section+section{border-top:2px solid #dbe2ea;margin-top:70px;padding-top:35px}.toc{columns:2;font-size:15px;line-height:1.9;margin:18px 0}
 .toc a{display:block;break-inside:avoid}footer{border-top:1px solid #dbe2ea;margin-top:40px;color:#53647a;font-size:14px}
 @media(max-width:720px){main{padding:24px 18px;margin:0}p,li{font-size:17px}.toc{columns:1}table{font-size:13px}th,td{padding:7px}}
