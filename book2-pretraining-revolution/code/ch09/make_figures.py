@@ -2,7 +2,7 @@
 #   / 图 9.2 训练不稳定时间线（BERT 2018 -> OPT logbook 2021.11-2022.01 -> PaLM 2022.4，附 spike-回滚小示意图）
 # 所属章节：Book2 第 9 章 §9.2、§9.6
 # 运行方式：cd 工作区根目录 && source env.sh && python "code/ch09/make_figures.py"
-# 产物：figures/fig-9-{1,2}-*.png（300dpi，图内文字英文、图注见正文）
+# 产物：drafts/Book2-预训练革命/figures/fig-9-{1,2}-*.png（300dpi，图内文字英文、图注见正文）
 
 import json
 import os

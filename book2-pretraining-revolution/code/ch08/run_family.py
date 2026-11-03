@@ -1,6 +1,6 @@
 # run_family.py —— Book2 ch8 Kaplan 单曲线族：固定 D=40M token，变 N（非嵌入参数）5 点，一次通过不重复
-# 所属章节：Book2 第 8 章 §8.3（ch08-ScalingLaws.md 表 8.2/图 8.3 数据源）
-# 设计书：notes/01-实验可行性.md §4(i)。
+# 所属章节：Book2 第 8 章 §8.3（drafts/Book2-预训练革命/ch08-ScalingLaws.md 表 8.2/图 8.3 数据源）
+# 设计书：research/Book2-预训练革命/notes/01-实验可行性.md §4(i)。
 #   * 五规模 N∈{1M,3M,7M,15M,20M}（非嵌入参数，脚本打印实数），(n_layer,n_embd) 自配、head_dim 统一 64；
 #   * 每点 D=40M token 一次通过（顺序连续分块，构造上无重复 epoch——冒烟档 32-epoch 教训的正式档修正）；
 #   * b32×s256、AdamW(0.9,0.95,wd=0.1)+grad-clip 1.0、lr 1e-3 余弦降至 1e-4（默认无 warmup）——

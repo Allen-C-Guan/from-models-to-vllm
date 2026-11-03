@@ -1,5 +1,5 @@
 # shakespeare.py —— Book2 ch10 §10.4 热身配置（tiny shakespeare 字符级，nanoGPT shakespeare_char 同口径）
-# 所属章节：Book2 第 10 章 §10.4（ch10-大项目I.md 图 10.2 数据源）
+# 所属章节：Book2 第 10 章 §10.4（drafts/Book2-预训练革命/ch10-大项目I.md 图 10.2 数据源）
 # 口径对照（结构对照非照抄；nanoGPT MIT 2022-12）：6L/384d/6H（非嵌入 10.65M 与其 shakespeare_char 同型）、
 #   字符级词表 65、batch 64 × block 256、AdamW(0.9,0.95,wd 0.1)、grad clip 1.0、峰值 lr 1e-3、
 #   warmup 100 步 + 余弦退火到 0.1x（日程总长 5000 步）、dropout 0（1M 字符级小语料口径）。

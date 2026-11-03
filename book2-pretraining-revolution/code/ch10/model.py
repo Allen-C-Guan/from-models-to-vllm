@@ -1,5 +1,5 @@
 # model.py —— Book2 ch10 大项目 I 定版模型：从零实现的 GPT-2 124M（三插槽 Block，Book3 改装契约）
-# 所属章节：Book2 第 10 章 §10.2-10.3（ch10-大项目I.md；ch11 全章复用）
+# 所属章节：Book2 第 10 章 §10.2-10.3（drafts/Book2-预训练革命/ch10-大项目I.md；ch11 全章复用）
 # 单轨依赖链：ch04/warmup_ablation.py 的参数化 GPT（前身）→ 本文件（正式定版）→ ch11 复用（官方权重对拍）。
 # 结构对照 nanoGPT（MIT，2022-12，结构对照非照抄）与 HF transformers 5.18.0 modeling_gpt2.py（仅对照，命名贴近以便 ch11 键映射）。
 # 运行方式（自测：参数 assert + 初始化警示实验）：python model.py            （CPU fp32，秒级）
@@ -62,7 +62,7 @@ class CausalSelfAttention(nn.Module):
         v = v.view(B, n, self.n_head, hd).transpose(1, 2)              # (B,h,n,hd)
         att = (q @ k.transpose(-2, -1)) / math.sqrt(hd)                # (B,h,n,hd)·(B,h,hd,n) -> (B,h,n,n)
         att = att.masked_fill(self.mask[:, :, :n, :n] == 0, float("-inf"))
-        att = self.attn_drop(F.softmax(att, dim=-1))                   # (B,h,n,n) 行和=1
+        att = self.attn_drop(F.softmax(att, dim=-1))                   # (B,h,n,n)；softmax行和为1，训练时dropout后不必为1
         y = att @ v                                                    # (B,h,n,n)·(B,h,n,hd) -> (B,h,n,hd)
         y = y.transpose(1, 2).contiguous().view(B, n, C)               # (B,h,n,hd) -> (B,n,C)
         return self.resid_drop(self.c_proj(y))                         # (B,n,C)

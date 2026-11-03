@@ -1,0 +1,5 @@
+# 可编辑图源
+
+54张新图同时保留SVG与PNG。本目录Python脚本为生成源，使用matplotlib及Noto CJK字体；复用已有环境即可，未为本书安装环境。render_paging需要先运行verification/check_paging_cases.py生成构造数据。其余脚本通过同目录导入共用图形语汇。
+
+旧并行专题9张PNG继续对应code/ch13的原绘图脚本和历史结果，本次未改其图像数据。不要把重新绘制曲线当作重跑设备实验。

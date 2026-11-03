@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="1008pt" height="576pt" viewBox="0 0 1008 576" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-11-03T18:01:05.509171</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 576 
+L 1008 576 
+L 1008 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 60.192 262.5552 
+L 225.792 262.5552 
+Q 228.1104 262.5552 228.1104 260.64 
+L 228.1104 189.504 
+Q 228.1104 187.5888 225.792 187.5888 
+L 60.192 187.5888 
+Q 57.8736 187.5888 57.8736 189.504 
+L 57.8736 260.64 
+Q 57.8736 262.5552 60.192 262.5552 
+z
+" clip-path="url(#pf752270ba6)" style="fill: #edf0f2; stroke: #7794a5; stroke-width: 1.3; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 311.904 262.5552 
+L 517.248 262.5552 
+Q 519.5664 262.5552 519.5664 260.64 
+L 519.5664 189.504 
+Q 519.5664 187.5888 517.248 187.5888 
+L 311.904 187.5888 
+Q 309.5856 187.5888 309.5856 189.504 
+L 309.5856 260.64 
+Q 309.5856 262.5552 311.904 262.5552 
+z
+" clip-path="url(#pf752270ba6)" style="fill: #e8f0f8; stroke: #7794a5; stroke-width: 1.3; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 636.48 262.5552 
+L 927.936 262.5552 
+Q 930.2544 262.5552 930.2544 260.64 
+L 930.2544 189.504 
+Q 930.2544 187.5888 927.936 187.5888 
+L 636.48 187.5888 
+Q 634.1616 187.5888 634.1616 189.504 
+L 634.1616 260.64 
+Q 634.1616 262.5552 636.48 262.5552 
+z
+" clip-path="url(#pf752270ba6)" style="fill: #e8f0f8; stroke: #7794a5; stroke-width: 1.3; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 231.107695 225.072 
+Q 268.849608 225.072 305.026273 225.072 
+" clip-path="url(#pf752270ba6)" style="fill: none; stroke: #263b50; stroke-width: 1.4; stroke-linecap: round"/>
+    <path d="M 299.026273 222.072 
+L 305.026273 225.072 
+L 299.026273 228.072 
+z
+" clip-path="url(#pf752270ba6)" style="fill: #263b50; stroke: #263b50; stroke-width: 1.4; stroke-linecap: round"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 522.55662 225.072 
+Q 576.861447 225.072 629.601027 225.072 
+" clip-path="url(#pf752270ba6)" style="fill: none; stroke: #263b50; stroke-width: 1.4; stroke-linecap: round"/>
+    <path d="M 623.601027 222.072 
+L 629.601027 225.072 
+L 623.601027 228.072 
+z
+" clip-path="url(#pf752270ba6)" style="fill: #263b50; stroke: #263b50; stroke-width: 1.4; stroke-linecap: round"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 311.904 410.2992 
+L 517.248 410.2992 
+Q 519.5664 410.2992 519.5664 408.384 
+L 519.5664 326.304 
+Q 519.5664 324.3888 517.248 324.3888 
+L 311.904 324.3888 
+Q 309.5856 324.3888 309.5856 326.304 
+L 309.5856 408.384 
+Q 309.5856 410.2992 311.904 410.2992 
+z
+" clip-path="url(#pf752270ba6)" style="fill: #def0e8; stroke: #7794a5; stroke-width: 1.3; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 636.48 410.2992 
+L 927.936 410.2992 
+Q 930.2544 410.2992 930.2544 408.384 
+L 930.2544 326.304 
+Q 930.2544 324.3888 927.936 324.3888 
+L 636.48 324.3888 
+Q 634.1616 324.3888 634.1616 326.304 
+L 634.1616 408.384 
+Q 634.1616 410.2992 636.48 410.2992 
+z
+" clip-path="url(#pf752270ba6)" style="fill: #def0e8; stroke: #7794a5; stroke-width: 1.3; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 414.576 321.565764 
+Q 414.576 293.470663 414.576 266.94081 
+" clip-path="url(#pf752270ba6)" style="fill: none; stroke: #263b50; stroke-width: 1.4; stroke-linecap: round"/>
+    <path d="M 411.576 272.94081 
+L 414.576 266.94081 
+L 417.576 272.94081 
+z
+" clip-path="url(#pf752270ba6)" style="fill: #263b50; stroke: #263b50; stroke-width: 1.4; stroke-linecap: round"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 522.55662 367.344 
+Q 576.861447 367.344 629.601027 367.344 
+" clip-path="url(#pf752270ba6)" style="fill: none; stroke: #263b50; stroke-width: 1.4; stroke-linecap: round"/>
+    <path d="M 623.601027 364.344 
+L 629.601027 367.344 
+L 623.601027 370.344 
+z
+" clip-path="url(#pf752270ba6)" style="fill: #263b50; stroke: #263b50; stroke-width: 1.4; stroke-linecap: round"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 782.208 265.378236 
+Q 782.208 293.473337 782.208 320.00319 
+" clip-path="url(#pf752270ba6)" style="fill: none; stroke: #263b50; stroke-width: 1.4; stroke-linecap: round"/>
+    <path d="M 785.208 314.00319 
+L 782.208 320.00319 
+L 779.208 314.00319 
+z
+" clip-path="url(#pf752270ba6)" style="fill: #263b50; stroke: #263b50; stroke-width: 1.4; stroke-linecap: round"/>
+   </g>
+   <g id="text_1">
+    <text style="font-size: 13px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #263b50" transform="translate(124.1745 219.312391)">输入id</text>
+    <text style="font-size: 13px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #263b50" transform="translate(132.826609 239.840203)">(n,)</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 13px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #263b50" transform="translate(383.037797 218.702)">查表 E[ids]</text>
+    <text style="font-size: 13px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #263b50" transform="translate(400.464906 239.840203)">(n,d)</text>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 13px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #263b50" transform="translate(755.063391 219.280906)">主体 → H</text>
+    <text style="font-size: 13px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #263b50" transform="translate(768.096906 239.840203)">(n,d)</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 13px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #263b50" transform="translate(376.790687 361.572203)">同一个参数 E</text>
+    <text style="font-size: 13px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #263b50" transform="translate(401.166703 382.112203)">(V,d)</text>
+   </g>
+   <g id="text_5">
+    <text style="font-size: 13px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #263b50" transform="translate(746.508781 360.167594)">logits = H Eᵀ</text>
+    <text style="font-size: 13px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #263b50" transform="translate(768.779406 382.112203)">(n,V)</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: middle; fill: #263b50" x="414.576" y="286.9056" transform="rotate(-0 414.576 286.9056)">入口读取</text>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: middle; fill: #263b50" x="576.864" y="360.7776" transform="rotate(-0 576.864 360.7776)">出口读取</text>
+   </g>
+   <g id="text_8">
+    <text style="font-size: 17px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: middle" x="497.376" y="474.048" transform="rotate(-0 497.376 474.048)">∂ℓ/∂E = 查表路径的散加梯度 + 输出分类路径的梯度</text>
+   </g>
+  </g>
+  <g id="text_9">
+   <text style="font-weight: 700; font-size: 22px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: start; fill: #263b50" x="45.36" y="34.56" transform="rotate(-0 45.36 34.56)">4.6 一张嵌入表，同时接收两条学习信号</text>
+  </g>
+  <g id="text_10">
+   <text style="font-size: 10px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: start; fill: #263b50" x="45.36" y="550.08" transform="rotate(-0 45.36 550.08)">据GPT-1式2、GPT-2 logits实现；箭头为前向读取，反向两路梯度相加，见正文式(4.21)。</text>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pf752270ba6">
+   <rect x="40.32" y="69.12" width="927.36" height="437.76"/>
+  </clipPath>
+ </defs>
+</svg>

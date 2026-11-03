@@ -7,7 +7,7 @@
 # 所属章节：Book2 第 11 章 11.1 节。
 # 运行方式：cd 工作区根目录 && source env.sh && python "code/ch11/data.py"
 #   （前置产物缺失时按提示先跑 08_owt_subsample.py / ch08/data_prep.py / ch11/train_124m.py --prep-only）
-# 产物：log/book2-ch11/data_pipeline.json + figures/fig-11-1-data-pipeline.png
+# 产物：log/book2-ch11/data_pipeline.json + drafts/Book2-预训练革命/figures/fig-11-1-data-pipeline.png
 import json
 import os
 import time

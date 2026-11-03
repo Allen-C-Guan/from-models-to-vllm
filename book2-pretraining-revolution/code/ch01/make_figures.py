@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # 用途：Book2 第 1 章插图生成——图 1.1 五环论证链 / 图 1.2 ELMo bi-LM 结构（自绘重制，引 1802.05365）
-# 所属章节：ch01-范式转移.md（原理章无教学代码，本脚本仅出图）
+# 所属章节：drafts/Book2-预训练革命/ch01-范式转移.md（原理章无教学代码，本脚本仅出图）
 # 运行方式：source env.sh && python "code/ch01/make_figures.py"
 import os
 

@@ -1,6 +1,6 @@
 # fit_scaling.py —— Book2 ch8 Kaplan 单曲线拟合：L(N) = L∞ + A·N^(-α) 双拟合 + bootstrap CI
-# 所属章节：Book2 第 8 章 §8.3（ch08-ScalingLaws.md 表 8.3 数据源）
-# 设计书：notes/01-实验可行性.md §4「双拟合方案（含/不含不可约项 E）」。
+# 所属章节：Book2 第 8 章 §8.3（drafts/Book2-预训练革命/ch08-ScalingLaws.md 表 8.3 数据源）
+# 设计书：research/Book2-预训练革命/notes/01-实验可行性.md §4「双拟合方案（含/不含不可约项 E）」。
 #   * 拟合 A（E=L∞ 自由，3 参数）：scipy curve_fit（有界 trf）；
 #   * 拟合 B（固定 L∞=0，2 参数）：log-log 线性 OLS（ln L = ln A - α·ln N）；
 #   * r² 一律在 L 尺度上算（两拟合同尺可比）；bootstrap 500 次（case 重采样，抽签退化则跳过并计数）；

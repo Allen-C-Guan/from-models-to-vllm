@@ -1,7 +1,7 @@
 # 用途：生成图 0.1 —— GPT-2 124M 整机粗图（自绘示意级：一条数据河 + 四项差异插座标注）
-# 所属章节：Book2 第 0 章导览（ch00-导览.md 图 0.1）
+# 所属章节：Book2 第 0 章导览（drafts/Book2-预训练革命/ch00-导览.md 图 0.1）
 # 运行方式：cd /Users/allen/Code/model_analysis && source env.sh && python code/ch00/make_fig_0_1.py
-# 图规：_写作规范.md §4（300dpi / 固定分类色 / 图内英文、图注中文）
+# 图规：drafts/Book2-预训练革命/_写作规范.md §4（300dpi / 固定分类色 / 图内英文、图注中文）
 
 import matplotlib
 matplotlib.use("Agg")

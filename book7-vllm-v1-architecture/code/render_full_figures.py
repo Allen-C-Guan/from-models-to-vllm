@@ -1,6 +1,6 @@
 """第 3–12 章中文架构教学图。source ./env.sh 后运行；不启动设备推理。"""
 from render_figures import (canvas, box, group, arrow, text, note, save,
-                            BLUE, ORANGE, GREEN, PURPLE, MUTED, FILL)
+                            BLUE, ORANGE, GREEN, PURPLE, MUTED, FILL, OUT)
 from matplotlib.patches import Rectangle
 import unicodedata
 
@@ -193,19 +193,40 @@ def ch6():
     save(fig,"fig-6-3-lifecycle")
 
 
-def ch7():
-    fig,ax=page(7,1,"从核心计划到设备执行的责任链","Executor 组织调用，Worker 负责设备资源，Runner 准备当步计算",(1,3))
-    labels=[("核心","计划／状态更新",ORANGE),("Executor","组织执行单元",PURPLE),("Worker","设备与模型资源",PURPLE),("Model Runner","状态 → 张量",PURPLE)]
-    for i,(t,b,c) in enumerate(labels):
-        node(ax,25+i*300,280,t,b,c,w=250,h=110)
-        if i:line(ax,[(25+(i-1)*300+250,320),(25+i*300,320)],color=PURPLE)
-    node(ax,700,610,"设备计算","前向 · 采样 · KV 读写",PURPLE,w=430)
-    line(ax,[(1050,390),(1050,610)],"输入／指令",(950,500),PURPLE)
-    line(ax,[(1130,660),(1175,660),(1175,450),(1100,450),(1100,390)],"计算结果",(1115,550),PURPLE)
-    for i in [3,2,1]:
-        line(ax,[(25+i*300,365),(25+(i-1)*300+250,365)],color=PURPLE)
-    text(ax,400,650,"下排箭头：结果依次返回\nRunner → Worker → Executor → 核心",17)
+def ch7_roles():
+    """一个模型副本、单机三卡 PP 的对象与设备拓扑；可独立重绘。"""
+    fig,ax=page(7,1,"一个执行器组织三个设备工作角色",
+                "单机 · 一个模型副本 · 六层模型分三段 · 不混用其他并行方式",(1,3),1100)
+    group(ax,330,185,540,200,"核心进程（CPU）：EngineCore",ORANGE)
+    text(ax,600,245,"取得调度计划 → 调用执行器 → 交回结果",15)
+    node(ax,410,280,"Executor × 1","组织整组三个 Worker 的调用",BLUE,w=380,h=80)
+    for i,x in enumerate([40,440,840]):
+        center=x+160
+        group(ax,x,455,320,285,f"工作进程 {i}（CPU）",PURPLE)
+        node(ax,x+30,505,f"Worker {i}","本地设备环境 · 阶段交接",PURPLE,w=260,h=80)
+        node(ax,x+30,635,f"Runner {i}","持有模型分片 · 组织本地计算",PURPLE,w=260,h=80)
+        arrow(ax,[(center,585),(center,635)],color=PURPLE)
+        text(ax,center,610,"持有并调用",12,PURPLE,bg=True)
+        points=[(600,360),(600,400),(x+280,400),(x+280,505)]
+        arrow(ax,points,color=BLUE)
+        arrow(ax,[(center,715),(center,845)],color=PURPLE)
+        text(ax,center,790,"组织并提交设备计算",13,PURPLE,bg=True)
+        detail=["嵌入与第 1～2 层","第 3～4 层","第 5～6 层与输出处理"][i]
+        node(ax,x+10,845,f"物理 NPU {i}",detail+"\n本阶段权重与 KV",PURPLE,w=300,h=110)
+    for x in [330,730]:
+        arrow(ax,[(x,545),(x+140,545)],color=GREEN,dashed=True)
+        text(ax,x+70,590,"中间状态\n(4,H)",12,GREEN,bg=True)
+    text(ax,600,425,"下发同一轮执行调用；返回路径省略",14,BLUE,bg=True)
+    text(ax,600,990,"绿色虚线：Worker 组织的阶段间张量传输，不要求经 CPU 中转",14,GREEN)
+    text(ax,600,1030,"蓝线：执行调用　紫线：本地调用／提交计算　H：隐藏维度",14,MUTED)
     save(fig,"fig-7-1-roles")
+    # matplotlib 的 SVG 路径默认带行尾空格，规范化后便于审阅 diff。
+    svg=OUT/"fig-7-1-roles.svg"
+    svg.write_text("\n".join(row.rstrip() for row in svg.read_text().splitlines())+"\n")
+
+
+def ch7():
+    ch7_roles()
     flow(7,2,"fig-7-2-tensors","混合批次从请求计划变成张量","T=4 个输入 token，R=2 条请求；本例两条请求都产生一个输出",[
         ("请求切片","A：1 token\nC：3 token",BLUE),
         ("连续输入","ids (4,)\npositions (4,)",PURPLE),
@@ -386,6 +407,133 @@ def ch12():
         ("回答后停止","记录版本与适用边界",BLUE)],(0,1,2,3,4),"不以阅读行数衡量理解；证据不足时保留多个解释。")
 
 
+def ch7_panorama():
+    """第 2～7 章阶段地图；独立调用只重绘本图，不改其他插图。"""
+    fig, ax = canvas("图 7.4  请求、计划、张量与结果：第 2～7 章全景地图",
+                     "主图：单设备 · 核心独立进程 · UniProcExecutor · 普通文本生成；编号对应正文表 7.4。按因果读图，不代表耗时或默认部署。",
+                     height=2960, width=2200)
+
+    def card(x, y, w, h, title, body, color=BLUE, size=16):
+        box(ax, x, y, w, h, "", color=color)
+        heading = text(ax, x+20, y+26, title, 20, color, ha="left", weight="bold")
+        detail = text(ax, x+20, y+55, body, size, ha="left")
+        detail.set_verticalalignment("top")
+        detail.set_linespacing(1.2)
+        # 按真实字形边界收紧字号，防止多行文字越过框底或遮住箭头。
+        renderer = fig.canvas.get_renderer()
+        for artist, max_height in [(heading, 36), (detail, h-65)]:
+            bounds = artist.get_window_extent(renderer).transformed(ax.transData.inverted())
+            ratio = min((w-40)/abs(bounds.width), max_height/abs(bounds.height), 1)
+            artist.set_fontsize(artist.get_fontsize()*ratio)
+
+    def route(points, label, at, color=BLUE, dashed=False):
+        arrow(ax, points, label, at, color, dashed, size=16)
+
+    # 启动带：逻辑准备阶段，避免把资源检查画成每请求执行。
+    group(ax, 35, 110, 2130, 180, "运行之前｜第 4 章：资源先就绪，随后才能接纳请求", MUTED)
+    starts = [
+        ("统一配置", "模型／并行／长度\n每步预算／KV 约束", BLUE),
+        ("执行侧准备", "设备与通信 · 模型构建\n加载器 → 权重映射", PURPLE),
+        ("容量往返", "执行侧 → 规格、可用容量\n核心 → KVCacheConfig", GREEN),
+        ("两侧一致后就绪", "核心块管理 ↔ 设备 KV 池\n所需预热 · 长期保留资源", ORANGE),
+    ]
+    for i, (title, body, col) in enumerate(starts):
+        x=55+i*535
+        card(x, 163, 505, 108, title, body, col, 15)
+        if i: route([(x-30,216),(x,216)], "", None, MUTED)
+
+    text(ax, 40, 330, "运行时拓扑与往返｜第 2、3、5、6、7 章", 23, weight="bold", ha="left")
+    text(ax, 2160, 330, "大框＝进程或设备　小框＝对象／职责　箭头＝交接", 16, MUTED, ha="right")
+    group(ax, 35, 365, 600, 820, "用户／前端进程：输入适配与结果交付", BLUE)
+    group(ax, 735, 365, 1430, 820, "EngineCore 进程：下列核心与执行对象均在 CPU 侧", ORANGE)
+    group(ax, 755, 420, 650, 740, "EngineCore：协调接收、调度、执行、更新与输出", ORANGE)
+    group(ax, 1490, 420, 650, 740, "单卡执行对象：本例没有另起 Worker 进程", PURPLE)
+
+    card(60, 425, 550, 95, "用户调用  LLM.generate()", "文本／token 输入 + SamplingParams", BLUE)
+    card(60, 572, 550, 150, "LLMEngine：输入协调", "① Renderer：渲染／分词\nInputProcessor：校验、建立内部身份\nOutputProcessor 另行登记 RequestState", BLUE)
+    route([(335,520),(335,572)], "① 输入", (405,545), BLUE)
+    card(60, 785, 550, 110, "EngineCoreClient（本例 SyncMPClient）", "② ADD 请求向核心发送\n⑪ 接收核心的内部结果", BLUE)
+    route([(335,722),(335,785)], "EngineCoreRequest", (335,754), BLUE)
+    card(60, 960, 550, 180, "OutputProcessor → 用户结果", "⑪ 根据 RequestState 累积、反分词\n停止字符串检查 · 恢复外部请求身份\n⑫ RequestOutput：文本／IDs／结束原因\n离线收齐返回；在线按协议交付", BLUE)
+    route([(335,895),(335,960)], "⑪ 内部更新", (335,927), BLUE)
+    route([(610,1120),(650,1120),(650,470),(610,470)], "⑫", (650,940), BLUE)
+
+    card(775, 475, 610, 110, "接收路径 → 输入队列 → 主循环", "② EngineCoreRequest → 核心 Request\n保存身份、prompt、输出历史、进度与状态", ORANGE)
+    route([(610,815),(685,815),(685,530),(775,530)], "② ADD", (683,505), BLUE)
+    card(775, 635, 610, 120, "Scheduler：选择本步工作", "③ add_request / schedule：等待、运行、预算\n⑤ 形成 SchedulerOutput\n⑩ update_from_output：更新、结束、下一轮", ORANGE)
+    route([(1080,585),(1080,635)], "③ 登记请求", (1080,610), ORANGE)
+    card(775, 820, 610, 120, "KVCacheManager → 块管理／BlockPool", "④ 查前缀、分配块、维护引用与可用容量\n以 Request 的身份和进度解释新增需求\n管理块号与归属；KV 数值在设备上", GREEN)
+    route([(960,755),(960,820)], "④ 申请", (910,786), GREEN)
+    route([(1190,820),(1190,755)], "块／失败", (1260,786), GREEN)
+    card(775, 1005, 610, 135, "核心输出路径：回前端，也准备下一轮", "⑨ 接收 ModelRunnerOutput\n⑩ 原计划 + 结果 → Scheduler 更新请求\n⑪ EngineCoreOutputs → 输出队列／发送", ORANGE)
+    route([(775,1080),(685,1080),(685,870),(610,870)], "⑪", (685,1045), BLUE)
+    route([(1385,1030),(1420,1030),(1420,730),(1385,730)], "⑩", (1420,980), ORANGE, True)
+
+    card(1510, 475, 610, 110, "Executor：整组 Worker 的调用入口", "⑤ 收到计划；本例为 UniProcExecutor\n组织执行／采样调用，取得约定结果", PURPLE)
+    route([(1385,685),(1445,685),(1445,530),(1510,530)], "⑤ 计划", (1445,610), PURPLE)
+    card(1510, 635, 610, 120, "Worker：一个设备执行角色", "⑥ 初始化设备与通信，协调本地资源\n把计划交给 Runner；PP 时组织阶段收发\n持有一个 Runner，本例使用 NPU 0", PURPLE)
+    route([(1815,585),(1815,635)], "⑥ 调用", (1815,609), PURPLE)
+    card(1510, 820, 610, 170, "Runner：本角色的模型执行组织", "⑥ 更新请求记录、块表及当步排列\n⑦ input_ids / positions + Attention 元数据\n⑧ 调模型、选生成位置、投影与采样\n⑨ 以请求 ID 包装执行结果", PURPLE)
+    route([(1815,755),(1815,820)], "计划 + 本地状态", (1815,786), PURPLE)
+    card(1510, 1040, 610, 100, "返回：Runner → Worker → Executor", "⑨ ModelRunnerOutput → EngineCore\n执行与采样可分入口；结果可经异步对象取得", PURPLE, 15)
+    route([(1510,1090),(1385,1090)], "⑨", (1445,1060), PURPLE)
+    route([(1510,940),(1470,940),(1470,1090),(1510,1090)], "", None, PURPLE)
+    # CPU 到设备的双向边界：向下提交和向上结果分别沿外侧布线。
+    route([(2120,915),(2180,915),(2180,1265),(2120,1265)], "⑦／⑧ 提交", (2070,1210), PURPLE)
+    route([(1510,1375),(1450,1375),(1450,1120),(1510,1120)], "⑧ 完成", (1448,1210), PURPLE)
+    group(ax, 35, 1230, 1360, 260, "同一条请求在四处留下状态｜身份关联，不是跨进程共享一个对象", MUTED)
+    for i, (title, body, col) in enumerate([
+        ("前端输出状态", "RequestState\n累计 token／文本\n反分词与交付进度", BLUE),
+        ("核心计算状态", "Request + 块引用\n等待／运行／结束\n计算进度与输出历史", ORANGE),
+        ("Runner 执行状态", "请求记录 + 块表\n首次登记后跨轮保留\n再收集为当步张量", PURPLE),
+        ("设备历史状态", "各层 KV 张量\n按块映射访问\n随请求增长与复用", GREEN),
+    ]):
+        card(55+i*335, 1290, 315, 175, title, body, col, 15)
+    group(ax, 1490, 1230, 650, 260, "物理 NPU 0：权重、KV、临时张量与设备算子", PURPLE)
+    text(ax, 1510, 1300, "⑧ 编号 (4,) → 隐藏表示 (4,H)\n各层读取历史 KV，写入本步 KV\n生成位置 (2,H) → logits (2,V) → IDs (2,)\n结果留在执行链路；并非逐层搬回 CPU", 18, ha="left").set_verticalalignment("top")
+
+    text(ax, 40, 1530, "沿接口读载荷｜编号与主图、表 7.4 一致；以下为字段节选和本章构造值", 23, ha="left", weight="bold")
+    exchanges = [
+        ("①～② 输入 → 核心请求", "prompt=[11,27,42]；max_tokens=2\nEngineCoreRequest：ID、prompt_token_ids、参数\nADD 携请求；ABORT 携终止 ID 列表", BLUE),
+        ("③～④ 请求 → 工作量与容量判断", "A：已知 4，已处理 3，尚有 1 个位置\nallocate_slots(request_a, num_new_tokens=1)\n返回块对象／块号；无需新增 ≠ 分配失败", GREEN),
+        ("⑤～⑥ 计划 → 执行侧状态", "num_scheduled_tokens={A:1, C:3}；总量 4\nA：已有记录的增量；C：完整首次资料\n同时带块变化、结束 ID；不传整份 KV", PURPLE),
+        ("⑦～⑧ 状态 + 计划 → 张量", "IDs=[101,31,32,33]；位置=[3,0,1,2]，均 (4,)\n查询边界=[0,1,4] (3,)；上下文=[4,3] (2,)\n块表／槽位决定去哪读写，请求历史仍隔离", PURPLE),
+        ("⑨～⑩ 执行结果 → 生命周期更新", "ModelRunnerOutput：req_ids=[A,C]\nsampled_token_ids=[[102],[301]]，附行映射\n原计划 + 结果 → A 达上限结束，C 继续", ORANGE),
+        ("⑪～⑫ 内部更新 → 用户可见结果", "EngineCoreOutput：A 新增 [102]，结束原因 LENGTH\n前端接续已有 [101] → [101,102]，恢复文本\nRequestOutput 含文本、IDs、finished 等", BLUE),
+    ]
+    for i,(title,body,col) in enumerate(exchanges):
+        card(40+(i%2)*1090, 1580+(i//2)*195, 1040, 170, title, body, col, 18)
+
+    text(ax, 40, 2190, "换一种部署再定位职责｜纯 PP 三卡示例：1 个核心 → 1 个执行器 → 3 个 Worker → 3 个 Runner → 3 张卡", 22, ha="left", weight="bold")
+    card(40, 2235, 460, 240, "核心进程", "EngineCore\n    └─ MultiprocExecutor\n整组调用、资源查询与结果收集\n核心仍持有调度与 KV 管理职责", ORANGE, 18)
+    for i in range(3):
+        x=620+i*530
+        group(ax,x,2235,490,155,f"工作进程 {i} · 流水线阶段 {i}",PURPLE)
+        text(ax,x+20,2290,f"Worker {i}：本角色设备与阶段收发\n    └─ Runner {i}：组织本段模型执行",18,ha="left").set_verticalalignment("top")
+        box(ax,x+20,2400,450,55,f"NPU {i}：第 {i*2+1}～{i*2+2} 层",color=PURPLE)
+        route([(x+245,2375),(x+245,2400)],"",None,PURPLE)
+        # 控制总线与中间张量线路分开，避免误读为 Executor 传递隐藏表示。
+        route([(500,2265),(565,2265),(565,2220),(x+245,2220),(x+245,2235)],"",None,ORANGE)
+        if i<2:
+            route([(x+490,2305),(x+530,2305)],"",None,GREEN,True)
+    text(ax, 1110, 2510, "橙线：Executor 组织计划与调用；绿色虚线：Worker 间传 IntermediateTensors（隐藏表示 (4,H)，还可带残差等）", 18, MUTED)
+    text(ax, 1110, 2545, "本轮前向依次经过三段；输出阶段参与最终生成，按执行协议回收结果。层数为构造值，非三份独立完整模型。", 18, MUTED)
+
+    group(ax,35,2590,2130,285,"生命周期反馈｜这些变化还会改变下一轮计划，不是收到一个 token 就结束整个闭环",MUTED)
+    events=[
+        ("正常结束", "核心检查上限／EOS 等\n释放 KV 块引用\nfinished_req_ids → Runner 清理\n前端完成交付", ORANGE),
+        ("取消／文本停止", "前端 → 核心：终止 ID\n核心停止后续安排\n设备已提交工作可能仍完成\n晚到结果不得重新激活请求", BLUE),
+        ("容量不足／抢占", "分配失败 → 调整本轮计划\n普通路径释放引用、重置进度\n历史 token 保留，重入等待\n恢复时更新映射并可能重算", GREEN),
+        ("前缀复用", "按计算前缀身份查块\n命中后落实使用引用\n执行侧按块表读取历史\n缓存的是 KV，不是整段回答", GREEN),
+    ]
+    for i,(title,body,col) in enumerate(events):
+        card(55+i*535,2645,505,205,title,body,col,16)
+    text(ax,40,2910,"证据：vLLM v0.30.0 接口与本章已核验的执行职责；教学示意，非运行抓取。H＝隐藏维，V＝词表维。在线 HTTP／AsyncLLM 接入左侧，核心职责不变。",16,MUTED,ha="left")
+    save(fig, "fig-7-4-panorama")
+    svg = OUT / "fig-7-4-panorama.svg"
+    svg.write_text("\n".join(s.rstrip() for s in svg.read_text().splitlines()) + "\n")
+
+
 if __name__ == "__main__":
-    for render in [ch3,ch4,ch5,ch6,ch7,ch8,ch9,ch10,ch11,ch12]:
+    for render in [ch3,ch4,ch5,ch6,ch7,ch7_panorama,ch8,ch9,ch10,ch11,ch12]:
         render()

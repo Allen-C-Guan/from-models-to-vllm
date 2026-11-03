@@ -2,7 +2,7 @@
 # 手术背景：GPT-1 术后现状 = post-LN + 2000 步 warmup（§4.1 原配方，仍在吃药）；GPT-2 §2.3 = pre-LN + ln_f +
 #   残差初始化 1/√N（术后停药）。判据二居其一：post-LN×warmup0 「绝对发散」或「相对自伤」（同配置加 warmup 明显更优）；
 #   两者皆否 => 6 层档可停药（与 Nguyen&Salazar 1910.05895「6 层 post-LN 即 warmup-free、掉点在更大规模」一致，同为好叙事）。
-# 所属章节：Book2 第 4 章 §4.5（ch04-GPT单塔与差异清单.md 表 4.5/图 4.3 数据源）
+# 所属章节：Book2 第 4 章 §4.5（drafts/Book2-预训练革命/ch04-GPT单塔与差异清单.md 表 4.5/图 4.3 数据源）
 # 运行方式：python warmup_ablation.py --steps 3000 --cells all --out-name warmup_full [--depth 6|12 --lr 1e-3|3e-3]
 #   冒烟：--steps 500 --cells post_ln__w0,pre_ln__w0,post_ln__w200 --out-name warmup_smoke
 # 产物：log/book2-ch04/{out-name}.json + 每配置曲线 {out-name}__{cell}.csv / .npy（step, train_loss, ema, grad_norm, lr）

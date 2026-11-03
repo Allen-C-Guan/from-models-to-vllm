@@ -1,7 +1,7 @@
 # 用途：Book2 ch4 三张图——图 4.1 GPT-2 整机示意 / 图 4.2 四项手术高亮 / 图 4.3 停药实验 loss 曲线（自产数据）
 # 所属章节：Book2 第 4 章 §4.3、§4.5
 # 运行方式：cd /Users/allen/Code/model_analysis && source env.sh && python code/ch04/make_figures.py
-# 产物：figures/fig-4-{1,2,3}-*.png（300dpi，图内文字英文、图注见正文）
+# 产物：drafts/Book2-预训练革命/figures/fig-4-{1,2,3}-*.png（300dpi，图内文字英文、图注见正文）
 
 import csv
 import os

@@ -1,0 +1,6 @@
+{
+  "url": "https://registry.npmjs.org/katex/-/katex-0.16.11.tgz",
+  "version": "0.16.11",
+  "tarball_sha256": "8c5494c5f7d8e8bf73ff3fe64d4bd09a340e4878b7eec9bbd9ef8d8f3e24193f",
+  "purpose": "static offline book rendering, no environment installation"
+}

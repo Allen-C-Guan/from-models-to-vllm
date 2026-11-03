@@ -6,7 +6,7 @@
 #     CPU fp32 / eager 注意力，报 max|Δ| / argmax 一致率 / top-5 命中率）+ 贪心 sanity 生成两条教例。
 # 所属章节：Book2 第 11 章 11.2 节（三高危点在 ch10 --parity-hf 随机权重上预演过，本章是官方权重的正片）。
 # 运行方式：cd 工作区根目录 && source env.sh && python "code/ch11/official_gpt2.py"
-# 产物：log/book2-ch11/official_parity.json + figures/fig-11-2-parity.png
+# 产物：log/book2-ch11/official_parity.json + drafts/Book2-预训练革命/figures/fig-11-2-parity.png
 import json
 import os
 import sys

@@ -1,5 +1,5 @@
 # train.py —— Book2 ch10 大项目 I 定版训练循环（CLI）
-# 所属章节：Book2 第 10 章 §10.3/10.5（ch10-大项目I.md 图 10.2/10.3 数据源）
+# 所属章节：Book2 第 10 章 §10.3/10.5（drafts/Book2-预训练革命/ch10-大项目I.md 图 10.2/10.3 数据源）
 # 单轨依赖链：Book1 ch9 训练循环 -> ch4/ch8 参数化前身（warmup_ablation.py / run_family.py）-> 本文件定版 -> ch11 复用。
 # 配方：AdamW(0.9, 0.95, wd 0.1) + grad clip 1.0 + cosine 退火（warmup 线性升、降到 0.1x 峰值）+ 可选 bf16 autocast；
 #   eval 协议 = held-out 段「一次通过、窗口不重叠」（第 4 章 47 遍记忆化教训的修正）。

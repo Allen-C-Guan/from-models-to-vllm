@@ -8,7 +8,7 @@
 # 运行方式：cd 工作区根目录 && source env.sh && python "code/ch11/sample.py"
 #   [--train-steps 6104]（自训模型步数，与 fast 档同配同种子 -> 复现 train124_fast 曲线并保留权重）
 #   [--skip-train]（已有 self124m.pt 时直接加载）[--train-only]（只训练存档，不做采样件）
-# 产物：log/book2-ch11/{self124m.pt, sampling.json} + figures/fig-11-3-sampling.png
+# 产物：log/book2-ch11/{self124m.pt, sampling.json} + drafts/Book2-预训练革命/figures/fig-11-3-sampling.png
 import argparse
 import json
 import math

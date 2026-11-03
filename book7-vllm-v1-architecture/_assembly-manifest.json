@@ -2,7 +2,7 @@
   "format": 1,
   "book": "Book7 V1 architecture",
   "files": {
-    "README.md": "8967af5aca6b8bbdb2a4c4f584ff6305c6dcee7b4da53e108338c22dd66d772f",
+    "README.md": "8d43d84d2a63ce936d83d691c1ea4d9189307806f444bf035a3648d980aa88e3",
     "appendix-a-术语与阅读约定.md": "aa46d8a8b066cc51d5d7354f726f110a27ad8688bcf0b95fe3c281613e42e975",
     "appendix-b-源码地图.md": "2bff392a2c06d6cbb74b4a7cb386d777a7155a488b9fb3a85d5d5e7393f0f729",
     "appendix-c-版本边界与跨册衔接.md": "3b06a3d3332566ee8078ad66e6b92e2987c1e2e3609ae0976560a167c9e6ff98",
@@ -13,17 +13,17 @@
     "ch04-引擎的启动与就绪.md": "26f01815ae7c0b928e9ed6737d43d887bf90737a895656997f39c772a58e6c87",
     "ch05-调度的决策与约束.md": "621954b252cb551c2aa43f102b85dd8701708037776ba6451e4039443f818e52",
     "ch06-KV状态的管理与复用.md": "2e013c6a11bebc14e79c7cb6be9bcdbe6e6d20e5a17514d984b66dcafdc706dc",
-    "ch07-计划如何变成模型计算.md": "5230dbebec8cd5192b13a1568cac5b1b18fa0d85bcd49b87105b5d15cc09513d",
+    "ch07-计划如何变成模型计算.md": "a6aead10256a81d31cdc0b7fdaeca607a992d04faf1002fe1688b36fba0c9686",
     "ch08-模型与硬件的适配边界.md": "5fb17085f8071dfd03eb6ac565b57e1c13c6b992bd3d39a094652833cb13449d",
     "ch09-性能优化的架构落点.md": "4736528e0274b8ee4ac5c0d302ce26a68f37381b59d46171d77ff5ade7df5972",
     "ch10-从单设备到多设备.md": "0ad01821a39886996c3dcf7e7e9dcaba6d5a924480c426e81933b3f82ea3d80f",
     "ch11-扩展功能的接入地图.md": "8d3dba87d30087990af5446148a188cc4b65f4482b6283938a56cd5186c50702",
     "ch12-带着地图阅读源码.md": "e35d15b40e0ac914c91258821fd322f86824186acdd6281acd966dd39d6c2ac1",
     "code/README.md": "8b5f87af950608e0c5f5b38b2793be88244f3c8ed27b22c9f057ea086486a3c6",
-    "code/build_full_reader.py": "774fafb6fecde3f36ff5b5ea2771910c65638eb201812cd7b2b7966a1283422c",
+    "code/build_full_reader.py": "f150e1b372347d87c9054489eeca9904f501e5259cbe3a6e341c1b2a74fa3272",
     "code/build_reader.py": "8751df2133a91f8b9ff7e47e90a6c47b6beeae958456c34d0028d9f748fe2ea6",
     "code/render_figures.py": "23981b85c7b0096af8181934cd8f6a777321e077f915ae460f5dfef8f42c1289",
-    "code/render_full_figures.py": "cbdd8db6e8ad83f85e1bff0df408fbdc2889d64e4ca79533e08b61b48d11a901",
+    "code/render_full_figures.py": "f5cb18b5ad7b9eebe66f9d7c03b127d6468471a29310bde8f9a5f6adf339e1ed",
     "figures/fig-1-1-boundary.png": "373de4b1bd0b322d03074174d2eb7b5fefa23d90340d49c414a43dd22d42fe9c",
     "figures/fig-1-1-boundary.svg": "7476be2f6112d8885eac34d5f5acbf62aea492c733feb62f5a50269b96e38da6",
     "figures/fig-1-2-components.png": "357994e07616f382eb819faa302e11ef373714d4a24b9e3f868c927472b43bfe",
@@ -78,8 +78,8 @@
     "figures/fig-6-2-blocks.svg": "ffa5235c6055645b58a83d334dddb9dbde916902448f180b8baa5a9faa54dbb3",
     "figures/fig-6-3-lifecycle.png": "bd086faaafa94e0b1f3e01aa24e230c8c90e8a3f5190ed4a27fabebd308131a5",
     "figures/fig-6-3-lifecycle.svg": "92b40d3b62bd8a186acaad175d9e7d9de3c859631cc91c6f3499b8d6b2c67240",
-    "figures/fig-7-1-roles.png": "1bd7e70bfd11358d4f5dc45cc3af53fce4fcb0bb18dc59537d830eea9f209939",
-    "figures/fig-7-1-roles.svg": "068cff6a3aafa7808c7fea2f38b64e0e70d7497d368726cb878f9a8c5e20146d",
+    "figures/fig-7-1-roles.png": "915977dd33c8f8c1b156e57a0b7368aa90ce5d717ec07722a9f20a330919a70e",
+    "figures/fig-7-1-roles.svg": "bd4600f08082fce1b2eb5578bac766a270562de4a01cfdf1ab75788a0e06029d",
     "figures/fig-7-2-tensors.png": "29410ae3ec41f7d3788cfeb59e64edb5c9f9f1e205e7f3570e1340a8bb84ca9a",
     "figures/fig-7-2-tensors.svg": "cfd02d66e6560552beb90a565892bfad579763e96dc97ca93c554f4b032eb865",
     "figures/fig-7-3-state.png": "e393807367defce50ebbb37f52048991c2a6e0ba8234a4aea54087d899ba5b02",
@@ -118,7 +118,9 @@
     "practice/legacy/ch12/inproc_trace_demo.py": "e25916df7097b36f258d205013b8d714bc5af408ca08752b273fe8d1a3d09b36",
     "practice/legacy/ch12/mp_default_demo.py": "30848273e14c447d4fbdbc17cafca358e30c26060c7e95340dcca0536e4c7abb",
     "practice/legacy/ch12/sweep_min.py": "071e996bc2eb31986ecc73afc9b39207984d784e527b58b8b26afb4a2f314a22",
-    "全书连续阅读.html": "b9bbeb1dd6ad64700167d48ee68f997954b61e952dfd22b2844afb3bedb22477"
+    "全书连续阅读.html": "f6c6ff6846b8fe081060a96d30632fbf06d42cfd69980a6acdf5fbafa95a36a0",
+    "figures/fig-7-4-panorama.png": "0fe89484853f1c0684bc0ebec513e468aa241c7a00584cad2d9bba9aa1af03c2",
+    "figures/fig-7-4-panorama.svg": "b9b72f55e7439e421e59f98e4c56b4671da16fa9bff43803341631d28d2b031d"
   },
   "sources": {
     "ch01-vLLM全景.md": {
@@ -147,7 +149,7 @@
     },
     "ch07-计划如何变成模型计算.md": {
       "source": "drafts/Book7-vLLM架构剖析/ch07-计划如何变成模型计算.md",
-      "sha256": "5230dbebec8cd5192b13a1568cac5b1b18fa0d85bcd49b87105b5d15cc09513d"
+      "sha256": "a6aead10256a81d31cdc0b7fdaeca607a992d04faf1002fe1688b36fba0c9686"
     },
     "ch08-模型与硬件的适配边界.md": {
       "source": "drafts/Book7-vLLM架构剖析/ch08-模型与硬件的适配边界.md",
@@ -187,7 +189,7 @@
     },
     "全书连续阅读.html": {
       "source": "drafts/Book7-vLLM架构剖析/全书连续阅读.html",
-      "sha256": "b9bbeb1dd6ad64700167d48ee68f997954b61e952dfd22b2844afb3bedb22477"
+      "sha256": "f6c6ff6846b8fe081060a96d30632fbf06d42cfd69980a6acdf5fbafa95a36a0"
     },
     "figures/fig-1-1-boundary.png": {
       "source": "drafts/Book7-vLLM架构剖析/figures/fig-1-1-boundary.png",
@@ -299,7 +301,7 @@
     },
     "figures/fig-7-1-roles.png": {
       "source": "drafts/Book7-vLLM架构剖析/figures/fig-7-1-roles.png",
-      "sha256": "1bd7e70bfd11358d4f5dc45cc3af53fce4fcb0bb18dc59537d830eea9f209939"
+      "sha256": "915977dd33c8f8c1b156e57a0b7368aa90ce5d717ec07722a9f20a330919a70e"
     },
     "figures/fig-7-2-tensors.png": {
       "source": "drafts/Book7-vLLM架构剖析/figures/fig-7-2-tensors.png",
@@ -443,7 +445,7 @@
     },
     "figures/fig-7-1-roles.svg": {
       "source": "drafts/Book7-vLLM架构剖析/figures/fig-7-1-roles.svg",
-      "sha256": "068cff6a3aafa7808c7fea2f38b64e0e70d7497d368726cb878f9a8c5e20146d"
+      "sha256": "bd4600f08082fce1b2eb5578bac766a270562de4a01cfdf1ab75788a0e06029d"
     },
     "figures/fig-7-2-tensors.svg": {
       "source": "drafts/Book7-vLLM架构剖析/figures/fig-7-2-tensors.svg",
@@ -564,20 +566,28 @@
     "practice/legacy/ch12/sweep_min.py": {
       "source": "drafts/Book7-vLLM架构剖析/practice/legacy/ch12/sweep_min.py",
       "sha256": "071e996bc2eb31986ecc73afc9b39207984d784e527b58b8b26afb4a2f314a22"
+    },
+    "figures/fig-7-4-panorama.png": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-7-4-panorama.png",
+      "sha256": "0fe89484853f1c0684bc0ebec513e468aa241c7a00584cad2d9bba9aa1af03c2"
+    },
+    "figures/fig-7-4-panorama.svg": {
+      "source": "drafts/Book7-vLLM架构剖析/figures/fig-7-4-panorama.svg",
+      "sha256": "b9b72f55e7439e421e59f98e4c56b4671da16fa9bff43803341631d28d2b031d"
     }
   },
   "build_inputs": {
-    "drafts/Book7-vLLM架构剖析/README.md": "1de8fe80a3745101f0ccb72aececbee6bc67609e334f58fbb29c25235e9c0b4b",
+    "drafts/Book7-vLLM架构剖析/README.md": "91058d897e421f56e47237e2aef5290dd5758f268a751f17cd441cfeda84dabb",
     "code/Book7-vLLM架构剖析/render_figures.py": "23981b85c7b0096af8181934cd8f6a777321e077f915ae460f5dfef8f42c1289",
-    "code/Book7-vLLM架构剖析/render_full_figures.py": "cbdd8db6e8ad83f85e1bff0df408fbdc2889d64e4ca79533e08b61b48d11a901",
+    "code/Book7-vLLM架构剖析/render_full_figures.py": "f5cb18b5ad7b9eebe66f9d7c03b127d6468471a29310bde8f9a5f6adf339e1ed",
     "code/Book7-vLLM架构剖析/build_reader.py": "8751df2133a91f8b9ff7e47e90a6c47b6beeae958456c34d0028d9f748fe2ea6",
-    "code/Book7-vLLM架构剖析/build_full_reader.py": "774fafb6fecde3f36ff5b5ea2771910c65638eb201812cd7b2b7966a1283422c"
+    "code/Book7-vLLM架构剖析/build_full_reader.py": "f150e1b372347d87c9054489eeca9904f501e5259cbe3a6e341c1b2a74fa3272"
   },
   "validation": {
     "chapters": 12,
     "appendices": 4,
-    "figures": 36,
-    "source_anchors": 92
+    "figures": 37,
+    "source_anchors": 93
   },
   "retained_previous_files": []
 }

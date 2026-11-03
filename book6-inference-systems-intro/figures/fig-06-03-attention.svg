@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="1008pt" height="612pt" viewBox="0 0 1008 612" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 612
+L 1008 612
+L 1008 0
+L 0 0
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 56.16 111.6
+L 282.24 111.6
+Q 288 111.6 288 117.36
+L 288 177.84
+Q 288 183.6 282.24 183.6
+L 56.16 183.6
+Q 50.4 183.6 50.4 177.84
+L 50.4 117.36
+Q 50.4 111.6 56.16 111.6
+z
+" clip-path="url(#p25b9d260b7)" style="fill: #edf5fc; stroke: #236599; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 394.56 100.8
+L 631.44 100.8
+Q 637.2 100.8 637.2 106.56
+L 637.2 199.44
+Q 637.2 205.2 631.44 205.2
+L 394.56 205.2
+Q 388.8 205.2 388.8 199.44
+L 388.8 106.56
+Q 388.8 100.8 394.56 100.8
+z
+" clip-path="url(#p25b9d260b7)" style="fill: #eaf6ef; stroke: #24745b; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 704.16 100.8
+L 941.04 100.8
+Q 946.8 100.8 946.8 106.56
+L 946.8 199.44
+Q 946.8 205.2 941.04 205.2
+L 704.16 205.2
+Q 698.4 205.2 698.4 199.44
+L 698.4 106.56
+Q 698.4 100.8 704.16 100.8
+z
+" clip-path="url(#p25b9d260b7)" style="fill: #eaf6ef; stroke: #24745b; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 394.56 284.4
+L 631.44 284.4
+Q 637.2 284.4 637.2 290.16
+L 637.2 365.04
+Q 637.2 370.8 631.44 370.8
+L 394.56 370.8
+Q 388.8 370.8 388.8 365.04
+L 388.8 290.16
+Q 388.8 284.4 394.56 284.4
+z
+" clip-path="url(#p25b9d260b7)" style="fill: #fff2e4; stroke: #a85c1b; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 704.16 284.4
+L 941.04 284.4
+Q 946.8 284.4 946.8 290.16
+L 946.8 365.04
+Q 946.8 370.8 941.04 370.8
+L 704.16 370.8
+Q 698.4 370.8 698.4 365.04
+L 698.4 290.16
+Q 698.4 284.4 704.16 284.4
+z
+" clip-path="url(#p25b9d260b7)" style="fill: #fff2e4; stroke: #a85c1b; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 394.56 446.4
+L 941.04 446.4
+Q 946.8 446.4 946.8 452.16
+L 946.8 512.64
+Q 946.8 518.4 941.04 518.4
+L 394.56 518.4
+Q 388.8 518.4 388.8 512.64
+L 388.8 452.16
+Q 388.8 446.4 394.56 446.4
+z
+" clip-path="url(#p25b9d260b7)" style="fill: #eaf6ef; stroke: #24745b; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 52.56 302.4
+L 285.84 302.4
+Q 291.6 302.4 291.6 308.16
+L 291.6 433.44
+Q 291.6 439.2 285.84 439.2
+L 52.56 439.2
+Q 46.8 439.2 46.8 433.44
+L 46.8 308.16
+Q 46.8 302.4 52.56 302.4
+z
+" clip-path="url(#p25b9d260b7)" style="fill: #f1f3f6; stroke: #667587; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 290.002588 140.4
+Q 338.401802 140.4 384.788556 140.4
+" clip-path="url(#p25b9d260b7)" style="fill: none; stroke: #667587; stroke-width: 1.8; stroke-linecap: round"/>
+    <path d="M 378.788556 137.4
+L 384.788556 140.4
+L 378.788556 143.4
+z
+" clip-path="url(#p25b9d260b7)" style="fill: #667587; stroke: #667587; stroke-width: 1.8; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_1">
+    <path d="M 288 126
+L 324 126
+" clip-path="url(#p25b9d260b7)" style="fill: none; stroke: #667587; stroke-width: 1.8; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_2">
+    <path d="M 324 126
+L 324 82.8
+" clip-path="url(#p25b9d260b7)" style="fill: none; stroke: #667587; stroke-width: 1.8; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_3">
+    <path d="M 324 82.8
+L 820.8 82.8
+" clip-path="url(#p25b9d260b7)" style="fill: none; stroke: #667587; stroke-width: 1.8; stroke-linecap: square"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 820.8 84.799512
+Q 820.8 91.801679 820.8 96.791384
+" clip-path="url(#p25b9d260b7)" style="fill: none; stroke: #667587; stroke-width: 1.8; stroke-linecap: round"/>
+    <path d="M 823.8 90.791384
+L 820.8 96.791384
+L 817.8 90.791384
+z
+" clip-path="url(#p25b9d260b7)" style="fill: #667587; stroke: #667587; stroke-width: 1.8; stroke-linecap: round"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 511.2 207.196436
+Q 511.2 244.79689 511.2 280.384883
+" clip-path="url(#p25b9d260b7)" style="fill: none; stroke: #667587; stroke-width: 1.8; stroke-linecap: round"/>
+    <path d="M 514.2 274.384883
+L 511.2 280.384883
+L 508.2 274.384883
+z
+" clip-path="url(#p25b9d260b7)" style="fill: #667587; stroke: #667587; stroke-width: 1.8; stroke-linecap: round"/>
+   </g>
+   <g id="patch_12">
+    <path d="M 820.8 207.196436
+Q 820.8 244.79689 820.8 280.384883
+" clip-path="url(#p25b9d260b7)" style="fill: none; stroke: #667587; stroke-width: 1.8; stroke-linecap: round"/>
+    <path d="M 823.8 274.384883
+L 820.8 280.384883
+L 817.8 274.384883
+z
+" clip-path="url(#p25b9d260b7)" style="fill: #667587; stroke: #667587; stroke-width: 1.8; stroke-linecap: round"/>
+   </g>
+   <g id="patch_13">
+    <path d="M 512.503198 372.320398
+Q 543.601478 408.601724 573.390065 443.355076
+" clip-path="url(#p25b9d260b7)" style="fill: none; stroke: #667587; stroke-width: 1.8; stroke-linecap: round"/>
+    <path d="M 571.763086 436.847162
+L 573.390065 443.355076
+L 567.207547 440.75191
+z
+" clip-path="url(#p25b9d260b7)" style="fill: #667587; stroke: #667587; stroke-width: 1.8; stroke-linecap: round"/>
+   </g>
+   <g id="patch_14">
+    <path d="M 819.807275 372.537268
+Q 799.200186 408.599674 779.591558 442.914774
+" clip-path="url(#p25b9d260b7)" style="fill: none; stroke: #667587; stroke-width: 1.8; stroke-linecap: round"/>
+    <path d="M 785.173121 439.193732
+L 779.591558 442.914774
+L 779.963662 436.216899
+z
+" clip-path="url(#p25b9d260b7)" style="fill: #667587; stroke: #667587; stroke-width: 1.8; stroke-linecap: round"/>
+   </g>
+   <g id="text_1">
+    <text style="font-size: 23px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: start; fill: #243449" x="32.4" y="35.835859" transform="rotate(-0 32.4 35.835859)">图 6.3  分块存放，不分割归一化语义</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: start; fill: #667587" x="32.4" y="64.82" transform="rotate(-0 32.4 64.82)">独立变体：b=2，单层单头，q形状(1,1)，仅3个有效位置。</text>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: start; fill: #667587" x="32.4" y="593.544375" transform="rotate(-0 32.4 593.544375)">中文教学示意 · 数字为构造例 · 算法依据与简化条件见正文 · 不表示 vLLM 实际布局或硬件实测</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 17px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #236599" x="169.2" y="138.725" transform="rotate(-0 169.2 138.725)">逻辑块表 [4,1]</text>
+   </g>
+   <g id="text_5">
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #243449" x="169.2" y="168.599219" transform="rotate(-0 169.2 168.599219)">块0→物理4；块1→物理1</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 17px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #24745b" x="513" y="138.562734" transform="rotate(-0 513 138.562734)">物理块4 · 2项有效</text>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; fill: #243449" transform="translate(449.055 169.009563)">K=[0, ln2]  V=[10,20]</text>
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; fill: #243449" transform="translate(473.261875 191.683)">K/V形状(2,1)</text>
+   </g>
+   <g id="text_8">
+    <text style="font-size: 17px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #24745b" x="822.6" y="138.589297" transform="rotate(-0 822.6 138.589297)">物理块1 · 仅首槽有效</text>
+   </g>
+   <g id="text_9">
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; fill: #243449" transform="translate(754.741562 169.009563)">K=[ln6, ×]  V=[40, ×]</text>
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; fill: #243449" transform="translate(768.861875 191.683)">有效K/V形状(1,1)</text>
+   </g>
+   <g id="text_10">
+    <text style="font-size: 17px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #a85c1b" x="513" y="316.78" transform="rotate(-0 513 316.78)">块0的归约</text>
+   </g>
+   <g id="text_11">
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #243449" x="513" y="351.767219" transform="rotate(-0 513 351.767219)">分子 u0=50 · 分母 t0=3</text>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 17px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #a85c1b" x="822.6" y="316.78" transform="rotate(-0 822.6 316.78)">块1的归约</text>
+   </g>
+   <g id="text_13">
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #243449" x="822.6" y="351.767219" transform="rotate(-0 822.6 351.767219)">分子 u1=240 · 分母 t1=6</text>
+   </g>
+   <g id="text_14">
+    <g id="patch_15">
+     <path d="M 411.95 257.15
+L 480.85 257.15
+L 480.85 232.45
+L 411.95 232.45
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-size: 13px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #667587" x="446.4" y="249.7075" transform="rotate(-0 446.4 249.7075)">有效项得分</text>
+   </g>
+   <g id="text_15">
+    <g id="patch_16">
+     <path d="M 858.35 257.15
+L 927.25 257.15
+L 927.25 232.45
+L 858.35 232.45
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-size: 13px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #667587" x="892.8" y="249.720703" transform="rotate(-0 892.8 249.720703)">屏蔽无效槽</text>
+   </g>
+   <g id="text_16">
+    <text style="font-size: 17px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #24745b" x="667.8" y="474.425469" transform="rotate(-0 667.8 474.425469)">合并后才完成同一归一化</text>
+   </g>
+   <g id="text_17">
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #243449" x="667.8" y="502.769219" transform="rotate(-0 667.8 502.769219)">o=(50+240)/(3+6)=290/9 ≈ 32.2222；输出形状(1,1)</text>
+   </g>
+   <g id="text_18">
+    <text style="font-size: 17px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #667587" x="169.2" y="349.874766" transform="rotate(-0 169.2 349.874766)">错误反例</text>
+   </g>
+   <g id="text_19">
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; fill: #243449" transform="translate(107.860312 383.822563)">每块先独立softmax</text>
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; fill: #243449" transform="translate(127.2 406.251)">然后等权平均</text>
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; fill: #243449" transform="translate(96.392344 427.650219)">(50/3+40)/2 ≈ 28.3333</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p25b9d260b7">
+   <rect x="0" y="0" width="1008" height="612"/>
+  </clipPath>
+ </defs>
+</svg>

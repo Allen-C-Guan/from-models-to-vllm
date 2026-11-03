@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="1008pt" height="468pt" viewBox="0 0 1008 468" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 468
+L 1008 468
+L 1008 0
+L 0 0
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 41.76 144
+L 224.64 144
+Q 230.4 144 230.4 149.76
+L 230.4 242.64
+Q 230.4 248.4 224.64 248.4
+L 41.76 248.4
+Q 36 248.4 36 242.64
+L 36 149.76
+Q 36 144 41.76 144
+z
+" clip-path="url(#p6af2e625d3)" style="fill: #edf5fc; stroke: #236599; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 290.16 144
+L 473.04 144
+Q 478.8 144 478.8 149.76
+L 478.8 242.64
+Q 478.8 248.4 473.04 248.4
+L 290.16 248.4
+Q 284.4 248.4 284.4 242.64
+L 284.4 149.76
+Q 284.4 144 290.16 144
+z
+" clip-path="url(#p6af2e625d3)" style="fill: #edf5fc; stroke: #236599; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 538.56 144
+L 721.44 144
+Q 727.2 144 727.2 149.76
+L 727.2 242.64
+Q 727.2 248.4 721.44 248.4
+L 538.56 248.4
+Q 532.8 248.4 532.8 242.64
+L 532.8 149.76
+Q 532.8 144 538.56 144
+z
+" clip-path="url(#p6af2e625d3)" style="fill: #eaf6ef; stroke: #24745b; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 786.96 144
+L 969.84 144
+Q 975.6 144 975.6 149.76
+L 975.6 242.64
+Q 975.6 248.4 969.84 248.4
+L 786.96 248.4
+Q 781.2 248.4 781.2 242.64
+L 781.2 149.76
+Q 781.2 144 786.96 144
+z
+" clip-path="url(#p6af2e625d3)" style="fill: #eaf6ef; stroke: #24745b; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 232.40061 194.4
+Q 257.398974 194.4 280.384877 194.4
+" clip-path="url(#p6af2e625d3)" style="fill: none; stroke: #667587; stroke-width: 1.8; stroke-linecap: round"/>
+    <path d="M 274.384877 191.4
+L 280.384877 194.4
+L 274.384877 197.4
+z
+" clip-path="url(#p6af2e625d3)" style="fill: #667587; stroke: #667587; stroke-width: 1.8; stroke-linecap: round"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 480.80061 194.4
+Q 505.798974 194.4 528.784877 194.4
+" clip-path="url(#p6af2e625d3)" style="fill: none; stroke: #667587; stroke-width: 1.8; stroke-linecap: round"/>
+    <path d="M 522.784877 191.4
+L 528.784877 194.4
+L 522.784877 197.4
+z
+" clip-path="url(#p6af2e625d3)" style="fill: #667587; stroke: #667587; stroke-width: 1.8; stroke-linecap: round"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 729.20061 194.4
+Q 754.198974 194.4 777.184877 194.4
+" clip-path="url(#p6af2e625d3)" style="fill: none; stroke: #667587; stroke-width: 1.8; stroke-linecap: round"/>
+    <path d="M 771.184877 191.4
+L 777.184877 194.4
+L 771.184877 197.4
+z
+" clip-path="url(#p6af2e625d3)" style="fill: #667587; stroke: #667587; stroke-width: 1.8; stroke-linecap: round"/>
+   </g>
+   <g id="text_1">
+    <text style="font-size: 23px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: start; fill: #243449" x="32.4" y="35.823281" transform="rotate(-0 32.4 35.823281)">图 2.2  不同存储边界，不同传输成本</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: start; fill: #667587" x="32.4" y="65.765" transform="rotate(-0 32.4 65.765)">概念层次：不指定某一NPU的缓存级数或实测带宽。</text>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: start; fill: #667587" x="32.4" y="449.544375" transform="rotate(-0 32.4 449.544375)">中文教学示意 · 数字为构造例 · 算法依据与简化条件见正文 · 不表示 vLLM 实际布局或硬件实测</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 17px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #236599" x="133.2" y="181.762734" transform="rotate(-0 133.2 181.762734)">主机内存</text>
+   </g>
+   <g id="text_5">
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #243449" x="133.2" y="224.488" transform="rotate(-0 133.2 224.488)">输入、权重加载</text>
+   </g>
+   <g id="text_6">
+    <g id="patch_9">
+     <path d="M 244.25 293.15
+L 274.15 293.15
+L 274.15 268.45
+L 244.25 268.45
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-size: 13px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #667587" x="259.2" y="285.720703" transform="rotate(-0 259.2 285.720703)">搬运</text>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 17px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #236599" x="381.6" y="181.78" transform="rotate(-0 381.6 181.78)">设备 HBM</text>
+   </g>
+   <g id="text_8">
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #243449" x="381.6" y="224.467219" transform="rotate(-0 381.6 224.467219)">权重、KV、工作区</text>
+   </g>
+   <g id="text_9">
+    <g id="patch_10">
+     <path d="M 492.65 293.15
+L 522.55 293.15
+L 522.55 268.45
+L 492.65 268.45
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-size: 13px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #667587" x="507.6" y="285.720703" transform="rotate(-0 507.6 285.720703)">搬运</text>
+   </g>
+   <g id="text_10">
+    <text style="font-size: 17px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #24745b" x="630" y="181.78" transform="rotate(-0 630 181.78)">片上存储</text>
+   </g>
+   <g id="text_11">
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #243449" x="630" y="224.467219" transform="rotate(-0 630 224.467219)">缓存或局部缓冲</text>
+   </g>
+   <g id="text_12">
+    <g id="patch_11">
+     <path d="M 741.05 293.15
+L 770.95 293.15
+L 770.95 268.45
+L 741.05 268.45
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-size: 13px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #667587" x="756" y="285.720703" transform="rotate(-0 756 285.720703)">搬运</text>
+   </g>
+   <g id="text_13">
+    <text style="font-size: 17px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #24745b" x="878.4" y="181.814531" transform="rotate(-0 878.4 181.814531)">运算单元</text>
+   </g>
+   <g id="text_14">
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #243449" x="878.4" y="224.516437" transform="rotate(-0 878.4 224.516437)">矩阵与向量运算</text>
+   </g>
+   <g id="text_15">
+    <text style="font-size: 18px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #243449" x="504" y="352.250156" transform="rotate(-0 504 352.250156)">权重已经在HBM，不代表运算单元不再读取它；每条边必须分别计量。</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p6af2e625d3">
+   <rect x="0" y="0" width="1008" height="468"/>
+  </clipPath>
+ </defs>
+</svg>

@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="1008pt" height="518.4pt" viewBox="0 0 1008 518.4" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 518.4
+L 1008 518.4
+L 1008 0
+L 0 0
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 45.36 144
+L 249.84 144
+Q 255.6 144 255.6 149.76
+L 255.6 217.44
+Q 255.6 223.2 249.84 223.2
+L 45.36 223.2
+Q 39.6 223.2 39.6 217.44
+L 39.6 149.76
+Q 39.6 144 45.36 144
+z
+" clip-path="url(#p3427a85bb8)" style="fill: #edf5fc; stroke: #236599; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 380.16 144
+L 584.64 144
+Q 590.4 144 590.4 149.76
+L 590.4 217.44
+Q 590.4 223.2 584.64 223.2
+L 380.16 223.2
+Q 374.4 223.2 374.4 217.44
+L 374.4 149.76
+Q 374.4 144 380.16 144
+z
+" clip-path="url(#p3427a85bb8)" style="fill: #eaf6ef; stroke: #24745b; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 718.56 144
+L 951.84 144
+Q 957.6 144 957.6 149.76
+L 957.6 217.44
+Q 957.6 223.2 951.84 223.2
+L 718.56 223.2
+Q 712.8 223.2 712.8 217.44
+L 712.8 149.76
+Q 712.8 144 718.56 144
+z
+" clip-path="url(#p3427a85bb8)" style="fill: #edf5fc; stroke: #236599; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 45.36 324
+L 249.84 324
+Q 255.6 324 255.6 329.76
+L 255.6 397.44
+Q 255.6 403.2 249.84 403.2
+L 45.36 403.2
+Q 39.6 403.2 39.6 397.44
+L 39.6 329.76
+Q 39.6 324 45.36 324
+z
+" clip-path="url(#p3427a85bb8)" style="fill: #fff2e4; stroke: #a85c1b; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 380.16 324
+L 620.64 324
+Q 626.4 324 626.4 329.76
+L 626.4 397.44
+Q 626.4 403.2 620.64 403.2
+L 380.16 403.2
+Q 374.4 403.2 374.4 397.44
+L 374.4 329.76
+Q 374.4 324 380.16 324
+z
+" clip-path="url(#p3427a85bb8)" style="fill: #edf5fc; stroke: #236599; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 671.76 324
+L 912.24 324
+Q 918 324 918 329.76
+L 918 397.44
+Q 918 403.2 912.24 403.2
+L 671.76 403.2
+Q 666 403.2 666 397.44
+L 666 329.76
+Q 666 324 671.76 324
+z
+" clip-path="url(#p3427a85bb8)" style="fill: #edf5fc; stroke: #236599; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 257.597644 183.6
+Q 314.998973 183.6 370.38784 183.6
+" clip-path="url(#p3427a85bb8)" style="fill: none; stroke: #667587; stroke-width: 1.8; stroke-linecap: round"/>
+    <path d="M 364.38784 180.6
+L 370.38784 183.6
+L 364.38784 186.6
+z
+" clip-path="url(#p3427a85bb8)" style="fill: #667587; stroke: #667587; stroke-width: 1.8; stroke-linecap: round"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 592.398413 183.6
+Q 651.597942 183.6 708.78501 183.6
+" clip-path="url(#p3427a85bb8)" style="fill: none; stroke: #667587; stroke-width: 1.8; stroke-linecap: round"/>
+    <path d="M 702.78501 180.6
+L 708.78501 183.6
+L 702.78501 186.6
+z
+" clip-path="url(#p3427a85bb8)" style="fill: #667587; stroke: #667587; stroke-width: 1.8; stroke-linecap: round"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 257.597644 360
+Q 314.998973 360 370.38784 360
+" clip-path="url(#p3427a85bb8)" style="fill: none; stroke: #667587; stroke-width: 1.8; stroke-linecap: round"/>
+    <path d="M 364.38784 357
+L 370.38784 360
+L 364.38784 363
+z
+" clip-path="url(#p3427a85bb8)" style="fill: #667587; stroke: #667587; stroke-width: 1.8; stroke-linecap: round"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 628.396436 360
+Q 646.199832 360 661.990768 360
+" clip-path="url(#p3427a85bb8)" style="fill: none; stroke: #667587; stroke-width: 1.8; stroke-linecap: round"/>
+    <path d="M 655.990768 357
+L 661.990768 360
+L 655.990768 363
+z
+" clip-path="url(#p3427a85bb8)" style="fill: #667587; stroke: #667587; stroke-width: 1.8; stroke-linecap: round"/>
+   </g>
+   <g id="text_1">
+    <text style="font-size: 23px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: start; fill: #243449" x="32.4" y="36.089219" transform="rotate(-0 32.4 36.089219)">图 20.3  闭合与开放负载的区别在于谁决定下次发送</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: start; fill: #667587" x="32.4" y="65.695" transform="rotate(-0 32.4 65.695)">上路等待响应；下路按外部计划继续到达。</text>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: start; fill: #667587" x="32.4" y="499.944375" transform="rotate(-0 32.4 499.944375)">中文教学示意 · 数字为构造例 · 算法依据与简化条件见正文 · 不表示 vLLM 实际布局或硬件实测</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 17px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #236599" x="147.6" y="190.069297" transform="rotate(-0 147.6 190.069297)">闭合：发请求1</text>
+   </g>
+   <g id="text_5">
+    <text style="font-size: 17px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #24745b" x="482.4" y="190.067969" transform="rotate(-0 482.4 190.067969)">收到响应1</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 17px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #236599" x="835.2" y="190.069297" transform="rotate(-0 835.2 190.069297)">随后发请求2</text>
+   </g>
+   <g id="text_7">
+    <g id="patch_12">
+     <path d="M 300.05 183.71
+L 329.95 183.71
+L 329.95 159.01
+L 300.05 159.01
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-size: 13px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #667587" x="315" y="176.338594" transform="rotate(-0 315 176.338594)">等待</text>
+   </g>
+   <g id="text_8">
+    <g id="patch_13">
+     <path d="M 623.65 183.71
+L 679.55 183.71
+L 679.55 159.01
+L 623.65 159.01
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-size: 13px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #667587" x="651.6" y="176.306094" transform="rotate(-0 651.6 176.306094)">响应触发</text>
+   </g>
+   <g id="text_9">
+    <text style="font-size: 17px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #a85c1b" x="147.6" y="370.033437" transform="rotate(-0 147.6 370.033437)">开放：独立时钟</text>
+   </g>
+   <g id="text_10">
+    <text style="font-size: 17px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #236599" x="500.4" y="370.069297" transform="rotate(-0 500.4 370.069297)">t=0发请求1</text>
+   </g>
+   <g id="text_11">
+    <text style="font-size: 17px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #236599" x="792" y="370.069297" transform="rotate(-0 792 370.069297)">t=1发请求2</text>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 17px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #243449" x="504" y="467.124531" transform="rotate(-0 504 467.124531)">下路请求2不等待请求1完成；必须记录实际到达是否跟上计划。</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p3427a85bb8">
+   <rect x="0" y="0" width="1008" height="518.4"/>
+  </clipPath>
+ </defs>
+</svg>

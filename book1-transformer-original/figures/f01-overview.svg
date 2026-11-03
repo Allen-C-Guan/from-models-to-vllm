@@ -1,0 +1,338 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="795.6pt" height="513.36pt" viewBox="0 0 795.6 513.36" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-11-03T12:48:24.175006</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 513.36 
+L 795.6 513.36 
+L 795.6 -0 
+L 0 -0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 29.52 139.7016 
+L 258.3 139.7016 
+Q 260.532 139.7016 260.532 137.484 
+L 260.532 79.272 
+Q 260.532 77.0544 258.3 77.0544 
+L 29.52 77.0544 
+Q 27.288 77.0544 27.288 79.272 
+L 27.288 137.484 
+Q 27.288 139.7016 29.52 139.7016 
+z
+" clip-path="url(#pf7074cbe5e)" style="fill: #e9f1f7; stroke: #69869c; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 280.62 139.7016 
+L 509.4 139.7016 
+Q 511.632 139.7016 511.632 137.484 
+L 511.632 79.272 
+Q 511.632 77.0544 509.4 77.0544 
+L 280.62 77.0544 
+Q 278.388 77.0544 278.388 79.272 
+L 278.388 137.484 
+Q 278.388 139.7016 280.62 139.7016 
+z
+" clip-path="url(#pf7074cbe5e)" style="fill: #e9f1f7; stroke: #69869c; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 531.72 139.7016 
+L 760.5 139.7016 
+Q 762.732 139.7016 762.732 137.484 
+L 762.732 79.272 
+Q 762.732 77.0544 760.5 77.0544 
+L 531.72 77.0544 
+Q 529.488 77.0544 529.488 79.272 
+L 529.488 137.484 
+Q 529.488 139.7016 531.72 139.7016 
+z
+" clip-path="url(#pf7074cbe5e)" style="fill: #e9f1f7; stroke: #69869c; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 29.52 261.6696 
+L 213.66 261.6696 
+Q 215.892 261.6696 215.892 259.452 
+L 215.892 201.24 
+Q 215.892 199.0224 213.66 199.0224 
+L 29.52 199.0224 
+Q 27.288 199.0224 27.288 201.24 
+L 27.288 259.452 
+Q 27.288 261.6696 29.52 261.6696 
+z
+" clip-path="url(#pf7074cbe5e)" style="fill: #e9f1f7; stroke: #69869c; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 249.93 261.6696 
+L 473.13 261.6696 
+Q 475.362 261.6696 475.362 259.452 
+L 475.362 201.24 
+Q 475.362 199.0224 473.13 199.0224 
+L 249.93 199.0224 
+Q 247.698 199.0224 247.698 201.24 
+L 247.698 259.452 
+Q 247.698 261.6696 249.93 261.6696 
+z
+" clip-path="url(#pf7074cbe5e)" style="fill: #e9f1f7; stroke: #69869c; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 514.98 261.6696 
+L 760.5 261.6696 
+Q 762.732 261.6696 762.732 259.452 
+L 762.732 201.24 
+Q 762.732 199.0224 760.5 199.0224 
+L 514.98 199.0224 
+Q 512.748 199.0224 512.748 201.24 
+L 512.748 259.452 
+Q 512.748 261.6696 514.98 261.6696 
+z
+" clip-path="url(#pf7074cbe5e)" style="fill: #e9f1f7; stroke: #69869c; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 29.52 358.6896 
+L 213.66 358.6896 
+Q 215.892 358.6896 215.892 356.472 
+L 215.892 298.26 
+Q 215.892 296.0424 213.66 296.0424 
+L 29.52 296.0424 
+Q 27.288 296.0424 27.288 298.26 
+L 27.288 356.472 
+Q 27.288 358.6896 29.52 358.6896 
+z
+" clip-path="url(#pf7074cbe5e)" style="fill: #e9f1f7; stroke: #69869c; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 249.93 358.6896 
+L 473.13 358.6896 
+Q 475.362 358.6896 475.362 356.472 
+L 475.362 298.26 
+Q 475.362 296.0424 473.13 296.0424 
+L 249.93 296.0424 
+Q 247.698 296.0424 247.698 298.26 
+L 247.698 356.472 
+Q 247.698 358.6896 249.93 358.6896 
+z
+" clip-path="url(#pf7074cbe5e)" style="fill: #e9f1f7; stroke: #69869c; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 29.52 472.3416 
+L 213.66 472.3416 
+Q 215.892 472.3416 215.892 470.124 
+L 215.892 411.912 
+Q 215.892 409.6944 213.66 409.6944 
+L 29.52 409.6944 
+Q 27.288 409.6944 27.288 411.912 
+L 27.288 470.124 
+Q 27.288 472.3416 29.52 472.3416 
+z
+" clip-path="url(#pf7074cbe5e)" style="fill: #d9eee6; stroke: #69869c; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 249.93 472.3416 
+L 473.13 472.3416 
+Q 475.362 472.3416 475.362 470.124 
+L 475.362 411.912 
+Q 475.362 409.6944 473.13 409.6944 
+L 249.93 409.6944 
+Q 247.698 409.6944 247.698 411.912 
+L 247.698 470.124 
+Q 247.698 472.3416 249.93 472.3416 
+z
+" clip-path="url(#pf7074cbe5e)" style="fill: #e9f1f7; stroke: #69869c; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_12">
+    <path d="M 514.98 472.3416 
+L 760.5 472.3416 
+Q 762.732 472.3416 762.732 470.124 
+L 762.732 411.912 
+Q 762.732 409.6944 760.5 409.6944 
+L 514.98 409.6944 
+Q 512.748 409.6944 512.748 411.912 
+L 512.748 470.124 
+Q 512.748 472.3416 514.98 472.3416 
+z
+" clip-path="url(#pf7074cbe5e)" style="fill: #e9f1f7; stroke: #69869c; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 20px; font-family: 'Noto Sans CJK SC'; text-anchor: start" x="18.36" y="29.376" transform="rotate(-0 18.36 29.376)">图1.1　任务不变，改变信息的保存、读取与计算</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 13px; font-family: 'Noto Sans CJK SC'; text-anchor: start; fill: #526477" x="18.36" y="60.9768" transform="rotate(-0 18.36 60.9768)">架构演变：每一步针对不同约束；不是无条件的优劣排序</text>
+   </g>
+   <g id="text_3">
+    <text style="font-weight: 700; font-size: 13px; font-family: 'Noto Sans CJK SC'; text-anchor: middle" x="143.91" y="103.0616" transform="rotate(-0 143.91 103.0616)">固定状态交接</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC'; text-anchor: middle" x="143.91" y="126.6952" transform="rotate(-0 143.91 126.6952)">源句 → 状态 → 译文</text>
+   </g>
+   <g id="text_5">
+    <text style="font-weight: 700; font-size: 13px; font-family: 'Noto Sans CJK SC'; text-anchor: middle" x="395.01" y="103.0616" transform="rotate(-0 395.01 103.0616)">按需读取源表示</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC'; text-anchor: middle" x="395.01" y="126.6952" transform="rotate(-0 395.01 126.6952)">保留位置 → 查询 → 加权读出</text>
+   </g>
+   <g id="text_7">
+    <text style="font-weight: 700; font-size: 13px; font-family: 'Noto Sans CJK SC'; text-anchor: middle" x="646.11" y="103.0616" transform="rotate(-0 646.11 103.0616)">Transformer</text>
+   </g>
+   <g id="text_8">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC'; text-anchor: middle" x="646.11" y="126.6952" transform="rotate(-0 646.11 126.6952)">用注意力组织层内位置交互</text>
+   </g>
+   <g id="patch_13">
+    <path d="M 263.088501 109.764 
+Q 269.460528 109.764 274.155505 109.764 
+" style="fill: none; stroke: #3b596e; stroke-width: 1.5; stroke-linecap: round"/>
+    <path d="M 268.955505 107.164 
+L 274.155505 109.764 
+L 268.955505 112.364 
+" style="fill: none; stroke: #3b596e; stroke-width: 1.5; stroke-linecap: round"/>
+   </g>
+   <g id="patch_14">
+    <path d="M 514.188501 109.764 
+Q 520.560528 109.764 525.255505 109.764 
+" style="fill: none; stroke: #3b596e; stroke-width: 1.5; stroke-linecap: round"/>
+    <path d="M 520.055505 107.164 
+L 525.255505 109.764 
+L 520.055505 112.364 
+" style="fill: none; stroke: #3b596e; stroke-width: 1.5; stroke-linecap: round"/>
+   </g>
+   <g id="text_9">
+    <text style="font-size: 13px; font-family: 'Noto Sans CJK SC'; text-anchor: start; fill: #526477" x="18.36" y="171.8568" transform="rotate(-0 18.36 171.8568)">模型职责：两边长度可以不同；以下折叠残差、归一化与层数</text>
+   </g>
+   <g id="text_10">
+    <text style="font-weight: 700; font-size: 13px; font-family: 'Noto Sans CJK SC'; text-anchor: middle" x="121.59" y="225.0296" transform="rotate(-0 121.59 225.0296)">源嵌入与位置</text>
+   </g>
+   <g id="text_11">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC'; text-anchor: middle" x="121.59" y="248.245544" transform="rotate(-0 121.59 248.245544)">源编号 (B,n) → (B,n,d)</text>
+   </g>
+   <g id="text_12">
+    <text style="font-weight: 700; font-size: 13px; font-family: 'Noto Sans CJK SC'; text-anchor: middle" x="361.53" y="225.0296" transform="rotate(-0 361.53 225.0296)">编码器</text>
+   </g>
+   <g id="text_13">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC'; text-anchor: middle" x="361.53" y="248.6632" transform="rotate(-0 361.53 248.6632)">源自注意力 + 逐位置变换</text>
+   </g>
+   <g id="text_14">
+    <text style="font-weight: 700; font-size: 13px; font-family: 'Noto Sans CJK SC'; text-anchor: middle" x="637.74" y="225.0296" transform="rotate(-0 637.74 225.0296)">词表分布</text>
+   </g>
+   <g id="text_15">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC'; text-anchor: middle" x="637.74" y="248.245544" transform="rotate(-0 637.74 248.245544)">目标表示 → (B,m,Vt)</text>
+   </g>
+   <g id="patch_15">
+    <path d="M 218.446798 230.0688 
+Q 231.79341 230.0688 243.462971 230.0688 
+" style="fill: none; stroke: #3b596e; stroke-width: 1.5; stroke-linecap: round"/>
+    <path d="M 238.262971 227.4688 
+L 243.462971 230.0688 
+L 238.262971 232.6688 
+" style="fill: none; stroke: #3b596e; stroke-width: 1.5; stroke-linecap: round"/>
+   </g>
+   <g id="text_16">
+    <text style="font-weight: 700; font-size: 13px; font-family: 'Noto Sans CJK SC'; text-anchor: middle" x="121.59" y="322.0496" transform="rotate(-0 121.59 322.0496)">目标嵌入与位置</text>
+   </g>
+   <g id="text_17">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC'; text-anchor: middle" x="121.59" y="345.265544" transform="rotate(-0 121.59 345.265544)">右移目标 (B,m) → (B,m,d)</text>
+   </g>
+   <g id="text_18">
+    <text style="font-weight: 700; font-size: 13px; font-family: 'Noto Sans CJK SC'; text-anchor: middle" x="361.53" y="322.0496" transform="rotate(-0 361.53 322.0496)">解码器</text>
+   </g>
+   <g id="text_19">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC'; text-anchor: middle" x="361.53" y="345.6832" transform="rotate(-0 361.53 345.6832)">因果读取 + 源读取 + 逐位置变换</text>
+   </g>
+   <g id="patch_16">
+    <path d="M 218.446798 327.6432 
+Q 231.79341 327.6432 243.462971 327.6432 
+" style="fill: none; stroke: #3b596e; stroke-width: 1.5; stroke-linecap: round"/>
+    <path d="M 238.262971 325.0432 
+L 243.462971 327.6432 
+L 238.262971 330.2432 
+" style="fill: none; stroke: #3b596e; stroke-width: 1.5; stroke-linecap: round"/>
+   </g>
+   <g id="patch_17">
+    <path d="M 361.53 264.22585 
+Q 361.53 278.855177 361.53 291.807454 
+" style="fill: none; stroke: #3b596e; stroke-width: 1.5; stroke-linecap: round"/>
+    <path d="M 364.13 286.607454 
+L 361.53 291.807454 
+L 358.93 286.607454 
+" style="fill: none; stroke: #3b596e; stroke-width: 1.5; stroke-linecap: round"/>
+   </g>
+   <g id="text_20">
+    <text style="font-size: 10px; font-family: 'Noto Sans CJK SC'; text-anchor: start" x="369.9" y="282.276313" transform="rotate(-0 369.9 282.276313)">H (B,n,d)</text>
+   </g>
+   <g id="patch_18">
+    <path d="M 477.774352 326.345492 
+Q 556.82842 294.657033 634.32584 263.59255 
+" style="fill: none; stroke: #3b596e; stroke-width: 1.5; stroke-linecap: round"/>
+    <path d="M 628.531795 263.113964 
+L 634.32584 263.59255 
+L 630.466544 267.940634 
+" style="fill: none; stroke: #3b596e; stroke-width: 1.5; stroke-linecap: round"/>
+   </g>
+   <g id="text_21">
+    <text style="font-size: 10px; font-family: 'Noto Sans CJK SC'; text-anchor: middle" x="556.83" y="285.2316" transform="rotate(-0 556.83 285.2316)">Z (B,m,d)</text>
+   </g>
+   <g id="text_22">
+    <text style="font-size: 13px; font-family: 'Noto Sans CJK SC'; text-anchor: start; fill: #526477" x="18.36" y="391.9536" transform="rotate(-0 18.36 391.9536)">知识依赖：当前先建立任务契约，随后打开各部件</text>
+   </g>
+   <g id="text_23">
+    <text style="font-weight: 700; font-size: 13px; font-family: 'Noto Sans CJK SC'; text-anchor: middle" x="121.59" y="435.7016" transform="rotate(-0 121.59 435.7016)">① 任务与记忆</text>
+   </g>
+   <g id="text_24">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC'; text-anchor: middle" x="121.59" y="459.3352" transform="rotate(-0 121.59 459.3352)">第1—4章：本章在此</text>
+   </g>
+   <g id="text_25">
+    <text style="font-weight: 700; font-size: 13px; font-family: 'Noto Sans CJK SC'; text-anchor: middle" x="361.53" y="435.7016" transform="rotate(-0 361.53 435.7016)">② 可学习的读取</text>
+   </g>
+   <g id="text_26">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC'; text-anchor: middle" x="361.53" y="459.3352" transform="rotate(-0 361.53 459.3352)">第5—11章：数学与部件</text>
+   </g>
+   <g id="text_27">
+    <text style="font-weight: 700; font-size: 13px; font-family: 'Noto Sans CJK SC'; text-anchor: middle" x="637.74" y="435.7016" transform="rotate(-0 637.74 435.7016)">③ 完整学习与使用</text>
+   </g>
+   <g id="text_28">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC'; text-anchor: middle" x="637.74" y="459.3352" transform="rotate(-0 637.74 459.3352)">第12—16章：组装、验证、回望</text>
+   </g>
+   <g id="patch_19">
+    <path d="M 218.446798 442.404 
+Q 231.79341 442.404 243.462971 442.404 
+" style="fill: none; stroke: #3b596e; stroke-width: 1.5; stroke-linecap: round"/>
+    <path d="M 238.262971 439.804 
+L 243.462971 442.404 
+L 238.262971 445.004 
+" style="fill: none; stroke: #3b596e; stroke-width: 1.5; stroke-linecap: round"/>
+   </g>
+   <g id="patch_20">
+    <path d="M 477.916798 442.404 
+Q 494.051393 442.404 508.508937 442.404 
+" style="fill: none; stroke: #3b596e; stroke-width: 1.5; stroke-linecap: round"/>
+    <path d="M 503.308937 439.804 
+L 508.508937 442.404 
+L 503.308937 445.004 
+" style="fill: none; stroke: #3b596e; stroke-width: 1.5; stroke-linecap: round"/>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pf7074cbe5e">
+   <rect x="7.2" y="7.2" width="781.2" height="498.96"/>
+  </clipPath>
+ </defs>
+</svg>

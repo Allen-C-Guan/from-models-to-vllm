@@ -1,6 +1,6 @@
 # data_prep.py —— Book2 ch8 Kaplan 单曲线族：数据制备（分词器训练 + LM 语料编码 + eval 池留出）
-# 所属章节：Book2 第 8 章 §8.3（ch08-ScalingLaws.md）
-# 设计书：notes/01-实验可行性.md §4（正式族口径）
+# 所属章节：Book2 第 8 章 §8.3（drafts/Book2-预训练革命/ch08-ScalingLaws.md）
+# 设计书：research/Book2-预训练革命/notes/01-实验可行性.md §4（正式族口径）
 #   * 分词器 sp-8k 只在独立分片 owt_tokenizer_corpus.txt（6000 篇 / 29MB）上训练——与 LM 语料分离
 #     （冒烟档「分词器与 LM 语料未分离」教训的正式档修正，见 01-实验可行性.md §4 冒烟教训）。
 #   * LM 主语料 owt_docs.jsonl（232,920 篇 / 1.15GB）逐篇编码为 uint16 token 流，文档间插 EOS(id=2)

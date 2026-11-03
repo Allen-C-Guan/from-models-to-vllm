@@ -9,7 +9,7 @@
 # 所属章节：Book2 第 11 章 11.4 节（图 11.4/11.5、表 11.2）。
 # 运行方式：cd 工作区根目录 && source env.sh && python "code/ch11/scaling_curve.py"
 # 产物：log/book2-ch11/{scaling_curve.json, scaling_points.csv}
-#       + figures/{fig-11-4-loss-compute.png, fig-11-5-isoflop-valleys.png}
+#       + drafts/Book2-预训练革命/figures/{fig-11-4-loss-compute.png, fig-11-5-isoflop-valleys.png}
 import csv
 import json
 import math

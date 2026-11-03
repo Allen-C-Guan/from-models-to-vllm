@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="1008pt" height="576pt" viewBox="0 0 1008 576" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-11-03T19:09:14.980242</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 576 
+L 1008 576 
+L 1008 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 50.256 150.804 
+L 295.344 150.804 
+Q 297 150.804 297 149.472 
+L 297 96.192 
+Q 297 94.86 295.344 94.86 
+L 50.256 94.86 
+Q 48.6 94.86 48.6 96.192 
+L 48.6 149.472 
+Q 48.6 150.804 50.256 150.804 
+z
+" clip-path="url(#p8c07703db6)" style="fill: #edf0f2; stroke: #7794a5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 338.4 150.804 
+L 947.808 150.804 
+Q 949.464 150.804 949.464 149.472 
+L 949.464 96.192 
+Q 949.464 94.86 947.808 94.86 
+L 338.4 94.86 
+Q 336.744 94.86 336.744 96.192 
+L 336.744 149.472 
+Q 336.744 150.804 338.4 150.804 
+z
+" clip-path="url(#p8c07703db6)" style="fill: #def0e8; stroke: #7794a5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 300.652822 122.832 
+Q 316.872077 122.832 331.637887 122.832 
+" clip-path="url(#p8c07703db6)" style="fill: none; stroke: #263b50; stroke-width: 1.3; stroke-linecap: round"/>
+    <path d="M 325.637887 119.832 
+L 331.637887 122.832 
+L 325.637887 125.832 
+z
+" clip-path="url(#p8c07703db6)" style="fill: #263b50; stroke: #263b50; stroke-width: 1.3; stroke-linecap: round"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 50.256 225.396 
+L 295.344 225.396 
+Q 297 225.396 297 224.064 
+L 297 170.784 
+Q 297 169.452 295.344 169.452 
+L 50.256 169.452 
+Q 48.6 169.452 48.6 170.784 
+L 48.6 224.064 
+Q 48.6 225.396 50.256 225.396 
+z
+" clip-path="url(#p8c07703db6)" style="fill: #edf0f2; stroke: #7794a5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 338.4 225.396 
+L 947.808 225.396 
+Q 949.464 225.396 949.464 224.064 
+L 949.464 170.784 
+Q 949.464 169.452 947.808 169.452 
+L 338.4 169.452 
+Q 336.744 169.452 336.744 170.784 
+L 336.744 224.064 
+Q 336.744 225.396 338.4 225.396 
+z
+" clip-path="url(#p8c07703db6)" style="fill: #def0e8; stroke: #7794a5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 300.652822 197.424 
+Q 316.872077 197.424 331.637887 197.424 
+" clip-path="url(#p8c07703db6)" style="fill: none; stroke: #263b50; stroke-width: 1.3; stroke-linecap: round"/>
+    <path d="M 325.637887 194.424 
+L 331.637887 197.424 
+L 325.637887 200.424 
+z
+" clip-path="url(#p8c07703db6)" style="fill: #263b50; stroke: #263b50; stroke-width: 1.3; stroke-linecap: round"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 50.256 299.988 
+L 295.344 299.988 
+Q 297 299.988 297 298.656 
+L 297 245.376 
+Q 297 244.044 295.344 244.044 
+L 50.256 244.044 
+Q 48.6 244.044 48.6 245.376 
+L 48.6 298.656 
+Q 48.6 299.988 50.256 299.988 
+z
+" clip-path="url(#p8c07703db6)" style="fill: #edf0f2; stroke: #7794a5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 338.4 299.988 
+L 947.808 299.988 
+Q 949.464 299.988 949.464 298.656 
+L 949.464 245.376 
+Q 949.464 244.044 947.808 244.044 
+L 338.4 244.044 
+Q 336.744 244.044 336.744 245.376 
+L 336.744 298.656 
+Q 336.744 299.988 338.4 299.988 
+z
+" clip-path="url(#p8c07703db6)" style="fill: #def0e8; stroke: #7794a5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 300.652822 272.016 
+Q 316.872077 272.016 331.637887 272.016 
+" clip-path="url(#p8c07703db6)" style="fill: none; stroke: #263b50; stroke-width: 1.3; stroke-linecap: round"/>
+    <path d="M 325.637887 269.016 
+L 331.637887 272.016 
+L 325.637887 275.016 
+z
+" clip-path="url(#p8c07703db6)" style="fill: #263b50; stroke: #263b50; stroke-width: 1.3; stroke-linecap: round"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 50.256 374.58 
+L 295.344 374.58 
+Q 297 374.58 297 373.248 
+L 297 319.968 
+Q 297 318.636 295.344 318.636 
+L 50.256 318.636 
+Q 48.6 318.636 48.6 319.968 
+L 48.6 373.248 
+Q 48.6 374.58 50.256 374.58 
+z
+" clip-path="url(#p8c07703db6)" style="fill: #edf0f2; stroke: #7794a5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_12">
+    <path d="M 338.4 374.58 
+L 947.808 374.58 
+Q 949.464 374.58 949.464 373.248 
+L 949.464 319.968 
+Q 949.464 318.636 947.808 318.636 
+L 338.4 318.636 
+Q 336.744 318.636 336.744 319.968 
+L 336.744 373.248 
+Q 336.744 374.58 338.4 374.58 
+z
+" clip-path="url(#p8c07703db6)" style="fill: #def0e8; stroke: #7794a5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_13">
+    <path d="M 300.652822 346.608 
+Q 316.872077 346.608 331.637887 346.608 
+" clip-path="url(#p8c07703db6)" style="fill: none; stroke: #263b50; stroke-width: 1.3; stroke-linecap: round"/>
+    <path d="M 325.637887 343.608 
+L 331.637887 346.608 
+L 325.637887 349.608 
+z
+" clip-path="url(#p8c07703db6)" style="fill: #263b50; stroke: #263b50; stroke-width: 1.3; stroke-linecap: round"/>
+   </g>
+   <g id="patch_14">
+    <path d="M 50.256 449.172 
+L 295.344 449.172 
+Q 297 449.172 297 447.84 
+L 297 394.56 
+Q 297 393.228 295.344 393.228 
+L 50.256 393.228 
+Q 48.6 393.228 48.6 394.56 
+L 48.6 447.84 
+Q 48.6 449.172 50.256 449.172 
+z
+" clip-path="url(#p8c07703db6)" style="fill: #edf0f2; stroke: #7794a5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_15">
+    <path d="M 338.4 449.172 
+L 947.808 449.172 
+Q 949.464 449.172 949.464 447.84 
+L 949.464 394.56 
+Q 949.464 393.228 947.808 393.228 
+L 338.4 393.228 
+Q 336.744 393.228 336.744 394.56 
+L 336.744 447.84 
+Q 336.744 449.172 338.4 449.172 
+z
+" clip-path="url(#p8c07703db6)" style="fill: #def0e8; stroke: #7794a5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_16">
+    <path d="M 300.652822 421.2 
+Q 316.872077 421.2 331.637887 421.2 
+" clip-path="url(#p8c07703db6)" style="fill: none; stroke: #263b50; stroke-width: 1.3; stroke-linecap: round"/>
+    <path d="M 325.637887 418.2 
+L 331.637887 421.2 
+L 325.637887 424.2 
+z
+" clip-path="url(#p8c07703db6)" style="fill: #263b50; stroke: #263b50; stroke-width: 1.3; stroke-linecap: round"/>
+   </g>
+   <g id="text_1">
+    <text style="font-size: 13px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: middle; fill: #263b50" x="172.8" y="127.037703" transform="rotate(-0 172.8 127.037703)">输入 X (B,n,d)</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 13px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: middle; fill: #263b50" x="643.104" y="127.291609" transform="rotate(-0 643.104 127.291609)">词表与位置嵌入之后；本图为堆栈中一个Block</text>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 13px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: middle; fill: #263b50" x="172.8" y="202.3965" transform="rotate(-0 172.8 202.3965)">归一化 + 注意力</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 13px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: middle; fill: #263b50" x="643.104" y="201.610406" transform="rotate(-0 643.104 201.610406)">A = Attention(LN₁(X))；Q/K/V均拆为(B,h,n,d/h)</text>
+   </g>
+   <g id="text_5">
+    <text style="font-size: 13px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: middle; fill: #263b50" x="172.8" y="276.982406" transform="rotate(-0 172.8 276.982406)">第一条残差</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 13px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: middle; fill: #263b50" x="643.104" y="276.449203" transform="rotate(-0 643.104 276.449203)">U = X + A；输出投影已把多个头映回d维</text>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 13px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: middle; fill: #263b50" x="172.8" y="351.521594" transform="rotate(-0 172.8 351.521594)">归一化 + MLP</text>
+   </g>
+   <g id="text_8">
+    <text style="font-size: 13px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: middle; fill: #263b50" x="643.104" y="350.651203" transform="rotate(-0 643.104 350.651203)">F = Linear( GELU( Linear(LN₂(U)) ) )；d→4d→d</text>
+   </g>
+   <g id="text_9">
+    <text style="font-size: 13px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: middle; fill: #263b50" x="172.8" y="426.166406" transform="rotate(-0 172.8 426.166406)">第二条残差</text>
+   </g>
+   <g id="text_10">
+    <text style="font-size: 13px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: middle; fill: #263b50" x="643.104" y="425.659609" transform="rotate(-0 643.104 425.659609)">Y = U + F；整机所有Block后再接LN与共享词表投影</text>
+   </g>
+  </g>
+  <g id="text_11">
+   <text style="font-weight: 700; font-size: 21px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: start; fill: #263b50" x="40.32" y="34.56" transform="rotate(-0 40.32 34.56)">10.1 GPT-2 Block：拓扑与可替换组件</text>
+  </g>
+  <g id="text_12">
+   <text style="font-size: 10px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: start; fill: #263b50" x="40.32" y="552.96" transform="rotate(-0 40.32 552.96)">据随书ch10/model.py；图省略dropout，归一化、注意力、前馈为三类改造位置。</text>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p8c07703db6">
+   <rect x="40.32" y="74.88" width="927.36" height="426.24"/>
+  </clipPath>
+ </defs>
+</svg>

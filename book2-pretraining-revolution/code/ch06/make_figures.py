@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # 用途：Book2 第 6 章插图生成——图 6.1 同一架机器的四个配方旋钮（BERT vs RoBERTa 量级对照）
-# 所属章节：ch06-RoBERTa.md（原理章无教学代码，本脚本仅出图）
+# 所属章节：drafts/Book2-预训练革命/ch06-RoBERTa.md（原理章无教学代码，本脚本仅出图）
 # 运行方式：source env.sh && python "code/ch06/make_figures.py"
 import os
 

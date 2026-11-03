@@ -1,0 +1,360 @@
+{
+  "sources": [
+    {
+      "file": "README.md",
+      "sha256": "26c6042c15fba623a5cb5308dd6950417203633cb4523facb146f7d14b2ddfbc"
+    },
+    {
+      "file": "ch01-从模型前向到推理服务.md",
+      "sha256": "57a5ad7a19e9fec81ff3b0bfef4c054385b0f3e71077d23b6c5c9b8bde978182"
+    },
+    {
+      "file": "ch02-计算与存储层次.md",
+      "sha256": "f54ae4167ac1362297f4d8bd11d553d54d1d93cf199d9f8e170763be6c04e431"
+    },
+    {
+      "file": "ch03-推理成本估算.md",
+      "sha256": "d8c681e18537a0cfe8d7ed9b5a9fef0c05d3e0c2799f600a3be2e096fb654010"
+    },
+    {
+      "file": "ch04-KV状态.md",
+      "sha256": "7c32c08f948c415f2232b53857cd97ba692bf0704f0c8a1f30c71c7aa4a37a44"
+    },
+    {
+      "file": "ch05-分页之前.md",
+      "sha256": "d4e170b3525e164d49e77de62afaf488faa80829baca3b2bddc036a211ae5dc4"
+    },
+    {
+      "file": "ch06-分页KV.md",
+      "sha256": "c547df035860375ea829805cf20b685ff497611d3cc05019bbe60a6084859ec9"
+    },
+    {
+      "file": "ch07-前缀缓存.md",
+      "sha256": "bd82ed33b849f0c1cfbaa31b65dd284422bcdbd21bba77115ba14ad93d10eb14"
+    },
+    {
+      "file": "ch08-批处理.md",
+      "sha256": "9044b8dbe7e9f905662c8de1076fb3568c20905024fbf6912ef0c502145b5229"
+    },
+    {
+      "file": "ch09-排队与调度.md",
+      "sha256": "d87877ae6aaea5d628917a9107df0bc31886b5e36a88f4bd0d0e80fed6fc9663"
+    },
+    {
+      "file": "ch10-分块预填充与抢占.md",
+      "sha256": "bf88ec3876c8a2073d119b475650b6c3a20e51cb9d9c8edadbd50a97c18fb659"
+    },
+    {
+      "file": "ch11-Attention的IO算法.md",
+      "sha256": "29995717177214023eced5313c7399de361a96fe52c41e37d0f9b11a0c023bf6"
+    },
+    {
+      "file": "ch12-低精度计算基础.md",
+      "sha256": "431f2d4c4d8f0f510d054253d2f63c4a7149347c21bb7907dd20366d8e4adf8d"
+    },
+    {
+      "file": "ch13-权重量化.md",
+      "sha256": "f01007e5c9fa7ef2796a65d5e18b416156e922be03f3c52b9c86d71c405ef97a"
+    },
+    {
+      "file": "ch14-KV压缩.md",
+      "sha256": "bcca8ad4c4b4366ce71412cb2f4dc48e4676eace1afaffde5083ff3691e87880"
+    },
+    {
+      "file": "ch15-生成的概率语义.md",
+      "sha256": "e182a73279bd90301faa7a922da6055b923228fe6e702e6edc4ab74963c98b4d"
+    },
+    {
+      "file": "ch16-投机解码的正确性.md",
+      "sha256": "73de18c7df49d53c206d86cf86f6601fc3943bf33f6f6d7aa95d4a1ea1fa103d"
+    },
+    {
+      "file": "ch17-投机的收益与候选.md",
+      "sha256": "c48bf6949c0f04725bf6cb37267acbf81bdea7b308481538f967f3304f87cabf"
+    },
+    {
+      "file": "ch18-主机与设备协同.md",
+      "sha256": "4faa86d4d06f5ed969a2789a0a8fdb15d1b7bae7c3f20065749c6d330cbcb4d8"
+    },
+    {
+      "file": "ch19-并行拓扑.md",
+      "sha256": "ec2c18b8b369cb00ecc114b55d32c255568bb9745517cd323af00b40c93426e5"
+    },
+    {
+      "file": "ch20-把理论放回服务.md",
+      "sha256": "1b2ebb80b2447239b5375656933ebfdae4cc3976d1b00998e4d3129ebb0f6676"
+    },
+    {
+      "file": "appendix-a-实践与历史证据.md",
+      "sha256": "5c9b473e2ba190ede94c9a69eec01c1d82341150baa0c697a439c450d52199ac"
+    },
+    {
+      "file": "appendix-b-术语与符号.md",
+      "sha256": "33bc11de4819b7b7c2e8adc85fb2b6f6500a1d8bd8abba05e6c3e5efe391bab0"
+    },
+    {
+      "file": "appendix-c-知识导航.md",
+      "sha256": "bcfd21e4e193cbf9d203b972845c452d0fd248c49db1bbc1b1181ba8ef15c241"
+    }
+  ],
+  "images": [
+    {
+      "file": "figures/fig-01-01-map.png",
+      "sha256": "cca64dc2e464f9dd6b939cbf68a05d6bcabe469c7d98f772b91b5a1ceb0c4de2"
+    },
+    {
+      "file": "figures/fig-01-02-timeline.png",
+      "sha256": "70b62d278e60f77fb4317704dd977e99fd7b26a49dcc63812f5059b317a415e0"
+    },
+    {
+      "file": "figures/fig-02-01-map.png",
+      "sha256": "d58a640c3a89a52112272a0b9522177c9827ded7771c9b5620566663e4b3335f"
+    },
+    {
+      "file": "figures/fig-02-02-hierarchy.png",
+      "sha256": "a774c43c54faf145f5a8eb27207a57074de997ce60b065c94fb200ebc1d540cd"
+    },
+    {
+      "file": "figures/fig-03-01-map.png",
+      "sha256": "033933fe96877b8e5d35bd13042e315b15a167316c44d9c92877efd841b49044"
+    },
+    {
+      "file": "figures/fig-03-02-roofline.png",
+      "sha256": "4a4bc56e236ce37b1a0803b9ee98e6e6c382a901134249989dda603f7dea587a"
+    },
+    {
+      "file": "figures/fig-04-01-map.png",
+      "sha256": "134ed00ca545347b5f31da96b5104c65e3b06f5da45da0caa4dbe27baba6219e"
+    },
+    {
+      "file": "figures/fig-04-02-progress.png",
+      "sha256": "9591477eaeec980547433712986f4dad13c0e834463bca1aab784c006c156cc4"
+    },
+    {
+      "file": "figures/fig-05-01-map.png",
+      "sha256": "9a9b5f256059dc1d75c230c18293036c2e5dd6eb8c87be23ce7390f2d2ea3f45"
+    },
+    {
+      "file": "figures/fig-05-02-fragmentation.png",
+      "sha256": "03a67fccf7c21a878c02057947000d3a8b6109ca5b74b4c34f0f115a946a62b4"
+    },
+    {
+      "file": "figures/fig-05-03-translation.png",
+      "sha256": "7f0802d5f2062b529bdb00a2353aca0849a8f1c88677316b14ee58b2a208c239"
+    },
+    {
+      "file": "figures/fig-05-04-cow.png",
+      "sha256": "acddb861d5df237658892ace244be8e59a19d16759b8260827bca59b74b08334"
+    },
+    {
+      "file": "figures/fig-06-01-map.png",
+      "sha256": "fe61d8fbd2d1585f362a1f70a0d9aadf10eba6ada107534a0cf1ae50f0c26d1c"
+    },
+    {
+      "file": "figures/fig-06-02-block-table.png",
+      "sha256": "994d1e1e577279eac53e0db4c4ddc21fe55628811cbb85b1ac672f5fa4f813b1"
+    },
+    {
+      "file": "figures/fig-06-03-attention.png",
+      "sha256": "b7100510108744fc4b29474fa8e318f7bbd5b805ccd14e3cfea6804dab1b6434"
+    },
+    {
+      "file": "figures/fig-06-04-cow.png",
+      "sha256": "4151a059755249a6b66c30b66dc423afc0d04d00c302d899825825b0699a9102"
+    },
+    {
+      "file": "figures/fig-06-05-lifecycle.png",
+      "sha256": "5591ddac4109f504b0cfbc075f25c8c544094b3ba7c444c37d10013a85525af2"
+    },
+    {
+      "file": "figures/fig-07-01-map.png",
+      "sha256": "462ed8717a06bf0225bed74264b7466e1644fed9e8334a5c9dd5f568ec0048db"
+    },
+    {
+      "file": "figures/fig-07-02-hash.png",
+      "sha256": "8007c81a97d12e7fec45b9192c728a1de14003da5dd4c0e9ebaa45abbda43d37"
+    },
+    {
+      "file": "figures/fig-07-03-radix.png",
+      "sha256": "72c9002d7878ddca56ec354b4d0cf6ee8b77d945aaca19477314c8ae5f77abf5"
+    },
+    {
+      "file": "figures/fig-08-01-map.png",
+      "sha256": "07b461f30548515e990c5c35dca72c8ab8aa741f6d03957c950bc2e979c77735"
+    },
+    {
+      "file": "figures/fig-08-02-batches.png",
+      "sha256": "45f9e1ebd8c0e296655b91c5c16e9d8aa71422edf31b5d6be84d1d491ab9c95a"
+    },
+    {
+      "file": "figures/fig-09-01-map.png",
+      "sha256": "8ccfc2321d60615659ca51d76e276836703e69a81879710332813847ee09503e"
+    },
+    {
+      "file": "figures/fig-09-02-little.png",
+      "sha256": "b50dceafb7bca5b08d67f9cb505bb71c1b83af48d65376dc99482345eef9d0c5"
+    },
+    {
+      "file": "figures/fig-10-01-map.png",
+      "sha256": "553f1b9b4e20247db3079f4fe043fce2f69d31df0cf5961ba2a3ef33cfd4bcaa"
+    },
+    {
+      "file": "figures/fig-10-02-chunks.png",
+      "sha256": "1e4e604a81988c99c5597dea018b2415ef992ca37c52943f292e5c53b2f779fc"
+    },
+    {
+      "file": "figures/fig-11-01-map.png",
+      "sha256": "fe65542030939d0a903d362449c4a10fc15cbb262d4413c2be4ba47108e9a8c2"
+    },
+    {
+      "file": "figures/fig-11-02-merge.png",
+      "sha256": "9a80489a10ac1aaa7cb101c53aaf82c5f8bf114cbe3047501a8bb64cf897bb4c"
+    },
+    {
+      "file": "figures/fig-11-03-io.png",
+      "sha256": "d8099af3c60d76b1924d2ca61c69da380de54ca16bafb1601ba4476f791abd2c"
+    },
+    {
+      "file": "figures/fig-12-01-map.png",
+      "sha256": "7eb8ae206572484dd531106883c70560b2531ca489b86c93435117e1abca8374"
+    },
+    {
+      "file": "figures/fig-12-02-grid.png",
+      "sha256": "69e5fb2736ac2784c9eb12eb936d64498bda240228ce6b2f847853a699607def"
+    },
+    {
+      "file": "figures/fig-12-03-granularity.png",
+      "sha256": "67fb256f041b0e369b3f04fa3378d62058bae3bfc5dc1529d24b94ce57b435de"
+    },
+    {
+      "file": "figures/fig-13-01-map.png",
+      "sha256": "e2569b7e279dc782f33cebc6df6e83d9c4e40cbb8bc75f19f8e4996f422cb9d7"
+    },
+    {
+      "file": "figures/fig-13-02-compensate.png",
+      "sha256": "1de84fdc6e98a0267f511c1b7fe42500788d1dab59089c958e82e4800f63f9f0"
+    },
+    {
+      "file": "figures/fig-14-01-map.png",
+      "sha256": "2864e58a952dff3797793d4cb137b0089c90a59384f3afde3ba4b49b54375ef6"
+    },
+    {
+      "file": "figures/fig-14-02-axes.png",
+      "sha256": "5dcb8e874b1d0343d98d080acf49b2133c1a71195afcf4cc8cbde66bdaa83737"
+    },
+    {
+      "file": "figures/fig-14-03-selection.png",
+      "sha256": "c41263c30f4fc13af02c748639b67f69d48ef13bc706b185458ec8051782540b"
+    },
+    {
+      "file": "figures/fig-15-01-map.png",
+      "sha256": "9013ce436d794f9190a8f1e71ff6379fc0ba9e2ccb24d22bcfbfa22281abfb66"
+    },
+    {
+      "file": "figures/fig-15-02-sampling.png",
+      "sha256": "b5825f9901d62c8df8c31c56742214b9df3261af57d689b745dfd6f39a948183"
+    },
+    {
+      "file": "figures/fig-15-03-order.png",
+      "sha256": "bead0b1eaf402417ae632f817fbe185e41eb874776a7cfd37092ba0000fa5c27"
+    },
+    {
+      "file": "figures/fig-16-01-map.png",
+      "sha256": "057091647dcf885947d29a46a72040385dc8df4d2b0ef357046b0cdde4188ad7"
+    },
+    {
+      "file": "figures/fig-16-02-alignment.png",
+      "sha256": "f477c249edfb69726e372b01be61eae96c0cdadd67d35986ef7e369f6bfe7cd2"
+    },
+    {
+      "file": "figures/fig-16-03-mass.png",
+      "sha256": "7d955c73c2de575126a21f345a20845c7631c4f359b3b42a2492068141740852"
+    },
+    {
+      "file": "figures/fig-17-01-map.png",
+      "sha256": "cf59af1938d184362d06511d53a3bcef292b94f072e4e90561345882e3291687"
+    },
+    {
+      "file": "figures/fig-17-02-expectation.png",
+      "sha256": "a24ef6474ca111fbe9c83018b1f3731b1c9a9f575aa4cea9a738948c1902520a"
+    },
+    {
+      "file": "figures/fig-17-03-tree.png",
+      "sha256": "97d3b7d8db1557ce1ecc950d6d9c6ced34be8a92634ba57f78d3152ade78764a"
+    },
+    {
+      "file": "figures/fig-18-01-map.png",
+      "sha256": "ba2f1329a4db97ca9a2a953bd9abd97377e3c9cce3465e74f50878f5722c3f76"
+    },
+    {
+      "file": "figures/fig-18-02-events.png",
+      "sha256": "2efc4d27c6fa70fcec6499521a08a757edf251b7909f62cd43b1c396f433ff89"
+    },
+    {
+      "file": "figures/fig-18-03-pipeline.png",
+      "sha256": "940398521105227f3ffd8cc3ada8323743217589335f1bf6eb70cc980b44eb92"
+    },
+    {
+      "file": "figures/fig-18-04-graph.png",
+      "sha256": "a06f677d173a03bd9e10ee3cbae1af61d9e2f2ad96d7e787aa676450658b2132"
+    },
+    {
+      "file": "figures/fig-19-01-map.png",
+      "sha256": "acdaaac61a604d1c22d00a50ccd4c0d4713af211437448ad7ba1a62d25f27063"
+    },
+    {
+      "file": "figures/fig-13-1-lite-dataflow.png",
+      "sha256": "6761561657daa4496e626c55cecf2e9d325388e02bc4ab98aff6e184e9b93c84"
+    },
+    {
+      "file": "figures/fig-13-4-collective-trees.png",
+      "sha256": "2876c81843e6aa683d414fa27fb2b9c2b42a09f867df1ecef33d445ccc513d89"
+    },
+    {
+      "file": "figures/fig-13-5-ring-reduce-scatter.png",
+      "sha256": "05491ad14d128b726967a863b8944af75393dc5e4dda691fd6dcbae2a3f71c05"
+    },
+    {
+      "file": "figures/fig-13-6-ring-all-gather.png",
+      "sha256": "8412b3e7123f18283e9df54da25b5325753a0443ab9bd5a9d17fb2a4a5e7ef86"
+    },
+    {
+      "file": "figures/fig-13-7-recursive-exchange.png",
+      "sha256": "5f553680e9dd9a97efdac81b38ebe26b7b740eb5b4a2dfbc3f426b3d3d0d39a8"
+    },
+    {
+      "file": "figures/fig-13-8-alltoall-pairwise.png",
+      "sha256": "44c8a37f2fb19ed060e1db96ea96d8f1d6a8156f576b5667678c2c628af169e8"
+    },
+    {
+      "file": "figures/fig-13-9-dissemination-barrier.png",
+      "sha256": "0ac5a7e48dd40996c435812a4443d2fc5c85e1f98e492fbbd8bd9c6d866fddb2"
+    },
+    {
+      "file": "figures/fig-13-10-hierarchical-allreduce.png",
+      "sha256": "d8c41810ef428e16e4d68cac619c5edd9c447a114c74baea89251f59060eca07"
+    },
+    {
+      "file": "figures/fig-13-19-tp-measured.png",
+      "sha256": "e66daf85ffe09e33e2bbc9f61f75ac296a7d631b291fdf8f99b2f9ae2b423f80"
+    },
+    {
+      "file": "figures/fig-20-01-map.png",
+      "sha256": "a66145ea9f004aa652b23ff2d7ebb4c6f321ae8e13f194d9c349bc2b8eba93f6"
+    },
+    {
+      "file": "figures/fig-20-02-system.png",
+      "sha256": "9c6db6343ee8b286084cc716b0187352fb5fbeaf2b8408ff5c87680db932e49c"
+    },
+    {
+      "file": "figures/fig-20-03-load.png",
+      "sha256": "bcc5fb242ac1c3ac01694092746fe12c121757e380a3cf15538f3446c83372b8"
+    }
+  ],
+  "math_count": 952,
+  "chapters": 20,
+  "appendices": 3,
+  "html_sha256": "6d44973f055ec1d4d1e04b1d1d73ccae14783da056132b7f5fa74b33002ba523",
+  "bytes": 17841576,
+  "offline_assets": true
+}

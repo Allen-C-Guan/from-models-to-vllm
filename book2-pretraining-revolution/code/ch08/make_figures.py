@@ -3,7 +3,7 @@
 #   / 图 8.3 自家 L(N) 双拟合与无 warmup 倒挂对照（数据全部来自 log/book2-ch08/）
 # 所属章节：Book2 第 8 章 §8.2、§8.3、§8.5
 # 运行方式：cd 工作区根目录 && source env.sh && python "code/ch08/make_figures.py"
-# 产物：figures/fig-8-{1,2,3}-*.png（300dpi，图内文字英文、图注见正文）
+# 产物：drafts/Book2-预训练革命/figures/fig-8-{1,2,3}-*.png（300dpi，图内文字英文、图注见正文）
 
 import json
 import os

@@ -1,6 +1,6 @@
 # train_124m.py —— Book2 ch11 实验二：GPT-2 124M 官方口径 fast 训练（50M token，MPS bf16）
-# 所属章节：Book2 第 11 章 §11.3（ch11-大项目II.md 124M 训练与图 11.4 数据源）
-# 设计书：notes/01-实验可行性.md §1/§4/§7（124M 诚实条款=compute-limited 演示口径）。
+# 所属章节：Book2 第 11 章 §11.3（drafts/Book2-预训练革命/ch11-大项目II.md 124M 训练与图 11.4 数据源）
+# 设计书：research/Book2-预训练革命/notes/01-实验可行性.md §1/§4/§7（124M 诚实条款=compute-limited 演示口径）。
 #   * 词表口径：与官方 gpt2 逐位一致 → 50257（byte-level BPE，tiktoken gpt2 编码器——ch2/bpe.py 已对拍
 #     tiktoken≡HF GPT2Tokenizer id 全等）。sp-8k 流不能直接喂 50257 模型，故用同一 OWT 文档流
 #     （log/book2-scaling/owt_docs.jsonl，ch08/data_prep.py 同源）重新编码为 50257 词表流；

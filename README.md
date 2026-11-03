@@ -1,6 +1,6 @@
 # 从模型到 vLLM（From Models to vLLM）—— 系列教学丛书
 
-这是一套八册的中文教学丛书，走一条完整的旅程：从 2017 年的 Transformer 原论文起步——零魔改、忠于原文，把原典拆到读者能凭书稿重画整机的程度；此后每一册都以上一册的已知架构为底座，用「补什么新知识、改什么架构」的方式层层递进——先看架构不动、训练范式分化的预训练革命，再把 GPT-2 逐插槽改装成 LLaMA 式现代骨架，然后换上混合专家（MoE）与多头潜在注意力（MLA）进入旗舰世代，又在注意力本体上动刀迎来 2026 年的混合架构大收敛；模型侧走完后切换系统视角，讲引擎无关的推理物理学，Book7 先建立 vLLM V1 的系统架构认识，Book8 再从请求、状态与执行逐层走读源码，展开并行、扩展与诊断。每个论断都双锚定：先对论文原文（golden truth），再对本地浅克隆仓库的真实代码。一条单轨代码主线贯穿八册——Book2 从零造出 GPT-2 124M，Book3 把它改装成 LLaMA 式 215M，Book4 换上 MoE 与 MLA、Book5 选做换成 3:1 混合（演化线）；Book6 的 mini 推理引擎把 Book3 终态的稠密小模型当默认服务对象（手写引擎不承载 MoE 与混合 KV），Book8 的选读注册实践再把单轨自训模型接入 vLLM，闭环合拢。
+这是一套八册的中文教学丛书，走一条完整的旅程：从 2017 年的 Transformer 原论文起步——零魔改、忠于原文，把原典拆到读者能凭书稿重画整机的程度；此后每一册都以上一册的已知架构为底座，用「补什么新知识、改什么架构」的方式层层递进——先从Transformer蓝本逐项改造结构、目标、文本入口和训练方式，理解预训练范式的分化，再把 GPT-2 逐插槽改装成 LLaMA 式现代骨架，然后换上混合专家（MoE）与多头潜在注意力（MLA）进入旗舰世代，又在注意力本体上动刀迎来 2026 年的混合架构大收敛；模型侧走完后切换系统视角，讲引擎无关的推理物理学，Book7 先建立 vLLM V1 的系统架构认识，Book8 再从请求、状态与执行逐层走读源码，展开并行、扩展与诊断。每个论断都双锚定：先对论文原文（golden truth），再对本地浅克隆仓库的真实代码。理论主线配合可复现短实验，完整工程另作选读实践。Book2以旧第0—12章为骨架润色与补全推理，保留GPT-2 124M完整项目、模型族实验和论文消融，新增CPU数学核验；后续模型册继续沿组件插槽解释改造。Book6的四版mini引擎、Book8的模型注册均为选读实践，不是阅读理论与架构的强制前置。
 
 ## 这套书写什么
 
@@ -12,7 +12,7 @@ seq2seq  Transformer  预训练范式    现代骨架(组件化)   规模与效�
  瓶颈     原典        (BERT/GPT/T5)  LLaMA插槽化       旗舰世代           2026旗舰主线    (引擎无关)   源码级
   │         │            │              │                 │                  │              │           │
  Book1    Book1        Book2          Book3            Book4              Book5          Book6     Book7-8
-                    (GPT-2单轨起点) (GPT-2改装LLaMA)  (FFN→MoE,GQA→MLA)  (注意力本体手术)  (mini引擎) (主链路+生产)
+                    (目标与骨架分化) (GPT-2改装LLaMA)  (FFN→MoE,GQA→MLA)  (注意力本体手术)  (mini引擎) (主链路+生产)
 ```
 
 调研结论：中英文市场均无同类成书。本丛书的差异化在四处——
@@ -22,28 +22,30 @@ seq2seq  Transformer  预训练范式    现代骨架(组件化)   规模与效�
 3. **V1/MRV2 心智**：市面资料仍停留在 V0/nanovllm，本丛书以 V1 不变量为纲，并把 Model Runner V2（MRV2）重架构纳入正文；
 4. **统一叙事 + 单轨代码**：每项技术按「问题→方案→落地→实证」的层次推进——隐式缝合于行文，不作标签；代码主线 GPT-2 → LLaMA 式 → MoE/MLA → 3:1 混合（选做）步步演化，Book3 终态的稠密小模型由 mini 引擎默认服务，单轨自训模型再经 Book8 选读实践注册进 vLLM，读者全程只维护一套心智模型。
 
-硬件口径：Book1-5 的实验读数产自 Mac（Apple Silicon / MPS / vllm-metal），为定稿历史事实、存稿不改；Book6 起实验主线切换为昇腾 NPU（原有实验为 Atlas 910B3，2026-10-30 新增的 Book6 第13章为8张910B2；torch-npu / vllm-ascend / CANN 9.1.0）。新版 Book8 的观测环境为 910B2、CANN 9.2.1 与 vLLM/Ascend 0.30.0，详见其版本附录。
+硬件口径：Book1–2 新版使用 CPU float64 数学核验与 CPU float32 小实验，旧 Mac/MPS 资产按历史口径保留；Book3–5 尚未重写，其实验读数保持原历史口径；Book6 起实验主线切换为昇腾 NPU（原有实验为 Atlas 910B3，2026-10-30 新增、现保留为 Book6 第19章的并行专题使用8张910B2；torch-npu / vllm-ascend / CANN 9.1.0）。新版 Book8 的观测环境为 910B2、CANN 9.2.1 与 vLLM/Ascend 0.30.0，详见其版本附录。
 
 ## 为谁而写
 
 读者画像：具备 AI 基础的计算机本科生——线性代数与矩阵运算、高等数学、反向传播、会用 PyTorch、计算机基础。不需要任何数学前导册：每章自含「最小背景知识」栏，论证依赖的前置概念一定先搭到「架构完整可见、机制可想象」的程度才使用。章节按内容内聚性组织；新版 Book7 为 12 章，新版 Book8 为 28 章，均另附查阅与实践材料。
 
-阅读顺序：Book1→2→3 是递进主干（同一台机器被逐册改装）；Book4 建立在 Book3 的骨架上，Book5 建立在 Book3 的外推线与 Book4 的 MoE/MLA 上；Book6 冻结架构、切换系统视角，前置 Book2-5；Book7 只要求模型架构基础与 Book6 理论，Book8 在 Book7 之上续讲，另需 Book6 的分布式与 PD 分离理论与 Book4-5 的混合架构/MTP/MoE。只想读推理与引擎的读者可以从 Book6 进入；新版 Book7 在需要时补充软件背景，完整注册与实验为选读附录。
+阅读顺序：Book1→2→3 是递进主干（同一台机器被逐册改装）；Book4 建立在 Book3 的骨架上，Book5 建立在 Book3 的外推线与 Book4 的 MoE/MLA 上；Book6 以模型基础为前提，补齐计算、存储、概率、排队与执行理论；Book7 只要求模型架构基础与 Book6 理论，Book8 在 Book7 之上续讲，另需 Book6 的分布式与 PD 分离理论与 Book4-5 的混合架构/MTP/MoE。只想读推理与引擎的读者可以从 Book6 进入；新版 Book7 在需要时补充软件背景，完整注册与实验为选读附录。
 
 ## 八册总览
 
 | # | 书名 | 一句话定位 | 状态 | 入口 |
 |---|------|-----------|------|------|
-| 1 | 《Transformer 原典：2017 原架构完全拆解》 | 只讲原论文，零魔改，立叙事模板 | 定稿 2026-10-02 | [进入](book1-transformer-original/README.md) |
-| 2 | 《预训练革命：BERT、GPT 与 Scaling Laws》 | 架构几乎不动，训练范式革命 | 定稿 2026-10-03 | [进入](book2-pretraining-revolution/README.md) |
+| 1 | 《Transformer 原典：从序列建模到完整计算》 | 架构演变、完整数学与可复现实验 | 重写交付 2026-11-03 | [进入](book1-transformer-original/README.md) |
+| 2 | 《预训练革命：目标、架构、配方与规模》 | 以旧稿为底本，保留模型演进与完整实践，补齐数学和证据链 | 全册润色交付 2026-11-03 | [进入](book2-pretraining-revolution/README.md) |
 | 3 | 《现代开源骨架：LLaMA 与组件化时代》 | 组件学与插槽化骨架 | 定稿 2026-10-04 | [进入](book3-modern-open-source-skeleton/README.md) |
 | 4 | 《规模与效率：MoE、MLA 与旗舰世代》 | 效率悖论：总参数涨、单 token 成本降 | 定稿 2026-10-05 | [进入](book4-scale-and-efficiency/README.md) |
 | 5 | 《前沿混合架构：稀疏、线性注意力与 2026 旗舰》 | 注意力本体动手术；2026 旗舰进正文主线 | 定稿 2026-10-09 | [进入](book5-frontier-hybrid-architectures/README.md) |
-| 6 | 《LLM 推理系统导论：从自回归数学到服务算法》 | 推理的物理学（引擎无关） | 定稿 2026-10-09 | [进入](book6-inference-systems-intro/README.md) |
+| 6 | 《LLM 推理系统原理：计算、存储、调度与生成》 | 推理理论与算法，20章＋选读实践 | 系统重写 2026-11-03 | [进入](book6-inference-systems-intro/README.md) |
 | 7 | 《vLLM V1 架构剖析：全景、协作与设计原则》 | 系统全景、职责协作与设计取舍；章末源码导航 | 全册重写 2026-11-02 | [进入](book7-vllm-v1-architecture/README.md) |
 | 8 | 《vLLM V1 源码剖析：从对象协作到运行现场》 | 上游 v0.30.0 源码、对象契约与真实产物；Ascend 为补充 | 全册重写 2026-11-02 | [进入](book8-vllm-v1-source-code/README.md) |
 
 Book8 已重写为一册，包含 28 章、4 篇附录、87 张图及配套观测记录。[连续阅读版](book8-vllm-v1-source-code/全书连续阅读.html)内嵌图片和公式；每章提供全局定位、对象关系、调用路径、中文源码解读与数据现场。旧正式源码上下册已经由此替代，历史资产在写作工作区保留。
+
+Book1 已重写为16章、3篇附录、18张图，从[Markdown目录](book1-transformer-original/README.md)阅读。数学推导节首段串联设计故事，完整计算保留在正文。Book2—5将按作者逐册指令推进。
 
 ## 编年史（全系列 · 七册合并去重）
 
@@ -61,29 +63,29 @@ Book8 已重写为一册，包含 28 章、4 篇附录、87 张图及配套观�
 | 2013-10 | word2vec 负采样与子采样（Mikolov et al.） | 把全词表 softmax 偷换成 k 道是非题并丢弃高频词，训练再快数倍、低频词表示更准 | [2](book2-pretraining-revolution/README.md) |
 | 2014※ | Dropout（随机失活，Srivastava et al.） | 训练态随机置零部分激活并逆缩放保期望，每步等效训练一个随机子网，扛住过拟合 | [1](book1-transformer-original/README.md) |
 | 2014-06 | RNN 编码器-解码器与 GRU（Cho et al.） | 独立给出编码器-解码器概率框架并发明 GRU，可学阀门让循环网络长句存得住信息 | [1](book1-transformer-original/README.md) |
-| 2014-09 | seq2seq（序列到序列学习，Sutskever et al.） | 两塔 LSTM 把变长翻译改写成逐词抽签，整句压进固定维向量箱子，长句必崩 | [1](book1-transformer-original/README.md) |
-| 2014-09 | Bahdanau 注意力（加性注意力/软对齐） | 解码器每写一词按对齐权重回望全句自取信息，软寻址拆掉两塔独木桥，长句不再崩 | [1](book1-transformer-original/README.md) |
-| 2014-09 | 固定向量瓶颈实证（Cho et al. 2014b） | 用 BLEU 随句长的下降曲线实证：短句尚可、长句急剧崩坏，瓶颈从直觉变定量证据 | [1](book1-transformer-original/README.md) |
+| 2014-09 | seq2seq（序列到序列学习，Sutskever et al.） | 两套 LSTM 实现条件序列生成，以固定宽度状态交接；能力边界取决于任务与训练 | [1](book1-transformer-original/README.md) |
+| 2014-09 | Bahdanau 注意力（加性注意力/软对齐） | 保留各源位置的表示，由目标状态生成软对齐；缓解固定上下文访问限制 | [1](book1-transformer-original/README.md) |
+| 2014-09 | 固定向量瓶颈实证（Cho et al. 2014b） | 在特定数据与训练条件下观察长句退化，不能推出所有固定状态模型必然失败 | [1](book1-transformer-original/README.md) |
 | 2014-10 | GloVe（全局词向量，Pennington et al.） | 直接拟合全局共现统计而非逐窗采样，单机数十分钟吃下 60 亿词、先画出规模曲线 | [2](book2-pretraining-revolution/README.md) |
 | 2014-12 | Adam 优化器（Kingma & Ba） | 以梯度一二阶矩指数滑动平均逐参数调步长，成 Transformer 点火标配 | [1](book1-transformer-original/README.md) |
-| 2015-08 | Luong 注意力打分函数族（dot/general/concat 与 global/local） | 把打分函数当设计空间系统消融，零参数 dot 内积打赢带参数形式，为缩放点积扫清前置疑问 | [1](book1-transformer-original/README.md) |
+| 2015-08 | Luong 注意力打分函数族（dot/general/concat 与 global/local） | 区分打分函数、全局与局部范围、输入馈送，比较不同读取设计 | [1](book1-transformer-original/README.md) |
 | 2015-08 | BPE 子词切分（字节对编码，Sennrich et al.） | 把字节对合并压缩改造成子词切分，高频整存低频切碎，小词表压低未登录率与参数账单 | [1](book1-transformer-original/README.md)[2](book2-pretraining-revolution/README.md) |
-| 2015-12 | ResNet（残差学习，He et al.） | 恒等捷径让深层网络只学增量修正，152 层可训不再退化，残差成为深度的许可证 | [1](book1-transformer-original/README.md) |
-| 2015-12 | label smoothing（标签平滑，Szegedy et al.） | 对错误答案均匀留 ε 概率再算交叉熵，伤困惑度换 BLEU 与泛化 | [1](book1-transformer-original/README.md) |
+| 2015-12 | ResNet（残差学习，He et al.） | 以输入加子层修正组织深层计算；恒等梯度项不构成无条件稳定性保证 | [1](book1-transformer-original/README.md) |
+| 2015-12 | label smoothing（标签平滑，Szegedy et al.） | 将目标分布与指定先验混合；最优概率改变，质量收益依赖实验条件 | [1](book1-transformer-original/README.md) |
 | 2016-04 | 梯度检查点（Training Deep Nets with Sublinear Memory Cost，Chen 等） | 只存块边界、反向重算块内，激活显存压到平方根量级，以约三成时间换空间 | [2](book2-pretraining-revolution/README.md) |
 | 2016-07 | LayerNorm（层归一化，Ba et al.） | 把归一化统计量从 batch 维搬到单样本层内，训练推理行为一致，天然适配变长序列 | [1](book1-transformer-original/README.md)[3](book3-modern-open-source-skeleton/README.md) |
-| 2016-08（正式发表 EACL 2017） | 输入输出嵌入绑定（weight tying，Press & Wolf） | 发现输出投影矩阵本身即有效词嵌入，主张绑定输入输出——原典三处共享省 37.9M 参数 | [1](book1-transformer-original/README.md) |
-| 2016-09 | GNMT（Google 神经机器翻译系统，Wu et al.） | 残差 LSTM 堆到 96 卡推到循环路线天花板，解码 GPU 反比 CPU 慢、串行墙暴露 | [1](book1-transformer-original/README.md) |
+| 2016-08（正式发表 EACL 2017） | 输入输出嵌入绑定（weight tying，Press & Wolf） | 绑定输入嵌入与输出分类器减少参数；三方共享要求一致的词表映射 | [1](book1-transformer-original/README.md) |
+| 2016-09 | GNMT（Google 神经机器翻译系统，Wu et al.） | 组合深层残差 LSTM、注意力、分词与量化推理，沿循环路线改进系统 | [1](book1-transformer-original/README.md) |
 | 2016-12 | GLU（门控线性单元，Dauphin 等） | 用数据自学的 sigmoid 门逐通道调制特征、乘性跳连稳梯度，四分之一硬件追平 LSTM | [3](book3-modern-open-source-skeleton/README.md) |
 | 2017-01 | 稀疏门控 MoE（Sparsely-Gated Mixture-of-Experts，Shazeer） | 稀疏门控让每 token 只点亮少数专家，容量涨千倍计算仅微损，MoE 层做到 137B | [4](book4-scale-and-efficiency/README.md) |
-| 2017-05 | ConvS2S（卷积序列到序列，Gehring et al.） | 以卷积换循环拿下层内并行，K40 上快 9.3 倍，但有效感受野约 25 词——并行与远距两难 | [1](book1-transformer-original/README.md) |
-| 2017-06 | Transformer（《Attention Is All You Need》，Vaswani et al.） | 自注意力拆掉循环先验，任意两词一步可达、层内串行 O(1)，三分之一算力多 2 BLEU | [1](book1-transformer-original/README.md)[5](book5-frontier-hybrid-architectures/README.md) |
-| 2017-06（命名出自 t2t 代码） | Noam 学习率调度（Transformer lr 公式，warmup 调度） | 学习率先线性升温再按步数平方根倒数衰减，驯服 post-LN 初期梯度失衡 | [1](book1-transformer-original/README.md) |
-| 2017-06 | Tensor2Tensor（t2t） | 官方复现库把论文配方固化成代码，最早一档与论文逐点一致，后续版本漂移成复现课教材 | [1](book1-transformer-original/README.md) |
+| 2017-05 | ConvS2S（卷积序列到序列，Gehring et al.） | 用卷积、GLU、位置嵌入和层间注意力组织序列，感受野随堆叠扩大 | [1](book1-transformer-original/README.md) |
+| 2017-06 | Transformer（《Attention Is All You Need》，Vaswani et al.） | 以全局读取组织同层位置交互，减少横向递推，换取位置对计算与存储 | [1](book1-transformer-original/README.md)[5](book5-frontier-hybrid-architectures/README.md) |
+| 2017-06（命名出自 t2t 代码） | Noam 学习率调度（Transformer lr 公式，warmup 调度） | 原配方先线性预热，再按步骤平方根倒数衰减；并非所有模型的唯一配方 | [1](book1-transformer-original/README.md) |
+| 2017-06 | Tensor2Tensor（t2t） | 原作者的软件实现体系；配置需锁定版本，不能用默认值替代论文设置 | [1](book1-transformer-original/README.md) |
 | 2017-10 | 混合精度训练（Mixed Precision Training，Micikevicius 等） | fp16 算前向反向、fp32 主权重与损失缩放护航，同等精度下训练提速数倍 | [2](book2-pretraining-revolution/README.md) |
 | 2018-01 | ULMFiT（通用语言模型微调，Howard & Ruder） | 给 LSTM 交付分层微调配方四件套，百例标注追上从零百倍数据，配方与架构平起平坐 | [2](book2-pretraining-revolution/README.md) |
 | 2018-02 | ELMo（深度上下文相关词表示，Peters 等） | 双向 LSTM 拼出上下文相关词表示，多义词按场合变形、六任务全线提升 | [2](book2-pretraining-revolution/README.md) |
-| 2018-04※ | The Annotated Transformer | 逐行注释实现成社区复现母本，却为简洁把 post-LN 换 pre-norm——照抄学原架构第一行就错 | [1](book1-transformer-original/README.md) |
+| 2018-04※ | The Annotated Transformer | 提供可读教学实现；其中归一化顺序与原版不同，需按计算图核对 | [1](book1-transformer-original/README.md) |
 | 2018-04 | 子词正则化与 Unigram LM（Subword Regularization，Kudo） | 从大种子词表按似然损失剪枝出 Unigram 分词，切分多样性成为训练噪声、翻译再进半分 | [2](book2-pretraining-revolution/README.md) |
 | 2018-05（k=40 为 GPT-2 取值） | top-k 采样（Fan et al.，截断归一采样） | 生成时只保留概率最高的 k 个候选再归一采样，截掉长尾防退化，成采样管线默认档 | [6](book6-inference-systems-intro/README.md) |
 | 2018-06（无 arXiv，日期转述级） | GPT-1（生成式预训练 Transformer，Radford 等） | 以语言模型预训练解码器半塔、判别式微调加辅助损失，十二个数据集九项 SOTA | [2](book2-pretraining-revolution/README.md) |

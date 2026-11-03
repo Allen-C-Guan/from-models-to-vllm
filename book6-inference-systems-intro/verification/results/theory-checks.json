@@ -1,0 +1,202 @@
+{
+  "kind": "CPU constructed examples, not hardware measurements",
+  "checks": [
+    {
+      "name": "15 温度平方并归一",
+      "detail": null
+    },
+    {
+      "name": "15 温度和top-p不交换",
+      "detail": [
+        [
+          1.0,
+          0,
+          0,
+          0
+        ],
+        [
+          0.64,
+          0.36,
+          0.0,
+          0.0
+        ]
+      ]
+    },
+    {
+      "name": "15 正负重复惩罚",
+      "detail": null
+    },
+    {
+      "name": "15 beam两步反例",
+      "detail": null
+    },
+    {
+      "name": "16 重合质量与残差",
+      "detail": null
+    },
+    {
+      "name": "16 直接目标重采有偏",
+      "detail": [
+        0.35,
+        0.39,
+        0.26
+      ]
+    },
+    {
+      "name": "16 全枚举225对分布的质量守恒",
+      "detail": null
+    },
+    {
+      "name": "16 首拒状态保留",
+      "detail": null
+    },
+    {
+      "name": "17 条件尾和式",
+      "detail": {
+        "tail": [
+          0.8,
+          0.4,
+          0.36000000000000004
+        ],
+        "output": 2.56
+      }
+    },
+    {
+      "name": "17 成本翻转",
+      "detail": null
+    },
+    {
+      "name": "17 边际扩展反而变慢",
+      "detail": null
+    },
+    {
+      "name": "17 几何式含零一边界",
+      "detail": null
+    },
+    {
+      "name": "17 树mask隔离兄弟",
+      "detail": null
+    },
+    {
+      "name": "17 递归回滚",
+      "detail": null
+    },
+    {
+      "name": "01 TTFT与TPOT",
+      "detail": null
+    },
+    {
+      "name": "02 小传输固定成本",
+      "detail": null
+    },
+    {
+      "name": "02 搬运计算流水",
+      "detail": null
+    },
+    {
+      "name": "03 矩阵FLOPs与流量",
+      "detail": null
+    },
+    {
+      "name": "03 Roofline下界",
+      "detail": null
+    },
+    {
+      "name": "03 Amdahl",
+      "detail": null
+    },
+    {
+      "name": "04 头共享容量",
+      "detail": null
+    },
+    {
+      "name": "07 复用后缀配对",
+      "detail": null
+    },
+    {
+      "name": "08 请求与token计数",
+      "detail": null
+    },
+    {
+      "name": "09 人数时间面积",
+      "detail": null
+    },
+    {
+      "name": "09 排序改变平均完成时间",
+      "detail": null
+    },
+    {
+      "name": "10 chunk与完整因果范围",
+      "detail": null
+    },
+    {
+      "name": "10 swap双向成本",
+      "detail": null
+    },
+    {
+      "name": "11 分块三状态",
+      "detail": null
+    },
+    {
+      "name": "11 掩码与空块全部8种组合",
+      "detail": null
+    },
+    {
+      "name": "11 大分数稳定",
+      "detail": null
+    },
+    {
+      "name": "12 舍入与截断",
+      "detail": null
+    },
+    {
+      "name": "12 离群值使小值归零",
+      "detail": null
+    },
+    {
+      "name": "12 元数据位宽",
+      "detail": null
+    },
+    {
+      "name": "13 补偿与最终离散误差",
+      "detail": null
+    },
+    {
+      "name": "13 约束极小点",
+      "detail": null
+    },
+    {
+      "name": "13 缩放等价",
+      "detail": null
+    },
+    {
+      "name": "14 softmax扰动",
+      "detail": null
+    },
+    {
+      "name": "14 K残差流式刷新",
+      "detail": null
+    },
+    {
+      "name": "14 混合位宽容量",
+      "detail": null
+    },
+    {
+      "name": "18 流水线递推",
+      "detail": null
+    },
+    {
+      "name": "18 准备成本摊销",
+      "detail": null
+    },
+    {
+      "name": "20 共享实际物理容量",
+      "detail": null
+    },
+    {
+      "name": "20 合格吞吐",
+      "detail": null
+    }
+  ],
+  "script_sha256": "5c3c8cb6fca08f614ee7686686e006d6b1547f0f2533869348ef9933831e5081"
+}

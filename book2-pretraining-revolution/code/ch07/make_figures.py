@@ -1,7 +1,7 @@
 # 用途：Book2 ch7 三张图——图 7.1 四设定示意 / 图 7.2 涌现阈值重排（引 Wei v2 Table 1 数据自绘）/ 图 7.3 指标整流器（教学算例）
 # 所属章节：Book2 第 7 章 §7.2、§7.3、§7.5
 # 运行方式：cd 工作区根目录 && source env.sh && python "code/ch07/make_figures.py"
-# 产物：figures/fig-7-{1,2,3}-*.png（300dpi，图内文字英文、图注见正文）
+# 产物：drafts/Book2-预训练革命/figures/fig-7-{1,2,3}-*.png（300dpi，图内文字英文、图注见正文）
 
 import os
 

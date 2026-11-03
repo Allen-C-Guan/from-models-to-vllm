@@ -1,6 +1,6 @@
 # iso_flop.py —— Book2 ch11 实验一：iso-FLOP 网格（compute-optimal 前沿的缩小版复现）
-# 所属章节：Book2 第 11 章 §11.2（ch11-大项目II.md 图 11.2/11.3 数据源）
-# 设计书：notes/01-实验可行性.md §4(ii)；批二教训：notes/07-批二实验数字.md §3.1
+# 所属章节：Book2 第 11 章 §11.2（drafts/Book2-预训练革命/ch11-大项目II.md 图 11.2/11.3 数据源）
+# 设计书：research/Book2-预训练革命/notes/01-实验可行性.md §4(ii)；批二教训：notes/07-批二实验数字.md §3.1
 #   （正式口径统一 warmup=200——无 warmup 族 L(N) 倒挂的修正，各规模统一日程仍满足 iso-FLOP 单变量口径）。
 #   * 3 档算力 C∈{6e14, 2e15, 6e15}（FLOPs=6ND，N=非嵌入参数，D=已处理 token；bf16 训练/fp32 eval 照 ch08）；
 #   * 每档 (N,D) 点取 D=C/(6N)（步数取整后反报 C_actual）；C1/C3 各 3 点，**中间档 C2=2e15 加密至 5 点**（N 对数等距）；

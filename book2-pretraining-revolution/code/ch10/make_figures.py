@@ -3,7 +3,7 @@
 # 运行方式：cd /Users/allen/Code/model_analysis && source env.sh && python code/ch10/make_figures.py
 #          （图 10.2/10.3 依赖 log/book2-ch10/{shakespeare-full,smoke124_bf16,smoke124}.json，先跑 shakespeare.py / train.py；
 #            smoke124.json 的 corpus_stats 字段=语料一元账：28.2 万 train token / 5271 活跃类型 / 词频熵 6.51 nat）
-# 产物：figures/fig-10-{1,2,3}-*.png（300dpi，图内文字英文、图注见正文）
+# 产物：drafts/Book2-预训练革命/figures/fig-10-{1,2,3}-*.png（300dpi，图内文字英文、图注见正文）
 
 import json
 import math
