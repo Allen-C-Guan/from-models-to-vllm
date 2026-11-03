@@ -1,0 +1,12 @@
+INFO 11-02 22:29:25 [__init__.py:52] Available plugins for group vllm.platform_plugins:
+INFO 11-02 22:29:25 [__init__.py:54] - ascend -> vllm_ascend:register
+INFO 11-02 22:29:25 [__init__.py:57] All plugins in this group will be loaded. Set `VLLM_PLUGINS` to control which plugins to load.
+/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/triton/language/extra/cann/extension/math_ops.py:13: FutureWarning: triton.language.extra.cann.extension.atan2 is deprecated and will be removed in the next release; use triton.language.extra.cann.libdevice.atan2 instead.
+  @_deprecated(replacement="triton.language.extra.cann.libdevice.atan2")
+/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/triton/language/extra/cann/extension/math_ops.py:35: FutureWarning: triton.language.extra.cann.extension.isfinited is deprecated and will be removed in the next release; use triton.language.extra.cann.libdevice.isfinited instead.
+  @_deprecated(replacement="triton.language.extra.cann.libdevice.isfinited")
+/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/triton/language/extra/cann/extension/math_ops.py:49: FutureWarning: triton.language.extra.cann.extension.finitef is deprecated and will be removed in the next release; use triton.language.extra.cann.libdevice.finitef instead.
+  @_deprecated(replacement="triton.language.extra.cann.libdevice.finitef")
+INFO 11-02 22:29:25 [__init__.py:272] Platform plugin ascend is activated
+INFO 11-02 22:29:26 [platform.py:74] Breakable CUDAGraph on Ascend is opt-in; using VLLM_USE_BREAKABLE_CUDAGRAPH=0.
+CPU MM positions, sharing, reference release and eviction verified

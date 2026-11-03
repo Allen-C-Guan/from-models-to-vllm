@@ -1,0 +1,4285 @@
+{
+  "ch01-client": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/engine/core_client.py",
+    "start": 121,
+    "end": 129,
+    "notes": {
+      "121": "上下文：异步多进程分支已在上文处理；这里检查同步多进程配置。",
+      "122": "构造 SyncMPClient，将配置与执行器类交给它；不是返回 EngineCore 本体。",
+      "129": "剩余有效配置走 InprocClient；同一个客户端契约可以由不同部署实现。"
+    },
+    "file_sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8",
+    "original_sha256": "7eb0fe510d33bb3e873074d321ebe600f60ed0acd322fc77b8fe643ada69f0e8"
+  },
+  "ch02-config": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/engine/llm_engine.py",
+    "start": 175,
+    "end": 191,
+    "notes": {
+      "176": "把入口参数解析成有效系统配置；模型、调度、并行等约束在这里形成关联。",
+      "177": "按已经解析的配置选出执行器类，暂时还不是一个已创建的执行器实例。",
+      "179": "环境变量可以启用前端／核心多进程；不能只看调用参数默认值判断部署。",
+      "184": "用有效配置与所选类构造 LLMEngine，后续协作者在构造过程中装配。",
+      "190": "此标志决定客户端形态；离线入口仍可能采用多进程。"
+    },
+    "file_sha256": "d4d5fba309db4d3f271ac7479e3ddaa623045499e4c6cfac41c0c7710012413c",
+    "original_sha256": "2edafb3d50f0a7a6d1964fccfe7860bd9ac0dd75998b8a30e23354b9672a4a69"
+  },
+  "ch02-core": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/engine/core.py",
+    "start": 133,
+    "end": 149,
+    "notes": {
+      "134": "实例化执行器；本例的 UniProcExecutor 会继续创建 Worker、初始化设备并加载模型。",
+      "136": "若调用者提供执行失败回调，将其登记到执行器，准备传播运行故障。",
+      "139": "容量初值 -1 表示尚未确定，不能拿它参与调度。",
+      "141": "弹性扩容有专门准备路径；本例不开启。",
+      "145": "模型已经存在，才能取得 KV 需求并准备实际资源；返回的是调度侧 KV 配置。",
+      "146": "创建结构化输出管理对象，不意味着每个请求都启用语法约束。",
+      "149": "从配置选择 Scheduler 类；其实例还要使用刚准备的 KV 配置。"
+    },
+    "file_sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5",
+    "original_sha256": "c64a8e774d366348bcda6e2c45dc623757f1877154a5338a129d4c95c363a642"
+  },
+  "ch02-worker": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/executor/uniproc_executor.py",
+    "start": 68,
+    "end": 75,
+    "notes": {
+      "68": "通过 WorkerWrapperBase 装配实际 Worker 类型；平台会影响这个实现选择。",
+      "69": "先建立设备与相关执行环境，再加载模型。",
+      "71": "弹性 EP 扩容另有调用方式；普通启动进入 else 分支。",
+      "74": "委托 Worker 加载模型；权重加载机制在第 10 章打开。",
+      "75": "所选平台与后端还可能约束块大小；用户请求值不是最终有效值的全部来源。"
+    },
+    "file_sha256": "3cb039b80fe9b03dc1122f93c1f8a4098ef1355104b317ff6df25358f4349494",
+    "original_sha256": "826529a8ebd1796e28c80c2ef69a0b7f76227db34f4a48c7f50bd07982d4ee2b"
+  },
+  "ch02-layout": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/engine/core.py",
+    "start": 319,
+    "end": 333,
+    "notes": {
+      "319": "结合模型的 KV spec 与各 Worker 可用字节，求出各执行侧的 KV 配置。",
+      "322": "为生成的配置附上已经确定的物理布局。",
+      "328": "容量推导可能反过来影响最大模型长度，所以比较推导前后的值。",
+      "329": "仅当自动适配改变长度时同步 Worker，防止核心与执行侧约束不一致。",
+      "332": "由执行侧配置生成调度侧资源视图，两者用途不同。",
+      "333": "把有效块数量回写配置，后续观察应读取这个已解析的值。"
+    },
+    "file_sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5",
+    "original_sha256": "165004398760264d1ddc64b4b5fcad4f9c33106bb3d2e315f2a37492ec3c52aa"
+  },
+  "ch02-ready": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/engine/core.py",
+    "start": 352,
+    "end": 356,
+    "notes": {
+      "352": "校验最终块大小，尽早拒绝不满足约束的组合。",
+      "354": "让执行侧据配置真正准备 KV 等资源，而不是只有一份描述。",
+      "355": "普通启动继续编译或预热；eager 关闭图执行，不代表完全没有预热。"
+    },
+    "file_sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5",
+    "original_sha256": "6be33e515f07d0310eaf2e33766466095343e87de0f4bede7e29f1cf8c5d278d"
+  },
+  "ch06-pool": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/core/block_pool.py",
+    "start": 177,
+    "end": 194,
+    "notes": {
+      "178": "为每个编号创建 CPU 元数据对象；这里没有创建 K/V 张量。",
+      "184": "空闲队列保存可取用的块，开启缓存时也容纳可淘汰候选。",
+      "187": "哈希索引与空闲队列回答不同问题：内容在哪里，以及哪里可以再分配。",
+      "193": "取走编号 0 作为特殊占位块，不能继续按普通空闲块分配。"
+    },
+    "file_sha256": "34c2fd67148cecb7763ff49ad694a57073759b0fa67572a4270dc995b4acf8fc",
+    "original_sha256": "781f2c31ce8a3db03855da87f086d364db265d4ab0c5f4a2b08973e6065e9398"
+  },
+  "ch06-capacity": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/core/kv_cache_manager.py",
+    "start": 546,
+    "end": 563,
+    "notes": {
+      "546": "协调器按各组策略合计本次需要消耗的可用块，包含需要保留的命中块。",
+      "559": "扣除给其他在途序列预留的块；总空闲量不一定就是本请求可用量。",
+      "560": "接纳水位也进入约束，不能仅比较新增 token 数。",
+      "561": "资源不足以 None 返回，让调度器决定等待或抢占。"
+    },
+    "file_sha256": "58800535eda854580d84e1025bf32fe01b2a43ce0bba501b4f3d125e4f2c8afa",
+    "original_sha256": "92c35a78755b3aaeb131f9d1210139f875c3095b8e4541ed73c5153755b4d292"
+  },
+  "ch06-grow": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/core/single_type_kv_cache_manager.py",
+    "start": 393,
+    "end": 403,
+    "notes": {
+      "393": "上下文：前面的可选部分命中 CoW 已处理；读取该请求已有的组内块表。",
+      "394": "把需要覆盖的 token 总位置数向上取整为块数。",
+      "395": "已有块继续使用，只补差额。",
+      "396": "没有差额仍可能返回前面产生的 CoW 块；普通无 CoW 路径为空列表。",
+      "399": "从物理编号池取新块，并把它们接到长期块表尾部。",
+      "401": "需要执行侧清零时，另记新编号供其消费。",
+      "403": "返回此次新增块，不返回整个请求的块表。"
+    },
+    "file_sha256": "0233531d85aeced9e57a38c76d83db970519c92902b7e55484390cb2b64985bf",
+    "original_sha256": "aeb08ee594b0d0313ee3df07b7a8f9132b10611d83994e3d5593ebdaa0f5f5ab"
+  },
+  "ch06-free": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/core/block_pool.py",
+    "start": 778,
+    "end": 800,
+    "notes": {
+      "779": "把优先复用与最后复用的块分开收集。",
+      "783": "若块属于其他池，转交所属池处理，避免修改错误的空闲账本。",
+      "786": "释放一份引用；只有最后一份普通引用消失时才进入空闲队列。",
+      "788": "无哈希或关闭缓存的块优先复用。",
+      "792": "带缓存身份的块放到后部，给之后的前缀命中保留机会。",
+      "796": "队首加入优先候选。",
+      "798": "队尾加入缓存候选，释放并不在这里删除缓存身份。"
+    },
+    "file_sha256": "34c2fd67148cecb7763ff49ad694a57073759b0fa67572a4270dc995b4acf8fc",
+    "original_sha256": "a5b8f695fc02717a7160dbf70a8c431eb57f077e43d69d67db3264be02b8f55b"
+  },
+  "ch07-hash": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/core/kv_cache_utils.py",
+    "start": 659,
+    "end": 665,
+    "notes": {
+      "659": "首块没有父块时使用初始化的 NONE_HASH。",
+      "662": "把本块 token 固定为元组，形成稳定的输入结构。",
+      "663": "哈希输入同时包含父链、本块 token 和额外身份，不能只比较这一小段文本。"
+    },
+    "file_sha256": "2666c9f113584e52e7521058efd2c0d9598544559dc942d3a3da87001a3fedf2",
+    "original_sha256": "37835c4f979bbbeeff9c112c338d894284fa214d53a692a7f1480a5e99bf6c7e"
+  },
+  "ch07-hit": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/core/kv_cache_manager.py",
+    "start": 286,
+    "end": 300,
+    "notes": {
+      "286": "请求或配置禁用读取缓存时，返回各组空块和零命中。",
+      "295": "最多复用到最后一个 token 之前，仍需一次计算取得后续生成所需的 logits。",
+      "296": "让协调器寻找所有必要状态组能够共同承认的前缀；本章只展开单组全注意力。"
+    },
+    "file_sha256": "58800535eda854580d84e1025bf32fe01b2a43ce0bba501b4f3d125e4f2c8afa",
+    "original_sha256": "634ae073f2f7f72c08a04adcb4c3c1b729b6ff49f63c4e0a14b199301ffa29e1"
+  },
+  "ch07-touch": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/core/block_pool.py",
+    "start": 757,
+    "end": 764,
+    "notes": {
+      "757": "逐个处理本次复用的块；调用者正在把它们挂到新请求。",
+      "760": "零引用块原本可被回收，现在命中后先移出空闲队列。",
+      "762": "增加引用，使新请求的使用关系进入账本。"
+    },
+    "file_sha256": "34c2fd67148cecb7763ff49ad694a57073759b0fa67572a4270dc995b4acf8fc",
+    "original_sha256": "705327c17f234bdaaee8c3773a7dbcaca5189dd55e34dae2a90fe3e073ad0cf9"
+  },
+  "ch07-preempt": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/core/sched/scheduler.py",
+    "start": 1490,
+    "end": 1518,
+    "notes": {
+      "1490": "调用者已把请求移出 running；这里要求它此前确实处于 RUNNING。",
+      "1493": "释放请求的 KV 引用与 encoder 缓存，并撤销在途 prefill 登记。",
+      "1496": "请求仍然存在，但计算进度重置；已生成 token 历史没有在此清空。",
+      "1498": "草稿 token 不是已确认历史，抢占时丢弃。",
+      "1507": "异步路径额外标记旧输出：不能用旧返回再次推进重置后的计数。",
+      "1510": "记录仍在途的旧输出数量，后续回填负责消解。",
+      "1512": "留下累计抢占次数供统计和恢复逻辑使用。",
+      "1517": "插回等待队列，并通知执行侧清理旧请求状态。"
+    },
+    "file_sha256": "c1db45f3bbad3a875dd8638331b8870c4380ac1ab4734265ba5c863833a82884",
+    "original_sha256": "7be0e0618d1417f0c27f4391e8ebc7dee6aa1e5f97ee56bbd5c2be0610aa73a0"
+  },
+  "ch08-call": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/executor/uniproc_executor.py",
+    "start": 119,
+    "end": 132,
+    "notes": {
+      "119": "单进程执行器实现统一执行契约，参数是本轮 SchedulerOutput。",
+      "122": "把方法名和参数交给执行器自己的分发接口；single_value 避免返回一元素列表。",
+      "129": "若返回的 Future 已完成，立即取结果以提前暴露异常。"
+    },
+    "file_sha256": "3cb039b80fe9b03dc1122f93c1f8a4098ef1355104b317ff6df25358f4349494",
+    "original_sha256": "7265975125401e613495528ec770321f5ee05565141f4466dee38233236987a7"
+  },
+  "ch08-future": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/executor/uniproc_executor.py",
+    "start": 102,
+    "end": 117,
+    "notes": {
+      "102": "同步接口直接取得结果；异步输出包装需要在此解析。",
+      "108": "non_block 分支仍先在当前调用中运行 Worker 方法，不在这里创建后台线程。",
+      "110": "若执行侧返回延迟输出，用专门 Future 延后解析。",
+      "112": "普通返回值放进已完成 Future，统一上层消费方式。",
+      "114": "异常也进入 Future，调用者取得结果时可重新抛出。"
+    },
+    "file_sha256": "3cb039b80fe9b03dc1122f93c1f8a4098ef1355104b317ff6df25358f4349494",
+    "original_sha256": "673ce27e42c7faf5035474d639e33668fa8ea5c40c7168fb6fe66a2eb8c2fbb6"
+  },
+  "ch08-worker": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/worker/gpu_worker.py",
+    "start": 1209,
+    "end": 1222,
+    "notes": {
+      "1209": "本节展示上游 GPU Worker；前面的 PP 接收准备已经完成。",
+      "1210": "把计划与可选中间张量交给 Runner，Worker 不重新决定调度顺序。",
+      "1213": "MRV2 pooling 模型有独立收尾；A/B 是生成模型，不进入此分支。",
+      "1219": "返回生成结果、延迟结果或 None；其他输出在下文按 PP 中间张量处理。"
+    },
+    "file_sha256": "6994436e4547c0996ab555b3e814e8ccea26b650dfc1b378b97d640745309347",
+    "original_sha256": "128d9f756c6c99248cd081b0c73395b43fbed3260ef367ee66290360405bcdd6"
+  },
+  "ch09-row": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/worker/gpu/states.py",
+    "start": 99,
+    "end": 115,
+    "notes": {
+      "99": "活跃请求必须先取得一个持久槽位，槽位耗尽不能继续登记。",
+      "100": "从空闲行尾部取号，所以教学配置中最先取得的不是必然为零。",
+      "101": "维护 ID 到行号及反向映射。",
+      "104": "在这行写入请求的长度约束。",
+      "106": "prefill_len 包括本次交给 Runner 的历史，恢复请求时可以长于原 prompt。",
+      "111": "大状态通过暂存写入描述更新；实际应用发生在 apply_staged_writes。",
+      "113": "保存计算进度，CPU 与设备侧状态分别更新。"
+    },
+    "file_sha256": "99418f5df43ca612ded72609fee011620b065b2cab2f249ccb387096bf4ae71a",
+    "original_sha256": "3ef52f40033897b0e48e055629ad9a1780cb5e15a7b341226d4b9c56f4f07e95"
+  },
+  "ch09-gather": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/worker/gpu/model_runner.py",
+    "start": 1234,
+    "end": 1249,
+    "notes": {
+      "1234": "上下文：普通真实批次，已取得计划的请求数与工作量。",
+      "1236": "先决定本轮请求顺序，不把持久行号直接当 batch 顺序。",
+      "1240": "按相同顺序收集每条请求的工作量。",
+      "1243": "将本轮 req_id 映射回持久状态行，这是两套索引之间的桥。",
+      "1245": "使用映射收集 prefill 状态，避免读取同下标但属于其他请求的数据。"
+    },
+    "file_sha256": "174c93db921c23cf0396eee4764be25b2bd2d4b6a06e9fa41ce3598b884ce8ce",
+    "original_sha256": "5efcdb20cbcdaec8e2d0cd6ce0fff5fc39654efb59d83d694a4fd4019267d74e"
+  },
+  "ch09-offset": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/worker/gpu/model_runner.py",
+    "start": 1342,
+    "end": 1352,
+    "notes": {
+      "1344": "当步描述可能要求补齐请求数；eager 教学路径不依赖图补齐。",
+      "1345": "预先准备边界数组，首元素为零。",
+      "1347": "每条请求的本轮 token 数做前缀和，得到拼接批次的分段边界。",
+      "1350": "填充尾部使边界非递减，不能留下任意旧值给后端。",
+      "1352": "复制到执行输入缓冲区；真正有效范围在后文裁出。"
+    },
+    "file_sha256": "174c93db921c23cf0396eee4764be25b2bd2d4b6a06e9fa41ce3598b884ce8ce",
+    "original_sha256": "b6ef969eb520894846cf572e8cabf91d5953113dadb247a667393ed023f39d38"
+  },
+  "ch09-delta": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/worker/gpu/model_runner.py",
+    "start": 1185,
+    "end": 1193,
+    "notes": {
+      "1185": "旧请求更新按 ID、计算进度、新块编号并行遍历。",
+      "1188": "先通过 ID 找持久行，不使用这次循环下标当行号。",
+      "1189": "更新该请求的 CPU 进度镜像。",
+      "1190": "已有完整块表覆盖更新时不再追加；普通增量只追加新编号。",
+      "1192": "overwrite=False 保留此前块表。"
+    },
+    "file_sha256": "174c93db921c23cf0396eee4764be25b2bd2d4b6a06e9fa41ce3598b884ce8ce",
+    "original_sha256": "b80b95e9622e37031f85162e59b3726380761781186085064bb4837d652e6f48"
+  },
+  "ch10-create": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/model_executor/model_loader/utils.py",
+    "start": 46,
+    "end": 61,
+    "notes": {
+      "46": "未显式给模型配置时，使用系统配置中的模型部分。",
+      "48": "从模型架构描述解析实现类，和读取权重文件是不同步骤。",
+      "51": "量化配置先与模型类适配，普通 BF16 案例不进入此分支。",
+      "56": "现代模型构造约定接收 vllm_config 与层名前缀。",
+      "58": "在当前配置上下文中创建模块，并记录后续重载所需元数据。"
+    },
+    "file_sha256": "aa398e74ee835537403e60186f2e9a81e8741a4b35fec68b47df6537716a45b7",
+    "original_sha256": "a7310374b341a082b661ed169682a1824c88e41694b59fc34776850e1912e984"
+  },
+  "ch10-map": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/model_executor/models/qwen2.py",
+    "start": 324,
+    "end": 333,
+    "notes": {
+      "324": "Qwen3Model 继承并使用这份权重映射。",
+      "327": "q/k/v 三份 checkpoint 权重写入同一 qkv 参数的不同 shard。",
+      "330": "gate/up 同样进入融合参数，以 shard 0/1 区分。"
+    },
+    "file_sha256": "eb2f0eeb13c57a28bbc06bc64afff18cd8865f89fbe9ff2a3cf3a896f037cfe9",
+    "original_sha256": "e460e4c8ad7ab8d6f3286280ac5bd7b050ddea82aec7f5ede54bdd7a18d8179b"
+  },
+  "ch10-layer": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/model_executor/models/qwen3.py",
+    "start": 232,
+    "end": 246,
+    "notes": {
+      "233": "第一层尚无独立 residual 时先保存输入；后续层使用双输入归一化。",
+      "237": "融合残差与归一化返回两份状态，残差没有被省略。",
+      "238": "Attention 子模块取得位置与归一化后的隐藏状态。",
+      "244": "MLP 前再次处理残差与归一化，随后执行前馈网络。",
+      "246": "把主分支与 residual 一起交给下一层。"
+    },
+    "file_sha256": "6ade9b12f4c7a4d670fe2e4dd778049bbe0a94fe2ba61a149d9706587a280e28",
+    "original_sha256": "071af5fe5439792d25da937b0ecac4419ac5ac3da34165f778f76b57643e0604"
+  },
+  "ch10-qkv": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/model_executor/models/qwen3.py",
+    "start": 158,
+    "end": 170,
+    "notes": {
+      "158": "一次融合投影生成 Q/K/V，再按 query 与 KV 各自宽度拆开。",
+      "161": "按 head_dim 组织 Q，使归一化作用于每个头的最后一维。",
+      "164": "K 同样按其头数归一化；Q 与 K 的总宽度不必相同。",
+      "167": "按各 token 的序列位置应用旋转位置编码。",
+      "168": "通用 Attention 接口消费 Q/K/V，后端实现留下一章。",
+      "169": "输出投影把 query 头总宽度映射回 hidden_size。"
+    },
+    "file_sha256": "6ade9b12f4c7a4d670fe2e4dd778049bbe0a94fe2ba61a149d9706587a280e28",
+    "original_sha256": "9091eb41afed540e99656ee5627d4938b56921a1bd73d1442cae1530d11eee9e"
+  },
+  "ch11-impl": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/model_executor/layers/attention/attention.py",
+    "start": 416,
+    "end": 429,
+    "notes": {
+      "416": "Backend 提供实现类；不是在这里启动 Attention 计算。",
+      "417": "按模型头数、维度、KV类型等构造实现对象，保存到 Attention.impl。"
+    },
+    "file_sha256": "bc897e452f3aea603e353ca42a365d3be8836e9485d78cbf8cc4677baca2fb42",
+    "original_sha256": "22d6bf1c6b22d73047fd50b8b63526f797ce018efe118da0e6b935b816efd89d"
+  },
+  "ch11-forward": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/model_executor/layers/attention/attention.py",
+    "start": 770,
+    "end": 787,
+    "notes": {
+      "770": "显式依赖用于保持 KV 写入与读取的编译顺序；不是数学计算输入。",
+      "774": "用层名取当前前向上下文，补齐调用签名没有显式传入的状态。",
+      "777": "委托所选实现，将 Q/K/V、真实 KV 张量、元数据和输出缓冲交给同一契约。"
+    },
+    "file_sha256": "bc897e452f3aea603e353ca42a365d3be8836e9485d78cbf8cc4677baca2fb42",
+    "original_sha256": "b28060abc4b81def2d578847426060b6fcf54197cbaad991ac5a066a8126b358"
+  },
+  "ch11-write": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/attention/backends/flash_attn.py",
+    "start": 1451,
+    "end": 1472,
+    "notes": {
+      "1451": "本段是上游 FlashAttention 更新路径，不是本机 Ascend 布局实测。",
+      "1454": "按此后端布局取得 K/V 缓存视图，不能复制此布局假设到所有平台。",
+      "1463": "调用缓存写入算子，slot_mapping 决定本轮 token 对应的写入位置。",
+      "1468": "写入位置来自当步元数据，块管理器只提供编号，不在这里代算 K/V。"
+    },
+    "file_sha256": "b170a4789e18104c1bee35bea70df51abe6766693d8f4726a59f2e6f5c4282aa",
+    "original_sha256": "cf56396770f1de722743b5d7b47b4b836fd72f1e392b6c17f298494668fec73b"
+  },
+  "ch12-logits": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/worker/gpu/model_runner.py",
+    "start": 1533,
+    "end": 1545,
+    "notes": {
+      "1533": "普通未分片 logits 分支；上文另有分片路径。",
+      "1534": "按每条请求需要采样的位置抽取隐藏行，本例 [11,1024] → [2,1024]。",
+      "1535": "语言模型输出头把选中隐藏行投影到词表，本例得到 [2,151936]。",
+      "1537": "若存在结构化输出约束，先在 logits 上施加语法掩码；本案例不进入。"
+    },
+    "file_sha256": "174c93db921c23cf0396eee4764be25b2bd2d4b6a06e9fa41ce3598b884ce8ce",
+    "original_sha256": "a4d8411cb64c9ceef0e5785e115e1f36ea558ae6fe7fad095e76f134e83f4ec6"
+  },
+  "ch12-materialize": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/worker/gpu/async_utils.py",
+    "start": 167,
+    "end": 178,
+    "notes": {
+      "168": "读取 CPU 结果前等待复制事件，异步发起不等于数据已经可读。",
+      "174": "把已复制的 token 张量转换为兼容现有接口的 Python 列表。",
+      "175": "每条请求有效输出数可能不同；不能按填充宽度全部返回。",
+      "177": "去掉无效尾部，再填入最终交给核心的 ModelRunnerOutput。"
+    },
+    "file_sha256": "77e17a4570ead2be30ae9b00888cf077a3b873018c12ca0549b853bfda02c1ba",
+    "original_sha256": "6fa5bd99e3b8062b4fa6c6812f9ef3a579c3b703e0e64f9bd3583873990cb447"
+  },
+  "ch12-append": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/core/sched/scheduler.py",
+    "start": 2347,
+    "end": 2364,
+    "notes": {
+      "2354": "初始假设尚未停止；分块 prefill 的输出列表可以为空。",
+      "2355": "逐个接纳本轮新 token；投机路径一轮可能不止一个。",
+      "2356": "先进入请求的确认历史，再用更新后的历史检查终止条件。",
+      "2360": "停止检查同时修改请求状态，后续核心输出据此填写结束原因。",
+      "2362": "若已停止，裁掉同轮剩余 token，避免把结束之后的内容继续交付。"
+    },
+    "file_sha256": "c1db45f3bbad3a875dd8638331b8870c4380ac1ab4734265ba5c863833a82884",
+    "original_sha256": "84d06d18670e33dacac296d5bf137ec001171ddce0d9596cb5a0748427ab2960"
+  },
+  "ch12-stop": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/core/sched/utils.py",
+    "start": 100,
+    "end": 115,
+    "notes": {
+      "100": "当前请求已至少追加一个新 token，读取最新 token 判定。",
+      "101": "先检查有效 EOS；ignore_eos 的影响在参数准备阶段体现。",
+      "105": "显式 stop_token_ids 也可终止，并记录实际触发 token。",
+      "110": "模型总长度或请求生成长度达到上限时，以长度原因结束。"
+    },
+    "file_sha256": "1ed988044eb8028c77ede875bd1a5fd05ff6998b455d61e3997d6a3d7fc1c3a7",
+    "original_sha256": "2a8a54a7c0dffe02332dfc55bfd3e47030ae82c2be263cf7b6d4d7c2be1214f6"
+  },
+  "ch12-text": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/engine/output_processor.py",
+    "start": 702,
+    "end": 712,
+    "notes": {
+      "703": "前端按请求保存的增量反分词状态消费新 token，同时检查文本停止串。",
+      "706": "文本匹配可以补充核心尚未识别的停止；后文负责向核心发起终止。",
+      "712": "如果用户需要 logprobs，另一个处理器整理对应输出；不从文本反推概率。"
+    },
+    "file_sha256": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329",
+    "original_sha256": "2e7b330dd21325cbe0925cfeb721ea6de0981c97cb8b4d61e343813aa91085cd"
+  },
+  "ch13-queue": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/engine/core.py",
+    "start": 684,
+    "end": 692,
+    "notes": {
+      "684": "不需要等待前轮语法推进时，将这轮结果句柄和原计划一起登记。",
+      "686": "左侧入队，后文从右侧取最早一轮，保证回填能找到对应计划。",
+      "687": "容量尚有余量且仍有工作时，先返回控制权，让后续调用继续提交。",
+      "692": "没有用户结果不表示没有执行；这里返回本次是否提交了模型工作的标志。"
+    },
+    "file_sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5",
+    "original_sha256": "eb16a59be2d1a800f15dfd41feeb5ec6da4a4e3d2a0fecafe4a8e03f364fa912"
+  },
+  "ch13-fill": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/core/sched/async_scheduler.py",
+    "start": 51,
+    "end": 70,
+    "notes": {
+      "54": "保留回填前状态，避免把已抢占请求误当成仍活跃的缓存拥有者。",
+      "55": "复用普通Scheduler的确认token与停止检查，异步类只补时间相关状态。",
+      "61": "抢占已清零占位，旧结果不能再扣一次。",
+      "62": "正常结果兑现相应占位；计数不允许为负。",
+      "66": "只有回填前仍RUNNING才推进缓存登记，并扣除尚未兑现的占位。"
+    },
+    "file_sha256": "e586a0ef3c6778be56a93e7f9bb712d4de9de6e7d7fe7e3e1d51dae83ecfc508",
+    "original_sha256": "531aa253d107986c242e5ceca02c2d5868d89b32bf3569683ce31835b3bd38f4"
+  },
+  "ch13-buffer": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/worker/gpu/buffer_utils.py",
+    "start": 85,
+    "end": 97,
+    "notes": {
+      "87": "轮转到另一缓冲槽；调用者必须保证再次复用前旧读者已经结束。",
+      "90": "容量不足时增长为可覆盖输入的大小，不覆盖仍被使用的旧对象。",
+      "95": "把当前CPU状态复制到独立传输槽，而不是让设备一直读可变主账本。",
+      "97": "返回本轮有效范围的设备可访问视图；平台不支持UVA时有显式复制回退。"
+    },
+    "file_sha256": "6597f701a30261bf250e9ad5a29737264624a1caa20527aeea0dad630325b093",
+    "original_sha256": "b54bdbbcdffbebf6f0875b295c760613e5edcf06ad5463ce1ac53ed030226c52"
+  },
+  "ch13-staged": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/worker/gpu/buffer_utils.py",
+    "start": 177,
+    "end": 187,
+    "notes": {
+      "180": "先检查目标行与起点有效，空写入直接跳过。",
+      "184": "记录写到哪一行、从哪一列开始。",
+      "186": "把不同长度的更新内容串联，并保存累计边界；此时还没有执行设备写入。"
+    },
+    "file_sha256": "6597f701a30261bf250e9ad5a29737264624a1caa20527aeea0dad630325b093",
+    "original_sha256": "d22eeafc18153ef192cb5920ab4aa252ef7232df5d7536166f6e9658c2ef4cc8"
+  },
+  "ch14-desc": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/worker/gpu/cudagraph_utils.py",
+    "start": 63,
+    "end": 76,
+    "notes": {
+      "67": "运行描述同时约束模式与补齐后的尺寸，不能只用batch size做键。",
+      "69": "某些路径不要求按请求数补齐，因此允许None。",
+      "70": "每请求一致的query长度、最大query长度用于区分执行兼容性。",
+      "74": "LoRA与微批次分割也进入匹配契约；形状相同不保证可互换。"
+    },
+    "file_sha256": "6e9c042890603535e300a40df8ee159dbed1058a64a83ae50ff0329e332e05ff",
+    "original_sha256": "843d0d1f8cf11867747cefdd8b8e0fc60089e690417896a2ee1d9117da5429f5"
+  },
+  "ch14-dispatch": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/worker/gpu/cudagraph_utils.py",
+    "start": 507,
+    "end": 527,
+    "notes": {
+      "507": "把实际LoRA数映射到预备的有效捕获档位。",
+      "509": "只有已经捕获且存在候选时，才逐个检查兼容描述。",
+      "520": "返回匹配描述，后续输入准备按它的补齐要求执行。",
+      "521": "没有可用匹配时返回NONE与真实尺寸，不能勉强使用不兼容图。"
+    },
+    "file_sha256": "6e9c042890603535e300a40df8ee159dbed1058a64a83ae50ff0329e332e05ff",
+    "original_sha256": "77cee8a08b8f73a71d34b0f151b6f621d848e2a3a0d98a620cc7f52df85ced80"
+  },
+  "ch14-replay": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/worker/gpu/cudagraph_utils.py",
+    "start": 529,
+    "end": 542,
+    "notes": {
+      "531": "FULL重放入口要求模式一致，且字典中实际存在该图。",
+      "541": "先确保旧预取不再与静态缓冲冲突；省掉Python发射不等于省掉同步依赖。",
+      "542": "重放已捕获图；输入内容必须已经写入捕获关联的缓冲区。"
+    },
+    "file_sha256": "6e9c042890603535e300a40df8ee159dbed1058a64a83ae50ff0329e332e05ff",
+    "original_sha256": "4d5b463faf11d50fe6d82029b88e32687766e120ff439ea529afa738a3436978"
+  },
+  "ch14-pw": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/worker/gpu/cudagraph_utils.py",
+    "start": 550,
+    "end": 555,
+    "notes": {
+      "551": "默认piecewise路径通过模型调用进入已编译的分段图。",
+      "554": "启用breakable路径时使用专门包装器，说明分段图不应一概等同torch.compile。"
+    },
+    "file_sha256": "6e9c042890603535e300a40df8ee159dbed1058a64a83ae50ff0329e332e05ff",
+    "original_sha256": "dbf7e839068c085104728221aa5bdd23890670b29c6eb7eeed5e2fc8bfec7049"
+  },
+  "ch14-compile": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/model_executor/models/qwen2.py",
+    "start": 313,
+    "end": 323,
+    "notes": {
+      "313": "Qwen3复用的模型骨架声明可参与编译；装饰器支持不等于本次运行已启用。",
+      "315": "input_ids的第0轴是随当轮工作量变化的token轴。",
+      "318": "positions按最后一轴声明动态；普通文本是一维，多轴位置有不同布局。",
+      "319": "PP中间张量与直接embedding输入也声明对应动态轴。"
+    },
+    "file_sha256": "eb2f0eeb13c57a28bbc06bc64afff18cd8865f89fbe9ff2a3cf3a896f037cfe9",
+    "original_sha256": "b3c87effede5d660383446c7b823fa650102d8c30042a62553bad72c0e5bd889"
+  },
+  "ch15-register": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/engine/async_llm.py",
+    "start": 515,
+    "end": 524,
+    "notes": {
+      "515": "新请求先通过接纳检查，避免超过前端允许的资源约束。",
+      "521": "在首次await之前建立输出侧状态，使并发任务能立即看见本地登记。",
+      "524": "再异步发送核心请求；此await不代表等待整段生成完成。"
+    },
+    "file_sha256": "52cbf404f1dbc99c6bebf4a50a7eb18ff842a1f53106a45f365523192d816be1",
+    "original_sha256": "5e257ea71624c9c94a4f6d26ea646ee06a69af46739a294383b523b5e7db0d15"
+  },
+  "ch15-yield": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/engine/async_llm.py",
+    "start": 700,
+    "end": 713,
+    "notes": {
+      "702": "这个循环只消费该请求的结果，不亲自驱动模型前向。",
+      "706": "有现成结果就立即取，否则挂起当前协程等待；事件循环可处理其他请求。",
+      "711": "以输出契约中的finished控制生成器结束，不能用文本非空代替。",
+      "713": "交给调用者的仍是RequestOutput，HTTP协议适配在更外层。"
+    },
+    "file_sha256": "52cbf404f1dbc99c6bebf4a50a7eb18ff842a1f53106a45f365523192d816be1",
+    "original_sha256": "dff732779905ca57373f1212f38fc9c573f6383dff93bab6703fde0ece2f9aa4"
+  },
+  "ch15-merge": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/engine/output_processor.py",
+    "start": 68,
+    "end": 78,
+    "notes": {
+      "70": "空槽或异常直接设置结果并唤醒消费者。",
+      "73": "如果已有未消费结果，不再无条件堆一条队列节点。",
+      "78": "通过RequestOutput.add按候选索引合并；DELTA累加内容，累计模式保留相应最新结果。"
+    },
+    "file_sha256": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329",
+    "original_sha256": "f5e0f4fb30cb9ce3d1fcf5be48f9b61a200c7f602630162448b3158f209003ec"
+  },
+  "ch15-cancel": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/engine/async_llm.py",
+    "start": 715,
+    "end": 723,
+    "notes": {
+      "718": "协程取消或生成器关闭都要进入请求清理；正常长度结束不经这个异常分支。",
+      "720": "使用收集器持有的内部请求ID，避免把用户标识误当核心身份。",
+      "723": "清理后继续传播取消语义，不把它变成一次成功完成的文本响应。"
+    },
+    "file_sha256": "52cbf404f1dbc99c6bebf4a50a7eb18ff842a1f53106a45f365523192d816be1",
+    "original_sha256": "ca6db603ff13fd3ab73f4b40ca17a980d237910f78d5c8eba2f740c49871724c"
+  },
+  "ch15-abort": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/engine/async_llm.py",
+    "start": 848,
+    "end": 857,
+    "notes": {
+      "853": "统一单个ID和ID集合的输入形式。",
+      "856": "前端移除输出状态并解析实际内部ID，可能涉及一个用户ID下的多个请求。",
+      "857": "向核心发送终止消息，使计算与资源生命周期也结束。"
+    },
+    "file_sha256": "52cbf404f1dbc99c6bebf4a50a7eb18ff842a1f53106a45f365523192d816be1",
+    "original_sha256": "759e29bf1f3b1b662d3c424566e5d7d015cb96166f306364d347dc2b3ebf9fe3"
+  },
+  "ch16-heads": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/model_executor/layers/linear.py",
+    "start": 1047,
+    "end": 1054,
+    "notes": {
+      "1047": "取得本层参与的TP规模；禁用TP时按单份处理。",
+      "1048": "Q头按TP划分，divide会要求合法整除。",
+      "1049": "KV头少于或等于TP规模时，每rank至少保留一个KV头。",
+      "1051": "记录复制次数；不能把KV头无限切成分数头。",
+      "1053": "否则按TP切KV头，本例8/2=4。"
+    },
+    "file_sha256": "094fdf956c35bcfcb44b924a4ff60bb1768285963e4e1ae27f3022dd7e1e852d",
+    "original_sha256": "4df207f1bbc48bbecee2ec987a2eb4a931fb27a275fce50e73a765740d75c397"
+  },
+  "ch16-row": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/model_executor/layers/linear.py",
+    "start": 1761,
+    "end": 1783,
+    "notes": {
+      "1761": "调用者已给局部输入时直接使用；否则在这里切最后一维。",
+      "1767": "按本rank选择局部输入，保证连续存储。",
+      "1772": "偏置至多加一次，避免后续求和把偏置重复计算。",
+      "1773": "调用本层配置的计算方法，得到局部输出贡献。",
+      "1775": "需要合并且TP大于1时求和；相同形状的局部贡献变为完整结果。",
+      "1780": "返回值是否附偏置由层契约控制，不能假设永远只有一个张量。"
+    },
+    "file_sha256": "094fdf956c35bcfcb44b924a4ff60bb1768285963e4e1ae27f3022dd7e1e852d",
+    "original_sha256": "6ba52d635c1924f8d2c2e521a1759d7cf1b1c827543c11c05574e05ccbab1c22"
+  },
+  "ch16-layers": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/model_executor/models/utils.py",
+    "start": 875,
+    "end": 887,
+    "notes": {
+      "875": "根据当前PP位置求本地层段，end为开区间上界。",
+      "879": "ModuleList仍保留全局层下标。",
+      "880": "前面不属于本rank的层放占位。",
+      "882": "只有本地层段真正调用层工厂；前缀保持全局编号。",
+      "884": "尾部不属于本rank的层同样占位。",
+      "887": "调用者同时取得边界和模块表，前向只遍历本地范围。"
+    },
+    "file_sha256": "570a2eb26c7274c9790b6ff42e3fd30403ad6534c68d256f4d867d22e2924919",
+    "original_sha256": "36f495ae4691e7cf64adfa0b406c6ab0475db8d768ed444b0ad47666699894cd"
+  },
+  "ch16-pp-input": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/model_executor/models/qwen2.py",
+    "start": 408,
+    "end": 417,
+    "notes": {
+      "408": "PP首段负责把用户输入变为hidden states。",
+      "409": "已有embedding输入时无需再次查词表。",
+      "413": "首段尚无分离的残差状态。",
+      "415": "后续阶段必须收到前段状态，缺失就是契约错误。",
+      "416": "取主分支与残差；它们共同构成后续层的输入。"
+    },
+    "file_sha256": "eb2f0eeb13c57a28bbc06bc64afff18cd8865f89fbe9ff2a3cf3a896f037cfe9",
+    "original_sha256": "6974e72f395e4717f4fba2b69f8037ddc657671426b54e41cede615cf594641d"
+  },
+  "ch16-rpc": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/executor/multiproc_executor.py",
+    "start": 416,
+    "end": 424,
+    "notes": {
+      "416": "普通执行使用方法名；本地探针也可使用可序列化函数。",
+      "420": "广播的是控制命令、参数与回复选择，不是模型层中的all-reduce。",
+      "422": "默认收集各rank回复；指定output_rank时只等该通道。"
+    },
+    "file_sha256": "3ed0149a8a8e1550c4f062af40e645d1b734e70f99981bc5bf15f0360507648a",
+    "original_sha256": "a4f2a9cb95049b27a2a20a8681ff7b2faf8be7ef3261a0bfc0e1d780f6dd3dda"
+  },
+  "ch16-send": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/worker/gpu_worker.py",
+    "start": 1231,
+    "end": 1239,
+    "notes": {
+      "1234": "上游Worker通过PP组发送模型返回的中间张量。",
+      "1236": "TP组信息供传输实现选择配合方式，不能推断一份张量总是完整重复发送。",
+      "1239": "保存设备发送句柄，下一轮复用存储前等待；发送返回不等于数据不再在途。"
+    },
+    "file_sha256": "6994436e4547c0996ab555b3e814e8ccea26b650dfc1b378b97d640745309347",
+    "original_sha256": "74ecee37a55f049c2b05a5c93961a767aa75d546876c1f99255b7c3f14d0e22e"
+  },
+  "ch17-score": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/engine/core_client.py",
+    "start": 1570,
+    "end": 1582,
+    "notes": {
+      "1570": "本客户端知道自己交给该引擎的在途数，不必等待下一次远端统计。",
+      "1571": "取远端队列总量与本地在途估计的较大值，防止旧快照抹掉刚提交的工作。",
+      "1572": "只有存在等待请求时才增加KV压力惩罚。",
+      "1579": "KV占用高于50%才增加这一项；它是负载启发式，不是精确耗时预测。",
+      "1580": "严格小于才更新，平分时由扫描顺序决定。"
+    },
+    "file_sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8",
+    "original_sha256": "82816107f91674669c568b2938f077993c392a49318e5640cd48e4b20d6cd567"
+  },
+  "ch17-owner": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/engine/core_client.py",
+    "start": 1591,
+    "end": 1597,
+    "notes": {
+      "1591": "未显式指定目标的负载选择结束后旋转扫描起点，减少固定同分偏向。",
+      "1593": "把下标转换为真实引擎通信身份。",
+      "1595": "保存请求归属，后续取消必须发回这个核心。",
+      "1596": "立即增加本客户端的精确在途计数。"
+    },
+    "file_sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8",
+    "original_sha256": "ee1ceff7fe31c6c2570559749c3d8be8adc330e384a8605807bf5f86a5e5d680"
+  },
+  "ch17-send": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/engine/core_client.py",
+    "start": 1486,
+    "end": 1501,
+    "notes": {
+      "1487": "先确保统计更新任务存在。",
+      "1489": "消息同时带当前wave与原前端编号。",
+      "1492": "选择并登记目标，再把ADD发给该核心。",
+      "1494": "跨核心计算处于暂停时，额外通知协调器唤醒伙伴。",
+      "1499": "等待本次发送操作完成，不等待整段生成。",
+      "1501": "确保输出接收任务运行，结果还要回到原前端。"
+    },
+    "file_sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8",
+    "original_sha256": "b2409f0e4331ca59019fad4264579cbb0972a07b25c3d71b5523186a007bdbe0"
+  },
+  "ch17-finish": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/engine/core_client.py",
+    "start": 1614,
+    "end": 1617,
+    "notes": {
+      "1614": "核心通知请求终结后，再移除路由状态。",
+      "1616": "pop带默认值，重复终结不会再次扣减计数。",
+      "1617": "只有确实移除归属记录时才减本客户端计数。"
+    },
+    "file_sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8",
+    "original_sha256": "7e9ab37b33af7e85fb6e8138c035f3dbdc9dc8670362a4f2283eb83531fa5fc6"
+  },
+  "ch17-cancel": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/engine/core_client.py",
+    "start": 1675,
+    "end": 1685,
+    "notes": {
+      "1675": "批量取消先按既有目标分组。",
+      "1677": "只处理仍有归属记录的请求，不为取消重新做负载选择。",
+      "1679": "每组向自己的核心发送一次ABORT消息。",
+      "1685": "这里是消息提交；核心处理与资源清理仍有后续生命周期。"
+    },
+    "file_sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8",
+    "original_sha256": "b691ab033adf90e7e8d515d8c1c5e6792f6fe6519bc2cac7cabcd538f945c371"
+  },
+  "ch17-dense": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/engine/core.py",
+    "start": 1318,
+    "end": 1328,
+    "notes": {
+      "1318": "保留服务侧DP身份。",
+      "1319": "只有DP且模型是MoE，才使用需要跨核心计算协调的实现。",
+      "1324": "稠密DP内部计算相互独立，重新配置为各自的模型执行副本。",
+      "1328": "保留engine_index供消息路由识别，不丢失外层服务身份。"
+    },
+    "file_sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5",
+    "original_sha256": "3bef1d72b2bb418bfebf4eb6e9dc5c2d4e6a4253332264dbc34adc27a7bd1a6e"
+  },
+  "ch18-factory": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/model_executor/layers/fused_moe/layer.py",
+    "start": 405,
+    "end": 417,
+    "notes": {
+      "405": "允许平台或调用者替换Runner类；默认装配上游MoERunner。",
+      "408": "工厂产物是Runner，不是一个名为FusedMoEFactory的实例。",
+      "411": "路由策略与专家参数分别作为协作者传入。",
+      "414": "gate交给Runner，使路由线性层可以在合适的流同步之后执行。"
+    },
+    "file_sha256": "def0b4e13bcc1e4e21ee10644e647e2eda1acbf0cc01e76d6128abb59ea08224",
+    "original_sha256": "eee3212e4cb0542ad212a53554fb11232a227d13f5ff805b0127e2c792169c3b"
+  },
+  "ch18-gate": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/model_executor/layers/fused_moe/runner/moe_runner.py",
+    "start": 900,
+    "end": 905,
+    "notes": {
+      "900": "Runner持有gate时，这里才把hidden变成真正的路由logits。",
+      "901": "同时存在可融合的共享专家gate时可合并计算。",
+      "905": "普通分支返回路由分数；此前名为router_logits的参数可能只是原hidden。"
+    },
+    "file_sha256": "05893188402fe37229bf72d75088d66193c417d5d502daafd3a55e1bfedaa60c",
+    "original_sha256": "5653c1937ad720ead6212b4efa837c2855a85ba63320f49707aa67514b802356"
+  },
+  "ch18-route": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/model_executor/layers/fused_moe/runner/moe_runner.py",
+    "start": 617,
+    "end": 639,
+    "notes": {
+      "617": "整体内核可把路由融合进去，因此直接传logits。",
+      "624": "模块化路径先显式取得所选专家ID与权重。",
+      "626": "Router封装选择规则，输出形状通常为[token, top_k]。",
+      "633": "RoutedExperts消费选择结果和hidden，负责进入参数/计算方法路径。"
+    },
+    "file_sha256": "05893188402fe37229bf72d75088d66193c417d5d502daafd3a55e1bfedaa60c",
+    "original_sha256": "06da10c097eafd24926d339e99d199dc79c35b9b9183744663d36f1b2f7fdf57"
+  },
+  "ch18-map": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/model_executor/layers/fused_moe/expert_map_manager.py",
+    "start": 66,
+    "end": 87,
+    "notes": {
+      "67": "按EP规模分配专家个数；余数优先分给低rank。",
+      "72": "全局专家轴先填-1，表示该专家不在本rank。",
+      "75": "连续放置时，本rank得到一段全局编号。",
+      "77": "值是本地参数槽位，不是另一份全局专家ID。",
+      "80": "轮转放置把间隔编号映射到连续本地槽位；完整配置支持还要通过上层检查。"
+    },
+    "file_sha256": "308c00f63fcb6f44518ec3a56d8f902c7bba75928c2e3aea30fbe1f3f473973b",
+    "original_sha256": "afd6634e6627ae5ce57bf3b528bdc15e4ad03d92cbc43e52415cb433a67db04c"
+  },
+  "ch18-format": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/model_executor/layers/fused_moe/modular_kernel.py",
+    "start": 1681,
+    "end": 1685,
+    "notes": {
+      "1681": "装配之后再解决通信准备侧与专家计算侧的关联配置。",
+      "1682": "两侧必须承认相同激活布局；抽象接口存在不代表任意实现能混搭。"
+    },
+    "file_sha256": "8dc4e0dbbf35b3aac8add63ca6f2a7bbfdadaabbd60826e24598b22c7d8e5c22",
+    "original_sha256": "57bf16b1429c1071d490e1df288970b5dda270684f7244a570747937316c6183"
+  },
+  "ch18-dispatch": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/model_executor/layers/fused_moe/prepare_finalize/naive_dp_ep.py",
+    "start": 158,
+    "end": 168,
+    "notes": {
+      "158": "代表性的naive DP/EP实现，把激活与路由信息一起交给EP组分发。",
+      "162": "序列并行条件进入通信契约。",
+      "163": "量化scale、LoRA映射等附加信息也可随token移动，避免元数据失配。",
+      "166": "没有附加字段时解包三个返回值；它们都已按分发后的布局组织。"
+    },
+    "file_sha256": "db015e5b18750bbbf5b2bbaceca877dd6f3f3e74c2a94e8dc185f7413b387f91",
+    "original_sha256": "81f319bec0cd850cfeb68e36d6537a3d2a420e8d2ae635dd68ea59a078ad7d30"
+  },
+  "ch19-register": {
+    "kind": "source",
+    "repo": "vllm-ascend",
+    "path": "vllm_ascend/__init__.py",
+    "start": 72,
+    "end": 75,
+    "notes": {
+      "72": "entry point调用此函数发现平台；此处不创建Worker或模型。",
+      "75": "返回限定类名，上游稍后解析并实例化平台对象。"
+    },
+    "file_sha256": "27e9fdaee73742037503f7ce7b3fbcba0ed919b0b6fcf910b22373c7da459dc5",
+    "original_sha256": "6c165e26a8921fc8da6d438483338cbdb0461181182064626b283948a55abfe5"
+  },
+  "ch19-select": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/platforms/__init__.py",
+    "start": 263,
+    "end": 272,
+    "notes": {
+      "263": "从已激活候选中取出树外平台插件。",
+      "265": "多个树外平台同时激活时拒绝模糊选择。",
+      "270": "只有一个树外平台候选时使用其返回的限定名。"
+    },
+    "file_sha256": "12c5a4df6a59b078d12240c91eced342a7bc8fc216a5e20438f6f5acc7e5564b",
+    "original_sha256": "7cb0ec06cf87ec8a8462c719f934ace98a3681f36b5dacb98565d9023f4aa7a3"
+  },
+  "ch19-runner": {
+    "kind": "source",
+    "repo": "vllm-ascend",
+    "path": "vllm_ascend/worker/worker.py",
+    "start": 510,
+    "end": 516,
+    "notes": {
+      "510": "读取有效MRV2开关；NPUWorker在设备准备后才创建Runner。",
+      "512": "与MRV1同名的类位于不同模块，别只按短类名搜索。",
+      "514": "本书基础记录进入该分支。",
+      "516": "未启用MRV2时走独立NPUModelRunner实现。"
+    },
+    "file_sha256": "9d938de914cb6a8c6366a11ec63b3d3487204bf3d216884e307650e2e2d0c608",
+    "original_sha256": "71e2cbfce9b7370efa4e6b21ccdb43f0115a2c748e9f37ab063f6f80bbfecdb4"
+  },
+  "ch19-super": {
+    "kind": "source",
+    "repo": "vllm-ascend",
+    "path": "vllm_ascend/worker/v2/model_runner.py",
+    "start": 635,
+    "end": 645,
+    "notes": {
+      "635": "平台包装保留失败状态，供后续清理逻辑使用。",
+      "636": "在平台决定的DP协调上下文中执行。",
+      "638": "调用上游MRV2主执行逻辑，说明平台实现没有把所有调度和批次逻辑重新写一遍。",
+      "639": "传递同一SchedulerOutput及中间张量契约。"
+    },
+    "file_sha256": "533986687a50caa40afe7d3610d5fd9fb7d64d0ef167d95fe2c656bf0a3ccec5",
+    "original_sha256": "7f8fa471daeb8b79d4980eda808b4531941ff7c0f55fd220412c72396d4d9454"
+  },
+  "ch19-ops": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/model_executor/custom_op.py",
+    "start": 119,
+    "end": 128,
+    "notes": {
+      "119": "未登记树外实现时创建原类。",
+      "122": "有登记时选择替代类，选择发生在实例创建阶段。",
+      "128": "返回选定类的实例；源码中的构造名字与type(obj)可能不同。"
+    },
+    "file_sha256": "967b74c14b8a8e69af8828300414fbd3a6954ec573a253ca0f67aa02b0ed473f",
+    "original_sha256": "62505de3d0c4afe02fd9dafffd146f04fff6c7dd583e1fde62b64d98220dc1a7"
+  },
+  "ch19-patch": {
+    "kind": "source",
+    "repo": "vllm-ascend",
+    "path": "vllm_ascend/patch/platform/patch_balance_schedule.py",
+    "start": 892,
+    "end": 897,
+    "notes": {
+      "897": "直接修改上游模块中的Scheduler名称绑定；这是运行期补丁，不是一个普通工厂参数。"
+    },
+    "file_sha256": "190626c663c03ff98f32a6edab7b279fd64dce4ad81900de614fc291c7dd618e",
+    "original_sha256": "37c013a731f16ea01af6b972f29c689abe001089eaf5365973b107c702993ce0"
+  },
+  "ch19-fallback": {
+    "kind": "source",
+    "repo": "vllm-ascend",
+    "path": "vllm_ascend/patch/platform/patch_balance_schedule.py",
+    "start": 163,
+    "end": 165,
+    "notes": {
+      "163": "实际对象虽是BalanceScheduler，具体行为仍取决于有效配置。",
+      "164": "均衡未启用时，委托原Scheduler的schedule。"
+    },
+    "file_sha256": "190626c663c03ff98f32a6edab7b279fd64dce4ad81900de614fc291c7dd618e",
+    "original_sha256": "86d61fe6f7939a53243482a0dd089877d3ef59e0e3d7ed6c5fc99066d41ecec9"
+  },
+  "ch20-sampler": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/worker/gpu/model_runner.py",
+    "start": 1552,
+    "end": 1564,
+    "notes": {
+      "1552": "当前批次没有草稿，或未装配拒绝采样器，沿普通采样路径。",
+      "1556": "有草稿时由验证采样器决定哪些候选成为确认结果。",
+      "1560": "target logits来自本轮目标模型前向。",
+      "1563": "概率验证还要知道提议分布，不能只比较两个模型的最大值。"
+    },
+    "file_sha256": "174c93db921c23cf0396eee4764be25b2bd2d4b6a06e9fa41ce3598b884ce8ce",
+    "original_sha256": "6c4a1102692370743bb0475252b656146428ec622d09180cee296fd03c73459c"
+  },
+  "ch20-propose": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/worker/gpu/model_runner.py",
+    "start": 2142,
+    "end": 2158,
+    "notes": {
+      "2142": "此处已经得到本轮验证结果，接下来为后续验证准备新草稿。",
+      "2144": "批次、Attention元数据和slot映射共同约束提议模型的输入位置。",
+      "2147": "目标模型的隐藏状态可作为提议模型输入，具体模型负责适配。",
+      "2149": "接受与拒绝的数量决定有效前缀，避免继续沿被否定的历史提议。",
+      "2158": "按持久请求行保存候选；不是追加到用户已确认输出。"
+    },
+    "file_sha256": "174c93db921c23cf0396eee4764be25b2bd2d4b6a06e9fa41ce3598b884ce8ce",
+    "original_sha256": "a51ef0dd95545c95b81684ba0096013052fbf3251a6abe27621c3362d1b26f1a"
+  },
+  "ch20-decode": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/worker/gpu/spec_decode/autoregressive/speculator.py",
+    "start": 376,
+    "end": 392,
+    "notes": {
+      "376": "进入多步草稿生成阶段；子类可实现相关钩子。",
+      "378": "选择融合或普通多步执行方式，二者遵守同一个提议结果契约。",
+      "383": "剩余步数的执行受本轮批次、图模式和DP协作约束。",
+      "390": "阶段结束后恢复子类临时状态。",
+      "392": "返回本批次请求的候选矩阵，每行对应一个请求。"
+    },
+    "file_sha256": "5b97f54e20ddf65b98e939832d050745f67ef43cfa145786da300f1a8322e3c6",
+    "original_sha256": "8e27bb2af66409abd584e45d0d7b61f2a2c8fc8e08a5afb1369971d759587095"
+  },
+  "ch20-accept": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/worker/gpu/spec_decode/rejection_sampler_utils.py",
+    "start": 584,
+    "end": 595,
+    "notes": {
+      "584": "synthetic模式人为指定接受率，不能用它说明正常解码正确性。",
+      "588": "正常贪心路径要求候选与目标argmax完全一致。",
+      "589": "负数占位候选无效，必须拒绝。",
+      "590": "首次拒绝后停止验证后续候选，后缀依赖的条件已失效。",
+      "592": "接受时写候选；拒绝点写目标选择作为纠正token。"
+    },
+    "file_sha256": "214b61fa0abe88573beb779872c035b3954e5651a85bd438d99ee5905d3a62ec",
+    "original_sha256": "8edc3b538a449b11fa30a8b7d8f4d875154a48cb6cefe8e7fccb5b15b95244e0"
+  },
+  "ch20-rollback": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/core/sched/scheduler.py",
+    "start": 1983,
+    "end": 1995,
+    "notes": {
+      "1983": "以本轮实际调度的草稿数量为准，不用proposer最初想提议的上限。",
+      "1984": "普通自回归路径每步额外有一个目标采样结果。",
+      "1985": "从返回长度扣除这个结果，得到被接受的草稿数量。",
+      "1986": "未被接受的整个后缀都计入拒绝。",
+      "1991": "抢占后的旧结果不再回退进度，避免重复记账。",
+      "1993": "修正有效计算前缀；不要求擦除设备中所有旧字节。",
+      "1995": "异步路径还要同步修正占位计数。"
+    },
+    "file_sha256": "c1db45f3bbad3a875dd8638331b8870c4380ac1ab4734265ba5c863833a82884",
+    "original_sha256": "04a36d182236eef94c6ea38cc35c113d3b6ff4c056190108d378c3788d9b9ed5"
+  },
+  "ch20-ngram": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/spec_decode/ngram_proposer.py",
+    "start": 283,
+    "end": 293,
+    "notes": {
+      "283": "找不到足够长的历史匹配时，不勉强制造候选。",
+      "291": "把反向匹配位置变回原历史，候选从匹配片段之后开始。",
+      "292": "候选最多取现有历史中可用的后续部分。",
+      "293": "返回的是历史token片段；目标模型仍必须验证。"
+    },
+    "file_sha256": "5051e1bca645fe4befec0a6340f0dfc169fbcbe070ac1da508b72f8ee9c91736",
+    "original_sha256": "0d4db5ed7fd5f19ebab89155188853ea27f763740e5629a2f5cbc291fbd3fb59"
+  },
+  "ch21-future": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/structured_output/request.py",
+    "start": 44,
+    "end": 53,
+    "notes": {
+      "44": "访问请求语法时，先检查编译Future是否已经完成。",
+      "48": "短暂等待仍未完成，就把请求留在阻塞状态。",
+      "51": "编译异常保存在该请求上，交由调度器定向处理。",
+      "53": "这里的完成包含成功和失败，不等于语法可用于采样。"
+    },
+    "file_sha256": "6a06212f8f130555eb406ba03c92bf9e26fbfa1d747d83b8f68766ebf967490e",
+    "original_sha256": "da40e997cdd08203e49090fede5b3da7135796969fb569b3eb25429196256096"
+  },
+  "ch21-promote": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/core/sched/scheduler.py",
+    "start": 2979,
+    "end": 2987,
+    "notes": {
+      "2979": "这个等待原因与KV容量不足不同。",
+      "2981": "没有语法结果时继续等待。",
+      "2983": "有结果但为异常时，登记请求级失败。",
+      "2986": "只有得到可用结果，才回到普通等待队列语义。"
+    },
+    "file_sha256": "c1db45f3bbad3a875dd8638331b8870c4380ac1ab4734265ba5c863833a82884",
+    "original_sha256": "d85ce2a7f604bd167dc4de4a7762ff782a0f865e7e75e4aa89eca1e370f18dd3"
+  },
+  "ch21-matcher": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/structured_output/backend_xgrammar.py",
+    "start": 123,
+    "end": 131,
+    "notes": {
+      "123": "将编译产物包装成请求级Grammar。",
+      "124": "为本请求创建独立Matcher游标，不共享可变解析进度。",
+      "126": "停止token也进入契约，语法未完成时不能随意提前结束。",
+      "127": "投机检查需要回退能力，保留足够的历史窗口。"
+    },
+    "file_sha256": "a6041ddf35d7aebb8452697ed16274451af533042acfc46760860725d153f5cb",
+    "original_sha256": "1024851c71eb667cdd25f4fcca1e9961715500b7affe8cc632f7a7723dba99ae"
+  },
+  "ch21-validate": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/structured_output/backend_xgrammar.py",
+    "start": 187,
+    "end": 201,
+    "notes": {
+      "187": "语法已终结时，不再接受新的候选前缀。",
+      "191": "按候选顺序临时推进Matcher。",
+      "194": "到达终结点便停止试走。",
+      "197": "第一个不合法token截断整个后缀。",
+      "200": "撤销本次试走，不能把候选当成已经提交的输出。",
+      "201": "交出合法前缀，Grammar自身仍停在原确认位置。"
+    },
+    "file_sha256": "a6041ddf35d7aebb8452697ed16274451af533042acfc46760860725d153f5cb",
+    "original_sha256": "f56e38a8d6981f6e6b55c1e895f07f7a014e9a1a014596036dc76e307f60953b"
+  },
+  "ch21-map": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/worker/gpu/structured_outputs.py",
+    "start": 74,
+    "end": 85,
+    "notes": {
+      "74": "语法行与目标logits行可能顺序不同，必须建立显式映射。",
+      "79": "当步请求顺序提供执行侧索引。",
+      "80": "mask列表自己的请求顺序可能只包含有约束的子集。",
+      "82": "投机路径还需逐候选位置的mask，不能每请求只取一行。"
+    },
+    "file_sha256": "18a10532db7e66b55e334acacd1fd989ad6361adf31dd0de9a9a65e23db25951",
+    "original_sha256": "cb517564eaaff64e1b1a6c203a6cd98dc6be6ad6c5e00751b2d107011b18d85f"
+  },
+  "ch21-mask": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/worker/gpu/structured_outputs.py",
+    "start": 152,
+    "end": 162,
+    "notes": {
+      "153": "压缩位图中0代表禁止，先展开为每个词表位置的布尔条件。",
+      "156": "保留允许项的原logit，只改被禁止且当前有效的位置。",
+      "160": "负无穷使该token在后续采样中不再有概率质量。"
+    },
+    "file_sha256": "18a10532db7e66b55e334acacd1fd989ad6361adf31dd0de9a9a65e23db25951",
+    "original_sha256": "5f166a308678e5f2e200dee920fb5e4ce25efecafa8325b43ed7bdebcae1baa4"
+  },
+  "ch21-commit": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/core/sched/scheduler.py",
+    "start": 2054,
+    "end": 2065,
+    "notes": {
+      "2054": "验证后的确认token才正式推进请求语法。",
+      "2057": "若语法拒绝这批结果，说明约束执行出现不一致。",
+      "2063": "将对应请求标为错误结束，不继续输出未经约束的后续内容。"
+    },
+    "file_sha256": "c1db45f3bbad3a875dd8638331b8870c4380ac1ab4734265ba5c863833a82884",
+    "original_sha256": "5d2932fb7ddb9000a14826a280f1e6728ff6b9c7898caed76cbf953521c83651"
+  },
+  "ch22-place": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/model_executor/models/qwen2_vl.py",
+    "start": 1150,
+    "end": 1158,
+    "notes": {
+      "1150": "视觉特征经过空间合并，展开长度由合并粒度决定。",
+      "1153": "取当前媒体项的处理产物，不用整批图片数量替代。",
+      "1154": "grid_thw描述该项的时间与空间网格。",
+      "1157": "把网格大小换算为语言序列需要的特征位置数。",
+      "1158": "占位token为后续embedding替换预留位置。"
+    },
+    "file_sha256": "24233e656920e3ae05c45d04993ddcaf4c87bf82d60b82b35305498b63356057",
+    "original_sha256": "c2b6c4c6f262049fa23b1fad596a25ebce5f8130d11eeb365e78f94b65498f85"
+  },
+  "ch22-budget": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/core/sched/scheduler.py",
+    "start": 1778,
+    "end": 1797,
+    "notes": {
+      "1778": "decoder能算多少，还受encoder预算和特征缓存容量约束。",
+      "1785": "媒体项之前仍有文本时，本轮可以先推进这些文本。",
+      "1788": "将decoder计划截在尚未准备好的媒体输入之前。",
+      "1792": "已处于该媒体范围而特征不可用时，不能越过它计算。"
+    },
+    "file_sha256": "c1db45f3bbad3a875dd8638331b8870c4380ac1ab4734265ba5c863833a82884",
+    "original_sha256": "2c4e4f15794bab105d3c58f0fda043a4bf5899b082aed30dbb8e248418237e9b"
+  },
+  "ch22-evict": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/core/encoder_cache_manager.py",
+    "start": 174,
+    "end": 190,
+    "notes": {
+      "174": "空闲容量足够即可；这里只检查和维护CPU账本。",
+      "179": "可回收容量也不足则失败，不能驱逐仍被请求引用的项。",
+      "185": "从最早成为可回收的项开始驱逐。",
+      "188": "记录hash，稍后通过调度产物通知执行端删除对应张量。"
+    },
+    "file_sha256": "45f167e4f5a8ae3448ef61ba8d13c21dbb13a90fc55ab49098b7aacedd52e0d1",
+    "original_sha256": "e584b20983b2f107763e00cbe66d82ea8eb555a174b0519e8431624304ccba5f"
+  },
+  "ch22-reference": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/core/encoder_cache_manager.py",
+    "start": 251,
+    "end": 260,
+    "notes": {
+      "251": "同一请求可能多次引用同一图片，仍有其他位置需要时不能释放请求引用。",
+      "256": "最后一个对应位置释放后，才移除该请求的引用。",
+      "257": "没有任何请求使用时变为可回收，而不是立即删除张量。"
+    },
+    "file_sha256": "45f167e4f5a8ae3448ef61ba8d13c21dbb13a90fc55ab49098b7aacedd52e0d1",
+    "original_sha256": "35ff493c5e62ed6bd84cddde48c97ee13050ca60fb87325745297dcd0f4280c7"
+  },
+  "ch22-window": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/worker/gpu/mm/encoder_runner.py",
+    "start": 245,
+    "end": 264,
+    "notes": {
+      "246": "先定位与当前query区间有交集的媒体项。",
+      "255": "把全序列窗口转换成此媒体占位段内部的相对区间。",
+      "258": "包含文本分隔位时，占位相对位置还要再映射成真正的embedding行。",
+      "263": "本段没有特征行则跳过，避免把分隔token误当成encoder输出。"
+    },
+    "file_sha256": "0981e352d70301b7154a217a48665ffe35f215d053ec5740c2515a3e1e11b4e6",
+    "original_sha256": "4db5e23d4d2e8ed1f819ec6e0fcb00ccde8b4e60f1893ea78969885df488070d"
+  },
+  "ch22-vision": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/model_executor/models/qwen2_vl.py",
+    "start": 1390,
+    "end": 1396,
+    "notes": {
+      "1391": "普通本地视觉分支执行视觉模型，得到合并后的特征。",
+      "1394": "按同一空间合并规则计算每张图片的特征行数。",
+      "1396": "将拼接输出分回媒体项；顺序必须对应输入项。"
+    },
+    "file_sha256": "24233e656920e3ae05c45d04993ddcaf4c87bf82d60b82b35305498b63356057",
+    "original_sha256": "58f9fe31bd51fa1a846555c0ec62e1a2566d271cb190fb124fbd90464349d007"
+  },
+  "ch22-merge": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/model_executor/models/utils.py",
+    "start": 702,
+    "end": 710,
+    "notes": {
+      "702": "纯文本或无媒体特征时保留原embedding。",
+      "705": "将多个媒体项按既定顺序整理成特征行。",
+      "706": "融合后的dtype遵守语言输入embedding的契约。",
+      "710": "按明确的多模态位置覆盖，形状与顺序必须匹配；这是原地更新。"
+    },
+    "file_sha256": "570a2eb26c7274c9790b6ff42e3fd30403ad6534c68d256f4d867d22e2924919",
+    "original_sha256": "af4d608cca9526703db3f08662c1474bdea624b216eccc879451db9936c65a2b"
+  },
+  "ch23-expand": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/worker/gpu/lora_utils.py",
+    "start": 95,
+    "end": 105,
+    "notes": {
+      "101": "先按当步idx_mapping从持久行取出adapter ID，避免请求重排后串用。",
+      "102": "请求级映射保持每个当步请求一项。",
+      "103": "按各请求本轮token数量展开，为每个计算行指定adapter身份。",
+      "104": "去重得到当步需要激活的adapter集合。"
+    },
+    "file_sha256": "1e90eddd9ddb4ca55e574bb28e87ae3a6f6750175a62d373102426543f4ccd66",
+    "original_sha256": "5e4a1ad74894467d8a7803d5cacc38e8ab4a3b20c215f554d046e29053c2ce50"
+  },
+  "ch23-limit": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/core/sched/scheduler.py",
+    "start": 897,
+    "end": 910,
+    "notes": {
+      "899": "本轮已达到不同adapter数量上限时，检查新请求是否引入新身份。",
+      "904": "使用已在本轮集合中的adapter不增加种类数。",
+      "908": "暂时跳过该请求，让其他可兼容请求仍有机会入批。"
+    },
+    "file_sha256": "c1db45f3bbad3a875dd8638331b8870c4380ac1ab4734265ba5c863833a82884",
+    "original_sha256": "951e9e57d8c5a4f5644f35e05dbf32bfccfce98e3c52782c37b9b4bc2466f488"
+  },
+  "ch23-load": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/lora/worker_manager.py",
+    "start": 298,
+    "end": 314,
+    "notes": {
+      "302": "先完成加载与有效性检查，避免新adapter无效时先破坏已有缓存。",
+      "306": "处理同ID替换；只有上面加载成功才到这里。",
+      "310": "新增将超CPU缓存容量时，驱逐旧项。",
+      "314": "将加载好的权重对象登记，设备激活是后续步骤。"
+    },
+    "file_sha256": "7807187ddfd128f6a6dc31820b435dc954f2e9122d254ce7d6484b44076e3522",
+    "original_sha256": "b3addb2b36c177f26e52004ee7af8964705ca4d84bae1e9a68644e799d6f83dc"
+  },
+  "ch23-slot": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/lora/model_manager.py",
+    "start": 338,
+    "end": 353,
+    "notes": {
+      "338": "index是设备槽位，lora_model.id是逻辑adapter ID，两者不相等也正常。",
+      "340": "按模型层逐一安装此adapter的参数。",
+      "343": "adapter没有覆盖某层时清理该槽旧参数，避免上一个adapter残留。",
+      "349": "将该层A/B放进所选槽，供后续批次映射引用。"
+    },
+    "file_sha256": "6695bb7d6373d8f29bb13d6ae31e2ef2a98f8c23a6f37f9147d67cafca5f3302",
+    "original_sha256": "3d3dd532ec50fefb49b9cecee1c69c6b2c320f8599e8bfdd5ebf56fc60b74576"
+  },
+  "ch23-convert": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/lora/punica_wrapper/utils.py",
+    "start": 94,
+    "end": 111,
+    "notes": {
+      "94": "反转槽位表，建立逻辑adapter ID到本地槽的查找。",
+      "101": "基础模型身份0转为-1，表示不应用LoRA增量。",
+      "104": "同样转换每个计算token的映射。",
+      "111": "得到内核实际使用的槽位索引，不能把逻辑ID直接用作数组下标。"
+    },
+    "file_sha256": "1d926bd9cc9118719f64a9706d1c0f433a12f3605cfb10f125e1217231109158",
+    "original_sha256": "8f289bf4200029d104194ff0921e667d745fdecb4c36f10940f79dda15e0e41a"
+  },
+  "ch23-cachekey": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/lora/model_manager.py",
+    "start": 1183,
+    "end": 1191,
+    "notes": {
+      "1187": "缓存键必须包含当前槽布局，adapter可能在批次外被换入换出。",
+      "1188": "逻辑批次不变但槽位改变，也必须重建内核元数据。",
+      "1190": "更新两份依赖快照，后续才可安全复用。"
+    },
+    "file_sha256": "6695bb7d6373d8f29bb13d6ae31e2ef2a98f8c23a6f37f9147d67cafca5f3302",
+    "original_sha256": "4a9c357495bdf8b621074dfff155081a4055b18d0277db3966f85068fd2a0056"
+  },
+  "ch23-apply": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/lora/layers/base_linear.py",
+    "start": 208,
+    "end": 212,
+    "notes": {
+      "211": "先用基础层当前计算方法取得共享权重的结果，方法也可能是量化实现。",
+      "212": "再按行对应的adapter，将低秩增量加到结果上。"
+    },
+    "file_sha256": "11929fcd89bef08ca7e1e672cf6063c718bce4ba02a2fb8254dada7793a6c5f3",
+    "original_sha256": "33d098db449f386d6f734d242867fb576e8e67113c472ca61c1ceaf05da681d2"
+  },
+  "ch23-scale": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/lora/lora_weights.py",
+    "start": 36,
+    "end": 42,
+    "notes": {
+      "38": "已折入缩放时不重复处理。",
+      "40": "把缩放吸收到B中，后续内核可用乘数1。",
+      "41": "更新状态，防止下次optimize再次乘同一因子。"
+    },
+    "file_sha256": "300249f2f58a7bae51c840bf9cec9866653e085b0a6efa0c09a927fd44d9f6cc",
+    "original_sha256": "627d13ec08a1f3c7e92ce62dcd0689cd54a77a548678226011db8a035c1c8541"
+  },
+  "ch24-select": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/model_executor/layers/quantization/fp8.py",
+    "start": 182,
+    "end": 201,
+    "notes": {
+      "182": "按真实层类型与名称决定实现，不是全模型统一替换一个forward。",
+      "189": "跳过列表中的层仍用未量化方法。",
+      "190": "checkpoint格式决定走在线转换还是已量化装载路径。",
+      "195": "v0.30中，未预先量化的权重由独立在线方法处理。",
+      "199": "本章主线为已经序列化FP8的权重。"
+    },
+    "file_sha256": "947540b443c15e9e5b4c08ff07f7a7c0e8d8f0d8494f3964c0172a772a779fe5",
+    "original_sha256": "48876296e276d1e7d8617dbf37f69f8c15215392c0c81ab7c6bfff6450797875"
+  },
+  "ch24-create": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/model_executor/layers/quantization/fp8.py",
+    "start": 329,
+    "end": 343,
+    "notes": {
+      "329": "创建该分片的权重参数壳，并保留装载器契约。",
+      "332": "参数属于层对象，计算方法负责其表示与使用。",
+      "335": "本片段只展开非block的scale；融合层可有多个逻辑分片。",
+      "343": "scale是权重语义的一部分，必须随正确分片一起装载。"
+    },
+    "file_sha256": "947540b443c15e9e5b4c08ff07f7a7c0e8d8f0d8494f3964c0172a772a779fe5",
+    "original_sha256": "8adaf4152b2c20e25d7be2cccf937757f1095e9cfdfae430898bed165550822a"
+  },
+  "ch24-post": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/model_executor/layers/quantization/fp8.py",
+    "start": 412,
+    "end": 427,
+    "notes": {
+      "414": "将融合层多个逻辑分片的scale整理成执行策略要求的表示。",
+      "417": "logical_widths说明分片边界，不能只看整个矩阵shape。",
+      "420": "静态激活缩放也要归一为内核所需形式。",
+      "423": "本分支转为运行期[K,N]布局。",
+      "426": "替换参数对象；持有旧引用的代码不能假定它仍是当前权重。"
+    },
+    "file_sha256": "947540b443c15e9e5b4c08ff07f7a7c0e8d8f0d8494f3964c0172a772a779fe5",
+    "original_sha256": "cc0815b6d3bac3c7ff7275923c41482ebdc9405c793ffe7311f6e740c5968900"
+  },
+  "ch24-kernel": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/model_executor/kernels/linear/__init__.py",
+    "start": 678,
+    "end": 698,
+    "notes": {
+      "678": "先取当前平台的候选集合。",
+      "680": "显式linear backend选项进一步约束候选。",
+      "686": "依次验证硬件支持及此层配置是否可实现。",
+      "691": "首个通过检查的候选成为本层内核。",
+      "695": "没有可用实现时给出各候选失败原因，不凭量化名称强行执行。"
+    },
+    "file_sha256": "50db47e47e6e2692ba92649eb9864859406c5701100a9d00048d9bcfda3e5020",
+    "original_sha256": "90e7ef685047b4a150d5350b3a26fe43160657f523f0cdaf0077529940bd768c"
+  },
+  "ch24-encoding": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/model_executor/layers/quantization/utils/fp8_utils.py",
+    "start": 68,
+    "end": 79,
+    "notes": {
+      "73": "CPU实验显式传入e4m3fn，不依赖当前平台默认格式。",
+      "76": "用绝对最大值确定整张量范围；下界保护全零输入。",
+      "77": "scale把最大值映射到目标格式的有限范围。",
+      "79": "返回低精度编码及反向缩放因子，重建时二者相乘。"
+    },
+    "file_sha256": "03c57e3c11e93818f3bb42ab91fee6386b229e57c7506f65fab3b010425d6cea",
+    "original_sha256": "b0ab325f17546c34ebe17b8a8b457f6d185d7b3c1dc8a02fb85f4f773f96063f"
+  },
+  "ch25-page": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/core/kv_cache_utils.py",
+    "start": 1399,
+    "end": 1426,
+    "notes": {
+      "1399": "Mamba状态尺寸来自shape，增大block_size不会增加状态字节。",
+      "1406": "为状态页补齐物理空间，语义shape保持不变。",
+      "1411": "attention页可整除时，扩大每块覆盖的token数量。",
+      "1415": "部分非MLA不整除情况允许物理padding，MLA须保留自身行对齐约束。",
+      "1420": "无法满足布局契约时明确失败，调用方再决定是否有受支持的fallback。"
+    },
+    "file_sha256": "2666c9f113584e52e7521058efd2c0d9598544559dc942d3a3da87001a3fedf2",
+    "original_sha256": "8938d44707bea06924498849e6d1c274989fe1f75e2cc65f7f6c0577de33d3d8"
+  },
+  "ch25-remove": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/core/single_type_kv_cache_manager.py",
+    "start": 670,
+    "end": 679,
+    "notes": {
+      "670": "空洞仍保留在原逻辑列，不能把后面的块向左压紧。",
+      "672": "从后向前释放，已处理过的null前缀可停止。",
+      "676": "先记录要归还的实体，再用null替代请求引用。",
+      "679": "实际引用计数与空闲队列由BlockPool维护。"
+    },
+    "file_sha256": "0233531d85aeced9e57a38c76d83db970519c92902b7e55484390cb2b64985bf",
+    "original_sha256": "e6aa057c375c22f463209dcb0d8334ad63cc5c8f3cf9c7f96dc2f009ceef3cb3"
+  },
+  "ch25-window": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/core/single_type_kv_cache_manager.py",
+    "start": 1178,
+    "end": 1181,
+    "notes": {
+      "1178": "窗口包含将要计算的当前token，因此只需W-1个历史位置；额外保留用于特定投机分支。"
+    },
+    "file_sha256": "0233531d85aeced9e57a38c76d83db970519c92902b7e55484390cb2b64985bf",
+    "original_sha256": "7f11033240dedebfb1a72c0a1d34a59e7e14c0a0ffce34a6591e4ec39fbad6e0"
+  },
+  "ch25-reconcile": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/core/kv_cache_coordinator.py",
+    "start": 937,
+    "end": 953,
+    "notes": {
+      "939": "候选边界缩短后，先前EAGLE验证状态不能直接沿用。",
+      "942": "更新当前共同候选及本组实际命中产物。",
+      "949": "所有组未再缩短，才到达可共同接受的边界。",
+      "951": "否则用更短候选重新检查各组。",
+      "952": "完整注意力+单一其他类型的简单组合有专门提前结束条件。"
+    },
+    "file_sha256": "bf342f79f2bc8d6acb69d3becefb334509e84cae888d42bbd421a8dc8ca9eca3",
+    "original_sha256": "3a47150b7ec38477c98e6b10e309241fbbcf70fdc017c5a371b6238c6ab19d7a"
+  },
+  "ch25-modes": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/kv_cache_interface.py",
+    "start": 1034,
+    "end": 1045,
+    "notes": {
+      "1035": "all模式按多个历史边界保存状态，不能概括成固定一个块。",
+      "1040": "align保留运行/对齐状态，并加上配置要求的额外检查点与投机空间。",
+      "1045": "none通常只需当前状态，加上必要投机块；状态字节由shapes决定。"
+    },
+    "file_sha256": "1cf202f1a44d5bc5c3832b70b41507687ecceea3784e67a4f003bc0210d6eecb",
+    "original_sha256": "f509ae0bc0178537809a69f4ef4f02fd8e73edc1c3c7d35533ac573fdbada85f"
+  },
+  "ch25-same-step": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/core/single_type_kv_cache_manager.py",
+    "start": 1724,
+    "end": 1732,
+    "notes": {
+      "1724": "同轮刚产生的状态尚不能作为另一请求的稳定起点。",
+      "1732": "用超过池容量的需求阻止本轮接纳，等待后续安全时点。"
+    },
+    "file_sha256": "0233531d85aeced9e57a38c76d83db970519c92902b7e55484390cb2b64985bf",
+    "original_sha256": "9552205e04b2101ecd4490aee8e107364c8303d9514c81bb6a818fc9331c59e5"
+  },
+  "ch26-meta": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/distributed/kv_transfer/kv_connector/v1/example_connector.py",
+    "start": 50,
+    "end": 65,
+    "notes": {
+      "50": "本debug实现只传末token之前的完整块，具体对齐helper见正文。",
+      "52": "本地物理块号来自当前引擎分配器。",
+      "55": "将每块展开成token槽地址；两端块号无需一致。",
+      "59": "有效token长度裁剪掉多余预留槽。",
+      "63": "方向是本次任务要存还是要读，不是Python对象的进程角色。"
+    },
+    "file_sha256": "6226876ef52d10d0d284d29c337ab44698e8bac6abdb2e0ece53b5756c55d068",
+    "original_sha256": "c88ba45c9aefd10a6e69d28c7a74971ad76a1fae4f92c8960d816e935d49cf4e"
+  },
+  "ch26-pre": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/worker/gpu/kv_connector.py",
+    "start": 70,
+    "end": 80,
+    "notes": {
+      "70": "调度侧只交接当前轮元数据，执行侧持有实际缓存视图。",
+      "73": "绑定当前轮产物，供层内钩子和load使用。",
+      "76": "同步命中必须先装好，当前前向才能读取它。",
+      "79": "异步请求尚未参与计算，可以把提交推迟到前向后。"
+    },
+    "file_sha256": "b89a4333f1e552d86e1815674b59e9f1335f0f49c0a7b46082439076f62c6a81",
+    "original_sha256": "ecc9d10a2646ac8634aa5b3c2445841281abdb04e922cb789251c355e8923304"
+  },
+  "ch26-save": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/distributed/kv_transfer/kv_connector/v1/example_connector.py",
+    "start": 243,
+    "end": 253,
+    "notes": {
+      "243": "从当前轮元数据中取要保存的请求。",
+      "247": "以token身份与层名定位文件，这是debug实现的存储方式。",
+      "250": "按源引擎本地slot抽取有效内容。",
+      "251": "转为CPU张量后实际写safetensors；不是生产网络零拷贝。"
+    },
+    "file_sha256": "6226876ef52d10d0d284d29c337ab44698e8bac6abdb2e0ece53b5756c55d068",
+    "original_sha256": "c7c0dde7f62e148d32f562cfc734cbdfbb59030a2ad0dea7ad566bf2f718a52e"
+  },
+  "ch26-output": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/worker/gpu/kv_connector.py",
+    "start": 110,
+    "end": 122,
+    "notes": {
+      "110": "是否等待保存由本次调用语境决定。",
+      "112": "统一收集完成结果，可能只是某些请求完成。",
+      "115": "接收失败与已完成接收不同，消费者必须分别处理。",
+      "116": "出错块用于修正有效前缀，不能把未写入数据当命中。",
+      "122": "轮次结束清掉绑定，避免下一轮误用旧元数据。"
+    },
+    "file_sha256": "b89a4333f1e552d86e1815674b59e9f1335f0f49c0a7b46082439076f62c6a81",
+    "original_sha256": "f37f58e4404c77c8ee7df72f3f5e3ca7426cd0c791a400e7ff8d5c96ee63a3db"
+  },
+  "ch26-full-hit": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/core/sched/scheduler.py",
+    "start": 2950,
+    "end": 2958,
+    "notes": {
+      "2951": "成功接收后才提交可用缓存身份。",
+      "2956": "完整prompt的KV存在，并不自带下一token的logits。",
+      "2958": "回退一token重新执行末位置以采样；不是重新算完整prompt。"
+    },
+    "file_sha256": "c1db45f3bbad3a875dd8638331b8870c4380ac1ab4734265ba5c863833a82884",
+    "original_sha256": "5531c790350b9cb5169a18511958921f46ff6e4923864023c83cda67adcf07c5"
+  },
+  "ch26-free": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/core/sched/scheduler.py",
+    "start": 2580,
+    "end": 2588,
+    "notes": {
+      "2582": "请求生成结束的信息可以先对外报告。",
+      "2584": "connector仍需要源块时，延迟归还资源。",
+      "2585": "只有不存在延迟依赖时才立即释放。"
+    },
+    "file_sha256": "c1db45f3bbad3a875dd8638331b8870c4380ac1ab4734265ba5c863833a82884",
+    "original_sha256": "e0993cf46375ab6a11578a17d1587541a8ac791d6626dddc700632766d43fb32"
+  },
+  "ch26-job": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/distributed/kv_transfer/kv_connector/v1/offloading/scheduler.py",
+    "start": 1857,
+    "end": 1867,
+    "notes": {
+      "1857": "job ID关联此前的传输计划，不靠日志出现顺序猜归属。",
+      "1858": "扣除本次汇报完成的worker数量。",
+      "1859": "仍有worker未完成，就不能宣布整个状态可用。",
+      "1861": "计数不能超额，重复完成上报会破坏协议。",
+      "1864": "全部完成后再提交存储或加载完成状态。"
+    },
+    "file_sha256": "2c5282f4a3165cd787fb355e215e3869f1bdd3f2c795b2155fc537c9d135191a",
+    "original_sha256": "0d9ed2a43ccddcf2c85f956c79b55ce07796e15d8e59ca9c2bdd058d3359bc02"
+  },
+  "ch27-clocks": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/metrics/stats.py",
+    "start": 224,
+    "end": 234,
+    "notes": {
+      "224": "前端接收起点使用墙钟；同域结束点才能与它相减。",
+      "227": "核心事件使用单调时钟，计核心内部阶段间隔。",
+      "234": "首token延迟另存，不能用核心时间直接减arrival_time。"
+    },
+    "file_sha256": "af1983ddc32fa4d3284e72212c6525daf961dd84429023a02d612b68b3112cf3",
+    "original_sha256": "5d4be4ca14cc7388009b03b323096f6a0df2405b4a01e685e4d93313675b3a68"
+  },
+  "ch27-events": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/metrics/stats.py",
+    "start": 518,
+    "end": 529,
+    "notes": {
+      "518": "事件按请求关联，不按整个批次只记一份状态。",
+      "522": "首次进入调度的时间用于请求级阶段划分。",
+      "523": "抢占后重新调度不覆盖最初scheduled时间。",
+      "526": "抢占同时累计本轮和该请求的计数。"
+    },
+    "file_sha256": "af1983ddc32fa4d3284e72212c6525daf961dd84429023a02d612b68b3112cf3",
+    "original_sha256": "7d93d6406ff5cd97a854e8743cca209bde83cea665a94119cba0715d6835ae33"
+  },
+  "ch27-intervals": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/metrics/stats.py",
+    "start": 540,
+    "end": 562,
+    "notes": {
+      "540": "E2E从前端到前端计算，包含前端观察到的完整等待。",
+      "543": "队列区间使用两个核心时间。",
+      "547": "这里是首调度到首token事件的经过时间，不是设备kernel净执行时间。",
+      "551": "decode包含首token之后直到末token的停顿与抢占。",
+      "558": "平均每输出token时间排除prefill产出的第一个token。",
+      "561": "只有一个生成token时没有后续间隔，返回0。"
+    },
+    "file_sha256": "af1983ddc32fa4d3284e72212c6525daf961dd84429023a02d612b68b3112cf3",
+    "original_sha256": "7e6817159cfd3f0a4b24e964568ebd60411ca38263699991599a880192b01cd8"
+  },
+  "ch27-socket-error": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/engine/core_client.py",
+    "start": 1158,
+    "end": 1161,
+    "notes": {
+      "1158": "后台接收协程失败，必须把异常交给等待输出的消费者。",
+      "1160": "接收任务被取消也通知engine不可用，避免消费者永久等待。"
+    },
+    "file_sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8",
+    "original_sha256": "717b6186683a65c76219bafbe4ea4d25849dcf37402f06fe43898deed19f98d6"
+  },
+  "ch27-propagate": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/engine/output_processor.py",
+    "start": 493,
+    "end": 498,
+    "notes": {
+      "493": "共享输出处理失败时，通知所有尚存请求的收集器。",
+      "496": "每条generate任务等待自己的queue，必须逐一唤醒。",
+      "498": "异常作为队列载荷交付；get时会重新抛出。"
+    },
+    "file_sha256": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329",
+    "original_sha256": "4d3d7288d288192d9e18881df8f62437ed3fb129b512a183aa5f73ad72deffcb"
+  },
+  "ch27-get": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/engine/output_processor.py",
+    "start": 84,
+    "end": 92,
+    "notes": {
+      "86": "无数据时等待事件；put(error)也会设置此事件。",
+      "88": "取走当前载荷后清空槽与事件，为后续更新准备。",
+      "90": "把异常重新抛给原请求任务，不把它伪装成空输出。"
+    },
+    "file_sha256": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329",
+    "original_sha256": "cdbb7bba0f12e483a2111748fdd6ff03e0ffecf95676cc0ba15216c3bc74a583"
+  },
+  "ch28-loop": {
+    "kind": "source",
+    "repo": "vllm",
+    "path": "vllm/v1/engine/core.py",
+    "start": 598,
+    "end": 619,
+    "notes": {
+      "598": "是否仍有需要推进的状态由调度器判断，核心不重新维护一套请求队列。",
+      "600": "产物描述本轮允许做的工作，不携带整个引擎的所有内部状态。",
+      "601": "执行器封装单设备或多Worker组织；核心只依赖执行契约。",
+      "602": "约束准备与设备任务可以在职责分离后安排重叠。",
+      "607": "取得实际执行结果；Future本身不等于结果已就绪。",
+      "608": "是否另行采样取决于执行返回协议，不能无条件多采一次。",
+      "613": "模型在算时可能收到取消，提交结果前处理它。",
+      "614": "把执行事实交回拥有请求状态的调度器。",
+      "619": "对外返回核心输出与是否执行模型；外层继续负责交付和循环。"
+    },
+    "file_sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5",
+    "original_sha256": "e798c834c99971aa235c1266582f80f0b22ce65f54f270ff629d7f2c5fd3047c"
+  },
+  "ch01-types": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/baseline-inproc-traced/manifest.json",
+    "paths": [
+      "effective.client",
+      "effective.scheduler",
+      "effective.executor",
+      "effective.worker",
+      "effective.runner",
+      "effective.balance_enabled"
+    ],
+    "file_sha256": "66aac6275c90e7d46b6d31f01274b02ab761d50609a2206e8851dd13860c4edc",
+    "value": {
+      "effective": {
+        "client": "vllm.v1.engine.core_client.InprocClient",
+        "scheduler": "vllm_ascend.patch.platform.patch_balance_schedule.BalanceScheduler",
+        "executor": "vllm.v1.executor.uniproc_executor.UniProcExecutor",
+        "worker": "vllm_ascend.worker.worker.NPUWorker",
+        "runner": "vllm_ascend.worker.v2.model_runner.NPUModelRunner",
+        "balance_enabled": false
+      }
+    }
+  },
+  "ch02-effective": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/baseline-inproc-traced/manifest.json",
+    "paths": [
+      "requested_settings.max_model_len",
+      "requested_settings.max_num_seqs",
+      "requested_settings.max_num_batched_tokens",
+      "requested_settings.kv_cache_memory_bytes",
+      "requested_settings.enforce_eager",
+      "effective.async_scheduling",
+      "effective.use_v2_model_runner",
+      "effective.block_size",
+      "effective.num_gpu_blocks"
+    ],
+    "file_sha256": "66aac6275c90e7d46b6d31f01274b02ab761d50609a2206e8851dd13860c4edc",
+    "value": {
+      "requested_settings": {
+        "max_model_len": 128,
+        "max_num_seqs": 4,
+        "max_num_batched_tokens": 32,
+        "kv_cache_memory_bytes": 67108864,
+        "enforce_eager": true
+      },
+      "effective": {
+        "async_scheduling": false,
+        "use_v2_model_runner": true,
+        "block_size": 128,
+        "num_gpu_blocks": 4
+      }
+    }
+  },
+  "ch06-blocks": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/kv-metadata/trace.json",
+    "paths": [
+      "allocation.initial.num_free_blocks",
+      "allocation.initial.free_order",
+      "allocation.allocate_A.returned_block_ids",
+      "allocation.allocate_B.req_to_blocks",
+      "allocation.free_A.free_order",
+      "allocation.allocate_C.req_to_blocks"
+    ],
+    "file_sha256": "512d44231b9cb422d6fcbaf1ba195e12e93c1372e9154bc2ea760b3c9eec8f7d",
+    "value": {
+      "allocation": {
+        "initial": {
+          "num_free_blocks": 3,
+          "free_order": [
+            1,
+            2,
+            3
+          ]
+        },
+        "allocate_A": {
+          "returned_block_ids": [
+            [
+              1
+            ]
+          ]
+        },
+        "allocate_B": {
+          "req_to_blocks": [
+            {
+              "A": [
+                1
+              ],
+              "B": [
+                2
+              ]
+            }
+          ]
+        },
+        "free_A": {
+          "free_order": [
+            1,
+            3
+          ]
+        },
+        "allocate_C": {
+          "req_to_blocks": [
+            {
+              "B": [
+                2
+              ],
+              "C": [
+                1
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "ch07-cache": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/kv-metadata/trace.json",
+    "paths": [
+      "prefix.A_released.blocks",
+      "prefix.A_released.free_order",
+      "prefix.lookup_A_again.hit_block_ids",
+      "prefix.lookup_A_again.num_hit_tokens",
+      "prefix.attach_hit_and_allocate_tail.returned_block_ids",
+      "prefix.attach_hit_and_allocate_tail.req_to_blocks",
+      "prefix.attach_hit_and_allocate_tail.free_order"
+    ],
+    "file_sha256": "512d44231b9cb422d6fcbaf1ba195e12e93c1372e9154bc2ea760b3c9eec8f7d",
+    "value": {
+      "prefix": {
+        "A_released": {
+          "blocks": [
+            {
+              "block_id": 0,
+              "ref_cnt": 0,
+              "is_null": true,
+              "has_hash": false
+            },
+            {
+              "block_id": 1,
+              "ref_cnt": 0,
+              "is_null": false,
+              "has_hash": true
+            },
+            {
+              "block_id": 2,
+              "ref_cnt": 0,
+              "is_null": false,
+              "has_hash": false
+            },
+            {
+              "block_id": 3,
+              "ref_cnt": 0,
+              "is_null": false,
+              "has_hash": false
+            }
+          ],
+          "free_order": [
+            2,
+            3,
+            1
+          ]
+        },
+        "lookup_A_again": {
+          "hit_block_ids": [
+            [
+              1
+            ]
+          ],
+          "num_hit_tokens": 4
+        },
+        "attach_hit_and_allocate_tail": {
+          "returned_block_ids": [
+            [
+              2
+            ]
+          ],
+          "req_to_blocks": [
+            {
+              "A-again": [
+                1,
+                2
+              ]
+            }
+          ],
+          "free_order": [
+            3
+          ]
+        }
+      }
+    }
+  },
+  "ch08-contract": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/runner-inproc-traced/projection.json",
+    "paths": [
+      "steps.1.execute.plan.num_scheduled_tokens",
+      "steps.1.execute.plan.total_num_scheduled_tokens",
+      "steps.1.execute.non_block",
+      "steps.1.returned.returned_type"
+    ],
+    "file_sha256": "33c69f3b9c5bb92e3e3bdc1af5447cf84936c6dc5918e5551af98f77f56219ec",
+    "value": {
+      "steps": {
+        "1": {
+          "execute": {
+            "plan": {
+              "num_scheduled_tokens": {
+                "A-9fe0112d": 5,
+                "B-b550db9e": 6
+              },
+              "total_num_scheduled_tokens": 11
+            },
+            "non_block": true
+          },
+          "returned": {
+            "returned_type": "concurrent.futures._base.Future"
+          }
+        }
+      }
+    }
+  },
+  "ch09-index": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/runner-inproc-traced/projection.json",
+    "paths": [
+      "steps.1.registered.req_id_to_index",
+      "steps.1.inputs.batch.req_ids",
+      "steps.1.inputs.batch.idx_mapping.values",
+      "steps.3.registered.req_id_to_index",
+      "steps.3.inputs.batch.req_ids",
+      "steps.3.inputs.batch.idx_mapping.values"
+    ],
+    "file_sha256": "33c69f3b9c5bb92e3e3bdc1af5447cf84936c6dc5918e5551af98f77f56219ec",
+    "value": {
+      "steps": {
+        "1": {
+          "registered": {
+            "req_id_to_index": {
+              "A-9fe0112d": 3,
+              "B-b550db9e": 2
+            }
+          },
+          "inputs": {
+            "batch": {
+              "req_ids": [
+                "A-9fe0112d",
+                "B-b550db9e"
+              ],
+              "idx_mapping": {
+                "values": [
+                  3,
+                  2
+                ]
+              }
+            }
+          }
+        },
+        "3": {
+          "registered": {
+            "req_id_to_index": {
+              "B-b550db9e": 2
+            }
+          },
+          "inputs": {
+            "batch": {
+              "req_ids": [
+                "B-b550db9e"
+              ],
+              "idx_mapping": {
+                "values": [
+                  2
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "ch09-input": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/runner-inproc-traced/projection.json",
+    "paths": [
+      "steps.1.inputs.batch.input_ids",
+      "steps.1.inputs.batch.positions",
+      "steps.1.inputs.batch.query_start_loc",
+      "steps.1.inputs.batch.seq_lens",
+      "steps.1.inputs.batch.logits_indices"
+    ],
+    "file_sha256": "33c69f3b9c5bb92e3e3bdc1af5447cf84936c6dc5918e5551af98f77f56219ec",
+    "value": {
+      "steps": {
+        "1": {
+          "inputs": {
+            "batch": {
+              "input_ids": {
+                "type": "torch.Tensor",
+                "shape": [
+                  11
+                ],
+                "dtype": "torch.int32",
+                "device": "npu:0",
+                "values": [
+                  785,
+                  6722,
+                  315,
+                  9625,
+                  374,
+                  785,
+                  7772,
+                  17951,
+                  389,
+                  9237,
+                  374
+                ]
+              },
+              "positions": {
+                "type": "torch.Tensor",
+                "shape": [
+                  11
+                ],
+                "dtype": "torch.int64",
+                "device": "npu:0",
+                "values": [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4,
+                  0,
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ]
+              },
+              "query_start_loc": {
+                "type": "torch.Tensor",
+                "shape": [
+                  3
+                ],
+                "dtype": "torch.int32",
+                "device": "npu:0",
+                "values": [
+                  0,
+                  5,
+                  11
+                ]
+              },
+              "seq_lens": {
+                "type": "torch.Tensor",
+                "shape": [
+                  2
+                ],
+                "dtype": "torch.int32",
+                "device": "npu:0",
+                "values": [
+                  5,
+                  6
+                ]
+              },
+              "logits_indices": {
+                "type": "torch.Tensor",
+                "shape": [
+                  2
+                ],
+                "dtype": "torch.int64",
+                "device": "npu:0",
+                "values": [
+                  4,
+                  10
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "ch09-decode": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/runner-inproc-traced/projection.json",
+    "paths": [
+      "steps.2.inputs.batch.input_ids.values",
+      "steps.2.inputs.batch.positions.values",
+      "steps.2.inputs.batch.query_start_loc.values",
+      "steps.2.inputs.batch.seq_lens.values"
+    ],
+    "file_sha256": "33c69f3b9c5bb92e3e3bdc1af5447cf84936c6dc5918e5551af98f77f56219ec",
+    "value": {
+      "steps": {
+        "2": {
+          "inputs": {
+            "batch": {
+              "input_ids": {
+                "values": [
+                  12095,
+                  279
+                ]
+              },
+              "positions": {
+                "values": [
+                  5,
+                  6
+                ]
+              },
+              "query_start_loc": {
+                "values": [
+                  0,
+                  1,
+                  2
+                ]
+              },
+              "seq_lens": {
+                "values": [
+                  6,
+                  7
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "ch10-config": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/model-assets/metadata.json",
+    "paths": [
+      "model_revision",
+      "config.architectures",
+      "config.hidden_size",
+      "config.head_dim",
+      "config.num_attention_heads",
+      "config.num_key_value_heads",
+      "config.num_hidden_layers",
+      "config.intermediate_size",
+      "config.vocab_size"
+    ],
+    "file_sha256": "c989b253b14867977c7b0699fb2732f04cc17f6fa3bad0020c8ea2e3ede09010",
+    "value": {
+      "model_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+      "config": {
+        "architectures": [
+          "Qwen3ForCausalLM"
+        ],
+        "hidden_size": 1024,
+        "head_dim": 128,
+        "num_attention_heads": 16,
+        "num_key_value_heads": 8,
+        "num_hidden_layers": 28,
+        "intermediate_size": 3072,
+        "vocab_size": 151936
+      }
+    }
+  },
+  "ch10-hidden": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/runner-inproc-traced/projection.json",
+    "paths": [
+      "steps.1.hidden.hidden",
+      "steps.2.hidden.hidden"
+    ],
+    "file_sha256": "33c69f3b9c5bb92e3e3bdc1af5447cf84936c6dc5918e5551af98f77f56219ec",
+    "value": {
+      "steps": {
+        "1": {
+          "hidden": {
+            "hidden": {
+              "type": "torch.Tensor",
+              "shape": [
+                11,
+                1024
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "npu:0"
+            }
+          }
+        },
+        "2": {
+          "hidden": {
+            "hidden": {
+              "type": "torch.Tensor",
+              "shape": [
+                2,
+                1024
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "npu:0"
+            }
+          }
+        }
+      }
+    }
+  },
+  "ch11-slot": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/runner-inproc-traced/projection.json",
+    "paths": [
+      "steps.1.attn.block_tables",
+      "steps.1.attn.slot_mappings",
+      "steps.2.attn.slot_mappings"
+    ],
+    "file_sha256": "33c69f3b9c5bb92e3e3bdc1af5447cf84936c6dc5918e5551af98f77f56219ec",
+    "value": {
+      "steps": {
+        "1": {
+          "attn": {
+            "block_tables": [
+              {
+                "type": "torch.Tensor",
+                "shape": [
+                  2,
+                  1
+                ],
+                "dtype": "torch.int32",
+                "device": "npu:0",
+                "values": [
+                  [
+                    1
+                  ],
+                  [
+                    2
+                  ]
+                ]
+              }
+            ],
+            "slot_mappings": {
+              "type": "torch.Tensor",
+              "shape": [
+                1,
+                11
+              ],
+              "dtype": "torch.int32",
+              "device": "npu:0",
+              "values": [
+                [
+                  128,
+                  129,
+                  130,
+                  131,
+                  132,
+                  256,
+                  257,
+                  258,
+                  259,
+                  260,
+                  261
+                ]
+              ]
+            }
+          }
+        },
+        "2": {
+          "attn": {
+            "slot_mappings": {
+              "type": "torch.Tensor",
+              "shape": [
+                1,
+                2
+              ],
+              "dtype": "torch.int32",
+              "device": "npu:0",
+              "values": [
+                [
+                  133,
+                  262
+                ]
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "ch12-shapes": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/runner-inproc-traced/projection.json",
+    "paths": [
+      "steps.1.inputs.batch.logits_indices.values",
+      "steps.1.hidden.hidden",
+      "steps.1.logits.logits"
+    ],
+    "file_sha256": "33c69f3b9c5bb92e3e3bdc1af5447cf84936c6dc5918e5551af98f77f56219ec",
+    "value": {
+      "steps": {
+        "1": {
+          "inputs": {
+            "batch": {
+              "logits_indices": {
+                "values": [
+                  4,
+                  10
+                ]
+              }
+            }
+          },
+          "hidden": {
+            "hidden": {
+              "type": "torch.Tensor",
+              "shape": [
+                11,
+                1024
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "npu:0"
+            }
+          },
+          "logits": {
+            "logits": {
+              "type": "torch.Tensor",
+              "shape": [
+                2,
+                151936
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "npu:0"
+            }
+          }
+        }
+      }
+    }
+  },
+  "ch12-sampled": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/runner-inproc-traced/projection.json",
+    "paths": [
+      "steps.1.sample.output.req_ids",
+      "steps.1.sample.output.sampled_token_ids",
+      "steps.2.sample.output.sampled_token_ids",
+      "steps.3.sample.output.req_ids",
+      "steps.3.sample.output.sampled_token_ids"
+    ],
+    "file_sha256": "33c69f3b9c5bb92e3e3bdc1af5447cf84936c6dc5918e5551af98f77f56219ec",
+    "value": {
+      "steps": {
+        "1": {
+          "sample": {
+            "output": {
+              "req_ids": [
+                "A-9fe0112d",
+                "B-b550db9e"
+              ],
+              "sampled_token_ids": [
+                [
+                  12095
+                ],
+                [
+                  279
+                ]
+              ]
+            }
+          }
+        },
+        "2": {
+          "sample": {
+            "output": {
+              "sampled_token_ids": [
+                [
+                  13
+                ],
+                [
+                  16462
+                ]
+              ]
+            }
+          }
+        },
+        "3": {
+          "sample": {
+            "output": {
+              "req_ids": [
+                "B-b550db9e"
+              ],
+              "sampled_token_ids": [
+                [
+                  21575
+                ]
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "ch12-final": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/runner-inproc-traced/result.json",
+    "paths": [
+      "final.A.request_id",
+      "final.A.outputs",
+      "final.A.finished"
+    ],
+    "file_sha256": "2d1f990ad966feeea9652d007bf531b310ba70567c04328d98566dc83e465e97",
+    "value": {
+      "final": {
+        "A": {
+          "request_id": "A",
+          "outputs": [
+            {
+              "type": "vllm.outputs.CompletionOutput",
+              "index": 0,
+              "text": " Paris.",
+              "token_ids": [
+                12095,
+                13
+              ],
+              "cumulative_logprob": null,
+              "logprobs": null,
+              "routed_experts": null,
+              "finish_reason": "length",
+              "stop_reason": null,
+              "lora_request": null,
+              "sampling_mask": null,
+              "spec_decode_metrics": null
+            }
+          ],
+          "finished": true
+        }
+      }
+    }
+  },
+  "ch13-contract": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/metadata-contracts/trace.json",
+    "paths": [
+      "async.initial",
+      "async.first_result",
+      "async.second_result"
+    ],
+    "file_sha256": "4a5f618f1808b08550d00d8247dd84c7453aecf62b25e8c06aec7b8730dc5216",
+    "value": {
+      "async": {
+        "initial": {
+          "id": "A-contract",
+          "status": "RUNNING",
+          "num_computed_tokens": 6,
+          "num_output_placeholders": 2,
+          "output_token_ids": [],
+          "cache_calls": []
+        },
+        "first_result": {
+          "returned": [
+            12095
+          ],
+          "stopped": false,
+          "id": "A-contract",
+          "status": "RUNNING",
+          "num_computed_tokens": 6,
+          "num_output_placeholders": 1,
+          "output_token_ids": [
+            12095
+          ],
+          "cache_calls": [
+            {
+              "id": "A-contract",
+              "num_tokens": 5
+            }
+          ]
+        },
+        "second_result": {
+          "returned": [
+            13
+          ],
+          "stopped": true,
+          "id": "A-contract",
+          "status": "FINISHED_LENGTH_CAPPED",
+          "num_computed_tokens": 6,
+          "num_output_placeholders": 0,
+          "output_token_ids": [
+            12095,
+            13
+          ],
+          "cache_calls": [
+            {
+              "id": "A-contract",
+              "num_tokens": 5
+            },
+            {
+              "id": "A-contract",
+              "num_tokens": 6
+            }
+          ]
+        }
+      }
+    }
+  },
+  "ch13-stale": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/metadata-contracts/trace.json",
+    "paths": [
+      "async.stale_delivery"
+    ],
+    "file_sha256": "4a5f618f1808b08550d00d8247dd84c7453aecf62b25e8c06aec7b8730dc5216",
+    "value": {
+      "async": {
+        "stale_delivery": {
+          "id": "A-stale",
+          "status": "PREEMPTED",
+          "num_computed_tokens": 0,
+          "num_output_placeholders": 0,
+          "output_token_ids": [
+            12095
+          ],
+          "cache_calls": [
+            {
+              "id": "A-contract",
+              "num_tokens": 5
+            },
+            {
+              "id": "A-contract",
+              "num_tokens": 6
+            }
+          ]
+        }
+      }
+    }
+  },
+  "ch14-cases": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/metadata-contracts/trace.json",
+    "paths": [
+      "graph.descriptor",
+      "graph.cases.two_decode",
+      "graph.cases.one_prefill_two_tokens"
+    ],
+    "file_sha256": "4a5f618f1808b08550d00d8247dd84c7453aecf62b25e8c06aec7b8730dc5216",
+    "value": {
+      "graph": {
+        "descriptor": {
+          "cg_mode": "FULL",
+          "num_tokens": 4,
+          "num_reqs": 4,
+          "uniform_token_count": 1,
+          "max_query_len": 1,
+          "num_active_loras": 0,
+          "num_ubatches": 1
+        },
+        "cases": {
+          "two_decode": {
+            "input": {
+              "num_reqs": 2,
+              "num_tokens": 2,
+              "uniform_token_count": 1,
+              "num_active_loras": 0,
+              "max_query_len": 1,
+              "num_ubatches": 1
+            },
+            "compatible": true
+          },
+          "one_prefill_two_tokens": {
+            "input": {
+              "num_reqs": 1,
+              "num_tokens": 2,
+              "uniform_token_count": null,
+              "num_active_loras": 0,
+              "max_query_len": 2,
+              "num_ubatches": 1
+            },
+            "compatible": false
+          }
+        }
+      }
+    }
+  },
+  "ch15-delta": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/async-frontend/projection.json",
+    "paths": [
+      "deltas.A-online"
+    ],
+    "file_sha256": "b3df484c85c2048860bf9f1b73d36d21421ee5237584d081af746e0ebd09def3",
+    "value": {
+      "deltas": {
+        "A-online": [
+          {
+            "seq": 1,
+            "text": " Paris",
+            "token_ids": [
+              12095,
+              13
+            ],
+            "finished": false,
+            "finish_reason": null
+          },
+          {
+            "seq": 2,
+            "text": ".",
+            "token_ids": [
+              13
+            ],
+            "finished": true,
+            "finish_reason": "length"
+          }
+        ]
+      }
+    }
+  },
+  "ch15-merge-data": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/async-frontend/projection.json",
+    "paths": [
+      "collector_cpu"
+    ],
+    "file_sha256": "b3df484c85c2048860bf9f1b73d36d21421ee5237584d081af746e0ebd09def3",
+    "value": {
+      "collector_cpu": {
+        "kind": "replay recorded deltas through actual CPU RequestOutputCollector, without consumer reads between puts",
+        "put_count": 2,
+        "get_count": 1,
+        "text": " Paris.",
+        "token_ids": [
+          12095,
+          13
+        ],
+        "finished": true
+      }
+    }
+  },
+  "ch15-cancel-data": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/async-frontend/result.json",
+    "paths": [
+      "cancel_first.request_id",
+      "cancel_first.outputs",
+      "cancel_first.finished",
+      "aborts",
+      "idle"
+    ],
+    "file_sha256": "1870aaf330d605b16fcbbc290a04f66140e2229c1b648ccadddee14abcc54d09",
+    "value": {
+      "cancel_first": {
+        "request_id": "C-cancel",
+        "outputs": [
+          {
+            "type": "vllm.outputs.CompletionOutput",
+            "index": 0,
+            "text": " Tokyo",
+            "token_ids": [
+              26194
+            ],
+            "cumulative_logprob": null,
+            "logprobs": null,
+            "routed_experts": null,
+            "finish_reason": null,
+            "stop_reason": null,
+            "lora_request": null,
+            "sampling_mask": null,
+            "spec_decode_metrics": null
+          }
+        ],
+        "finished": false
+      },
+      "aborts": [
+        {
+          "seq": 7,
+          "event": "abort.call",
+          "pid": 2236083,
+          "monotonic_ns": 538141222924360,
+          "request_id": "C-cancel-92ba6f2a",
+          "internal": true,
+          "unfinished_before": 1
+        },
+        {
+          "seq": 8,
+          "event": "abort.return",
+          "pid": 2236083,
+          "monotonic_ns": 538141223112890,
+          "unfinished_after": 0
+        }
+      ],
+      "idle": {
+        "seq": 9,
+        "event": "core.wait_idle_returned",
+        "pid": 2236083,
+        "monotonic_ns": 538141295178830,
+        "frontend_unfinished": 0
+      }
+    }
+  },
+  "ch15-effective": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/async-frontend/manifest.json",
+    "paths": [
+      "effective"
+    ],
+    "file_sha256": "a5597cb14b5b7f77cf0436adbfaf46b369caf92d9f4c7595061fb5a494b5d9f5",
+    "value": {
+      "effective": {
+        "client": "vllm.v1.engine.core_client.AsyncMPClient",
+        "async_scheduling": false,
+        "use_v2_model_runner": true
+      }
+    }
+  },
+  "ch16-tp-data": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/tp2-final/result.json",
+    "paths": [
+      "ranks"
+    ],
+    "file_sha256": "195ea3c606b00623beebda61e4f25672e217503f54aeac90719255601e04887f",
+    "value": {
+      "ranks": [
+        {
+          "pid": 2257125,
+          "tp": {
+            "rank": 0,
+            "ranks": [
+              0,
+              1
+            ],
+            "size": 2
+          },
+          "pp": {
+            "rank": 0,
+            "ranks": [
+              0
+            ],
+            "size": 1
+          },
+          "layer_range": [
+            0,
+            28
+          ],
+          "layer_class": "Qwen3DecoderLayer",
+          "model_class": "Qwen3ForCausalLM",
+          "qkv_weight": [
+            2048,
+            1024
+          ],
+          "o_weight": [
+            1024,
+            1024
+          ],
+          "num_heads": 8,
+          "num_kv_heads": 4,
+          "embedding_class": "AscendVocabParallelEmbedding",
+          "lm_head_class": "AscendParallelLMHead"
+        },
+        {
+          "pid": 2257126,
+          "tp": {
+            "rank": 1,
+            "ranks": [
+              0,
+              1
+            ],
+            "size": 2
+          },
+          "pp": {
+            "rank": 0,
+            "ranks": [
+              1
+            ],
+            "size": 1
+          },
+          "layer_range": [
+            0,
+            28
+          ],
+          "layer_class": "Qwen3DecoderLayer",
+          "model_class": "Qwen3ForCausalLM",
+          "qkv_weight": [
+            2048,
+            1024
+          ],
+          "o_weight": [
+            1024,
+            1024
+          ],
+          "num_heads": 8,
+          "num_kv_heads": 4,
+          "embedding_class": "AscendVocabParallelEmbedding",
+          "lm_head_class": "AscendParallelLMHead"
+        }
+      ]
+    }
+  },
+  "ch16-pp-data": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/pp2/result.json",
+    "paths": [
+      "ranks"
+    ],
+    "file_sha256": "83fa4bbb1b584b1efed16e9a09e6ba291e18add7e0e848cb9f307a192b0ec0b9",
+    "value": {
+      "ranks": [
+        {
+          "pid": 2262008,
+          "tp": {
+            "rank": 0,
+            "ranks": [
+              0
+            ],
+            "size": 1
+          },
+          "pp": {
+            "rank": 0,
+            "ranks": [
+              0,
+              1
+            ],
+            "size": 2
+          },
+          "layer_range": [
+            0,
+            14
+          ],
+          "layer_class": "Qwen3DecoderLayer",
+          "model_class": "Qwen3ForCausalLM",
+          "qkv_weight": [
+            4096,
+            1024
+          ],
+          "o_weight": [
+            1024,
+            2048
+          ],
+          "num_heads": 16,
+          "num_kv_heads": 8,
+          "embedding_class": "AscendVocabParallelEmbedding",
+          "lm_head_class": "PPMissingLayer"
+        },
+        {
+          "pid": 2262009,
+          "tp": {
+            "rank": 0,
+            "ranks": [
+              1
+            ],
+            "size": 1
+          },
+          "pp": {
+            "rank": 1,
+            "ranks": [
+              0,
+              1
+            ],
+            "size": 2
+          },
+          "layer_range": [
+            14,
+            28
+          ],
+          "layer_class": "Qwen3DecoderLayer",
+          "model_class": "Qwen3ForCausalLM",
+          "qkv_weight": [
+            4096,
+            1024
+          ],
+          "o_weight": [
+            1024,
+            2048
+          ],
+          "num_heads": 16,
+          "num_kv_heads": 8,
+          "embedding_class": "PPMissingLayer",
+          "lm_head_class": "AscendParallelLMHead"
+        }
+      ]
+    }
+  },
+  "ch17-burst": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/dp-contract/trace.json",
+    "paths": [
+      "burst"
+    ],
+    "file_sha256": "5f824ba568f66c1ec56892d87fff97d651dbece5ef6edea064b80e0f82975f91",
+    "value": {
+      "burst": [
+        {
+          "request": "A",
+          "chosen": "E0",
+          "after": {
+            "counts": [
+              [
+                1,
+                0,
+                0.0
+              ],
+              [
+                0,
+                0,
+                0.0
+              ]
+            ],
+            "inflight": {
+              "E0": 1
+            },
+            "owners": {
+              "A": "E0"
+            },
+            "scan_start": 1
+          }
+        },
+        {
+          "request": "B",
+          "chosen": "E1",
+          "after": {
+            "counts": [
+              [
+                1,
+                0,
+                0.0
+              ],
+              [
+                1,
+                0,
+                0.0
+              ]
+            ],
+            "inflight": {
+              "E0": 1,
+              "E1": 1
+            },
+            "owners": {
+              "A": "E0",
+              "B": "E1"
+            },
+            "scan_start": 0
+          }
+        },
+        {
+          "request": "C",
+          "chosen": "E0",
+          "after": {
+            "counts": [
+              [
+                1,
+                0,
+                0.0
+              ],
+              [
+                0,
+                0,
+                0.0
+              ]
+            ],
+            "inflight": {
+              "E0": 2,
+              "E1": 1
+            },
+            "owners": {
+              "A": "E0",
+              "B": "E1",
+              "C": "E0"
+            },
+            "scan_start": 1
+          }
+        }
+      ]
+    }
+  },
+  "ch17-pressure": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/dp-contract/trace.json",
+    "paths": [
+      "pressure",
+      "explicit_rank"
+    ],
+    "file_sha256": "5f824ba568f66c1ec56892d87fff97d651dbece5ef6edea064b80e0f82975f91",
+    "value": {
+      "pressure": {
+        "request": "C-pressure",
+        "chosen": "E1",
+        "after": {
+          "counts": [
+            [
+              1,
+              0,
+              0.95
+            ],
+            [
+              2,
+              0,
+              0.1
+            ]
+          ],
+          "inflight": {
+            "E1": 1
+          },
+          "owners": {
+            "C-pressure": "E1"
+          },
+          "scan_start": 1
+        }
+      },
+      "explicit_rank": {
+        "request": "C-forced",
+        "chosen": "E0",
+        "after": {
+          "counts": [
+            [
+              1,
+              0,
+              0.95
+            ],
+            [
+              2,
+              0,
+              0.1
+            ]
+          ],
+          "inflight": {
+            "E1": 1,
+            "E0": 1
+          },
+          "owners": {
+            "C-pressure": "E1",
+            "C-forced": "E0"
+          },
+          "scan_start": 1
+        }
+      }
+    }
+  },
+  "ch17-aborts": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/dp-contract/trace.json",
+    "paths": [
+      "cancel_messages"
+    ],
+    "file_sha256": "5f824ba568f66c1ec56892d87fff97d651dbece5ef6edea064b80e0f82975f91",
+    "value": {
+      "cancel_messages": [
+        {
+          "kind": "ABORT",
+          "ids": [
+            "A",
+            "C"
+          ],
+          "engine": "E0"
+        },
+        {
+          "kind": "ABORT",
+          "ids": [
+            "B"
+          ],
+          "engine": "E1"
+        }
+      ]
+    }
+  },
+  "ch18-map-data": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/expert-map/trace.json",
+    "paths": [
+      "layouts.linear",
+      "layouts.round_robin"
+    ],
+    "file_sha256": "e664d9893356b83fe53997fa0a3f5226a4ed59ed3305e4ae048a9e447dedb271",
+    "value": {
+      "layouts": {
+        "linear": [
+          {
+            "rank": 0,
+            "local_num_experts": 2,
+            "expert_map": [
+              0,
+              1,
+              -1,
+              -1
+            ]
+          },
+          {
+            "rank": 1,
+            "local_num_experts": 2,
+            "expert_map": [
+              -1,
+              -1,
+              0,
+              1
+            ]
+          }
+        ],
+        "round_robin": [
+          {
+            "rank": 0,
+            "local_num_experts": 2,
+            "expert_map": [
+              0,
+              -1,
+              1,
+              -1
+            ]
+          },
+          {
+            "rank": 1,
+            "local_num_experts": 2,
+            "expert_map": [
+              -1,
+              0,
+              -1,
+              1
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "ch19-runtime": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/baseline-inproc-traced/manifest.json",
+    "paths": [
+      "effective.scheduler",
+      "effective.scheduler_mro",
+      "effective.balance_enabled",
+      "effective.worker",
+      "effective.runner",
+      "effective.runner_execute.symbol"
+    ],
+    "file_sha256": "66aac6275c90e7d46b6d31f01274b02ab761d50609a2206e8851dd13860c4edc",
+    "value": {
+      "effective": {
+        "scheduler": "vllm_ascend.patch.platform.patch_balance_schedule.BalanceScheduler",
+        "scheduler_mro": [
+          "vllm_ascend.patch.platform.patch_balance_schedule.BalanceScheduler",
+          "vllm.v1.core.sched.scheduler.Scheduler",
+          "vllm.v1.core.sched.interface.SchedulerInterface",
+          "abc.ABC",
+          "builtins.object"
+        ],
+        "balance_enabled": false,
+        "worker": "vllm_ascend.worker.worker.NPUWorker",
+        "runner": "vllm_ascend.worker.v2.model_runner.NPUModelRunner",
+        "runner_execute": {
+          "symbol": "vllm_ascend.worker.v2.model_runner.NPUModelRunner.execute_model"
+        }
+      }
+    }
+  },
+  "ch19-platform": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/platform/metadata.json",
+    "paths": [
+      "entry_points",
+      "platform.class",
+      "worker.mro",
+      "runner.mro"
+    ],
+    "file_sha256": "44224d74e8be3c6b14271365c24c9704b994bd38ecaa901fbf532577925bd2d8",
+    "value": {
+      "entry_points": [
+        {
+          "name": "vllm-ascend",
+          "group": "ms_service_metric.providers",
+          "value": "vllm_ascend.observability:get_metric_provider"
+        },
+        {
+          "name": "ascend_kv_connector",
+          "group": "vllm.general_plugins",
+          "value": "vllm_ascend:register_connector"
+        },
+        {
+          "name": "ascend_model",
+          "group": "vllm.general_plugins",
+          "value": "vllm_ascend:register_model"
+        },
+        {
+          "name": "ascend_model_loader",
+          "group": "vllm.general_plugins",
+          "value": "vllm_ascend:register_model_loader"
+        },
+        {
+          "name": "ascend_service_profiling",
+          "group": "vllm.general_plugins",
+          "value": "vllm_ascend:register_service_profiling"
+        },
+        {
+          "name": "ascend",
+          "group": "vllm.platform_plugins",
+          "value": "vllm_ascend:register"
+        }
+      ],
+      "platform": {
+        "class": "vllm_ascend.platform.NPUPlatform"
+      },
+      "worker": {
+        "mro": [
+          "vllm_ascend.worker.worker.NPUWorker",
+          "vllm.v1.worker.worker_base.WorkerBase",
+          "builtins.object"
+        ]
+      },
+      "runner": {
+        "mro": [
+          "vllm_ascend.worker.v2.model_runner.NPUModelRunner",
+          "vllm.v1.worker.gpu.model_runner.GPUModelRunner",
+          "vllm.v1.worker.lora_model_runner_mixin.LoRAModelRunnerMixin",
+          "builtins.object"
+        ]
+      }
+    }
+  },
+  "ch20-ngram-data": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/ngram-contract/trace.json",
+    "paths": [
+      "cases"
+    ],
+    "file_sha256": "bbbd8fa3ef1316cf9c125872467950474e7059095f47efe7e14fec5b5ce0f378",
+    "value": {
+      "cases": [
+        {
+          "history": [
+            10,
+            20,
+            30,
+            40,
+            10,
+            20
+          ],
+          "max_model_len": 32,
+          "min_ngram": 2,
+          "max_ngram": 2,
+          "k": 2,
+          "draft": [
+            30,
+            40
+          ]
+        },
+        {
+          "history": [
+            10,
+            20,
+            30
+          ],
+          "max_model_len": 32,
+          "min_ngram": 2,
+          "max_ngram": 2,
+          "k": 2,
+          "draft": []
+        },
+        {
+          "history": [
+            10,
+            20,
+            30,
+            40,
+            10,
+            20
+          ],
+          "max_model_len": 6,
+          "min_ngram": 2,
+          "max_ngram": 2,
+          "k": 2,
+          "draft": []
+        }
+      ]
+    }
+  },
+  "ch21-states": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/grammar-cpu/trace.json",
+    "paths": [
+      "vocab",
+      "states"
+    ],
+    "file_sha256": "ea93f19016c6e96b5fbd345dbcf613c4a84c7534b123339e353771a61366811a",
+    "value": {
+      "vocab": [
+        "P",
+        "a",
+        "r",
+        "i",
+        "s",
+        "T",
+        "o",
+        "k",
+        "y",
+        "<eos>"
+      ],
+      "states": {
+        "before": {
+          "mask_int32": [
+            33
+          ],
+          "allowed_ids": [
+            0,
+            5
+          ],
+          "processed": 0,
+          "terminated": false
+        },
+        "validated_prefix": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "after_validate": {
+          "mask_int32": [
+            33
+          ],
+          "allowed_ids": [
+            0,
+            5
+          ],
+          "processed": 0,
+          "terminated": false
+        },
+        "after_P": {
+          "mask_int32": [
+            2
+          ],
+          "allowed_ids": [
+            1
+          ],
+          "processed": 1,
+          "terminated": false
+        },
+        "after_Paris": {
+          "mask_int32": [
+            512
+          ],
+          "allowed_ids": [
+            9
+          ],
+          "processed": 5,
+          "terminated": false
+        },
+        "after_eos": {
+          "mask_int32": null,
+          "allowed_ids": null,
+          "processed": 6,
+          "terminated": true
+        }
+      }
+    }
+  },
+  "ch21-future-data": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/grammar-cpu/trace.json",
+    "paths": [
+      "future"
+    ],
+    "file_sha256": "ea93f19016c6e96b5fbd345dbcf613c4a84c7534b123339e353771a61366811a",
+    "value": {
+      "future": {
+        "pending": {
+          "ready": false,
+          "grammar_is_none": true
+        },
+        "ready": {
+          "ready": true,
+          "same_object": true
+        },
+        "failed": {
+          "ready": true,
+          "error_type": "ValueError"
+        }
+      }
+    }
+  },
+  "ch22-position-data": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/mm-contract/trace.json",
+    "paths": [
+      "positions"
+    ],
+    "file_sha256": "f2f1d9afc63d2bee8bc5c49ce02ca5ee5234fee1b781f53b803b036fc8ea2eaf",
+    "value": {
+      "positions": {
+        "offset": 2,
+        "length": 5,
+        "is_embed": [
+          false,
+          true,
+          false,
+          true,
+          true
+        ],
+        "num_embeds": 3,
+        "relative_range": [
+          3,
+          5
+        ],
+        "embedding_slice": [
+          1,
+          3
+        ]
+      }
+    }
+  },
+  "ch22-cache-data": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/mm-contract/trace.json",
+    "paths": [
+      "states",
+      "freed_hashes"
+    ],
+    "file_sha256": "f2f1d9afc63d2bee8bc5c49ce02ca5ee5234fee1b781f53b803b036fc8ea2eaf",
+    "value": {
+      "states": [
+        {
+          "event": "allocate A/X",
+          "free": 0,
+          "reclaimable": 0,
+          "cached": {
+            "image-X": [
+              "A-image"
+            ]
+          },
+          "freeable": {}
+        },
+        {
+          "event": "C hits X",
+          "free": 0,
+          "reclaimable": 0,
+          "cached": {
+            "image-X": [
+              "A-image",
+              "C-image"
+            ]
+          },
+          "freeable": {}
+        },
+        {
+          "event": "free A",
+          "free": 0,
+          "reclaimable": 0,
+          "cached": {
+            "image-X": [
+              "C-image"
+            ]
+          },
+          "freeable": {}
+        },
+        {
+          "event": "B/Y blocked while C holds X",
+          "free": 0,
+          "reclaimable": 0,
+          "cached": {
+            "image-X": [
+              "C-image"
+            ]
+          },
+          "freeable": {}
+        },
+        {
+          "event": "free C, X retained",
+          "free": 0,
+          "reclaimable": 4,
+          "cached": {
+            "image-X": []
+          },
+          "freeable": {
+            "image-X": 4
+          }
+        },
+        {
+          "event": "allocate B/Y, evict X",
+          "free": 0,
+          "reclaimable": 0,
+          "cached": {
+            "image-Y": [
+              "B-image"
+            ]
+          },
+          "freeable": {}
+        }
+      ],
+      "freed_hashes": [
+        "image-X"
+      ]
+    }
+  },
+  "ch23-mapping-data": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/lora-mapping/trace.json",
+    "paths": [
+      "batch",
+      "layouts"
+    ],
+    "file_sha256": "0d7a1051f5c1abd2b4c732c6efabe691b541f34633ff4fd6891a4dbb065fd118",
+    "value": {
+      "batch": {
+        "req_ids": [
+          "B",
+          "A",
+          "C"
+        ],
+        "persistent_rows": [
+          2,
+          3,
+          1
+        ],
+        "num_scheduled_tokens": [
+          1,
+          2,
+          1
+        ],
+        "request_adapter_ids": [
+          0,
+          11,
+          22
+        ],
+        "token_adapter_ids": [
+          0,
+          11,
+          11,
+          22
+        ],
+        "active_adapter_ids": [
+          11,
+          22
+        ]
+      },
+      "layouts": [
+        {
+          "slot_to_adapter": [
+            22,
+            11,
+            null
+          ],
+          "token_slots": [
+            -1,
+            1,
+            1,
+            0
+          ],
+          "request_slots": [
+            -1,
+            1,
+            0
+          ]
+        },
+        {
+          "slot_to_adapter": [
+            11,
+            22,
+            null
+          ],
+          "token_slots": [
+            -1,
+            0,
+            0,
+            1
+          ],
+          "request_slots": [
+            -1,
+            0,
+            1
+          ]
+        }
+      ]
+    }
+  },
+  "ch24-encoding-data": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/fp8-encoding/trace.json",
+    "paths": [
+      "cases"
+    ],
+    "file_sha256": "8c20fa4f673833dc4e29ad7553011f77dfc8a0ca7821069d339c1a1f3c02e4f9",
+    "value": {
+      "cases": [
+        {
+          "name": "mixed",
+          "input": [
+            [
+              -2.0,
+              -1.0,
+              -0.30000001192092896,
+              0.0
+            ],
+            [
+              0.10000000149011612,
+              0.5,
+              1.0,
+              2.0
+            ]
+          ],
+          "dtype": "torch.float8_e4m3fn",
+          "encoded_values": [
+            [
+              -448.0,
+              -224.0,
+              -64.0,
+              0.0
+            ],
+            [
+              22.0,
+              112.0,
+              224.0,
+              448.0
+            ]
+          ],
+          "encoded_bytes": [
+            [
+              254,
+              246,
+              232,
+              0
+            ],
+            [
+              91,
+              110,
+              118,
+              126
+            ]
+          ],
+          "dequant_scale": 0.004464285913854837,
+          "restored": [
+            [
+              -2.0,
+              -1.0,
+              -0.2857142984867096,
+              0.0
+            ],
+            [
+              0.098214291036129,
+              0.5,
+              1.0,
+              2.0
+            ]
+          ],
+          "max_abs_error": 0.01428571343421936
+        },
+        {
+          "name": "zero",
+          "input": [
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          ],
+          "dtype": "torch.float8_e4m3fn",
+          "encoded_values": [
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          ],
+          "encoded_bytes": [
+            [
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0
+            ]
+          ],
+          "dequant_scale": 2.2321429389771845e-15,
+          "restored": [
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          ],
+          "max_abs_error": 0.0
+        }
+      ]
+    }
+  },
+  "ch25-pages-data": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/hybrid-state/trace.json",
+    "paths": [
+      "pages"
+    ],
+    "file_sha256": "92b9800daf58f3304936651da244fcf7ed0f06e8da749795015f62441b177a9f",
+    "value": {
+      "pages": {
+        "before": {
+          "full": {
+            "type": "FullAttentionSpec",
+            "block_size": 4,
+            "page_bytes": 128,
+            "content_bytes": 128
+          },
+          "window": {
+            "type": "SlidingWindowSpec",
+            "block_size": 4,
+            "page_bytes": 64,
+            "content_bytes": 64
+          },
+          "mamba": {
+            "type": "MambaSpec",
+            "block_size": 4,
+            "page_bytes": 40,
+            "content_bytes": 40
+          }
+        },
+        "after": {
+          "full": {
+            "type": "FullAttentionSpec",
+            "block_size": 4,
+            "page_bytes": 128,
+            "content_bytes": 128
+          },
+          "window": {
+            "type": "SlidingWindowSpec",
+            "block_size": 8,
+            "page_bytes": 128,
+            "content_bytes": 128
+          },
+          "mamba": {
+            "type": "MambaSpec",
+            "block_size": 4,
+            "page_bytes": 128,
+            "content_bytes": 40
+          }
+        }
+      }
+    }
+  },
+  "ch25-window-data": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/hybrid-state/trace.json",
+    "paths": [
+      "window"
+    ],
+    "file_sha256": "92b9800daf58f3304936651da244fcf7ed0f06e8da749795015f62441b177a9f",
+    "value": {
+      "window": {
+        "window_size": 4,
+        "block_size": 4,
+        "computed": 7,
+        "skipped_tokens": 4,
+        "before": {
+          "block_ids": [
+            1,
+            2,
+            3
+          ],
+          "is_null": [
+            false,
+            false,
+            false
+          ],
+          "free_blocks": 4
+        },
+        "after": {
+          "block_ids": [
+            0,
+            2,
+            3
+          ],
+          "is_null": [
+            true,
+            false,
+            false
+          ],
+          "free_blocks": 5
+        }
+      }
+    }
+  },
+  "ch25-modes-data": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/hybrid-state/trace.json",
+    "paths": [
+      "mamba_modes"
+    ],
+    "file_sha256": "92b9800daf58f3304936651da244fcf7ed0f06e8da749795015f62441b177a9f",
+    "value": {
+      "mamba_modes": [
+        {
+          "mode": "none",
+          "max_state_bytes": 40,
+          "block_table_columns": 1
+        },
+        {
+          "mode": "align",
+          "max_state_bytes": 80,
+          "block_table_columns": 4
+        },
+        {
+          "mode": "all",
+          "max_state_bytes": 160,
+          "block_table_columns": 4
+        }
+      ]
+    }
+  },
+  "ch26-roundtrip": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/connector-cpu/trace.json",
+    "paths": [
+      "roundtrip"
+    ],
+    "file_sha256": "7dc8cc9240f3065cc04be07ddd4677f3ac390eb15a7d617cecc2d0e03c6fe7e9",
+    "value": {
+      "roundtrip": {
+        "shape": [
+          6,
+          1,
+          4,
+          2
+        ],
+        "store_meta": {
+          "token_ids": [
+            785,
+            6722,
+            315,
+            9625
+          ],
+          "slot_mapping": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "is_store": true,
+          "mm_hashes": []
+        },
+        "load_meta": {
+          "token_ids": [
+            785,
+            6722,
+            315,
+            9625
+          ],
+          "slot_mapping": [
+            12,
+            13,
+            14,
+            15
+          ],
+          "is_store": false,
+          "mm_hashes": []
+        },
+        "source_block_1": [
+          [
+            [
+              8.0,
+              9.0
+            ],
+            [
+              10.0,
+              11.0
+            ],
+            [
+              12.0,
+              13.0
+            ],
+            [
+              14.0,
+              15.0
+            ]
+          ]
+        ],
+        "destination_block_3": [
+          [
+            [
+              8.0,
+              9.0
+            ],
+            [
+              10.0,
+              11.0
+            ],
+            [
+              12.0,
+              13.0
+            ],
+            [
+              14.0,
+              15.0
+            ]
+          ]
+        ],
+        "other_blocks_untouched": true
+      }
+    }
+  },
+  "ch26-counts": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/connector-cpu/trace.json",
+    "paths": [
+      "completion_counts"
+    ],
+    "file_sha256": "7dc8cc9240f3065cc04be07ddd4677f3ac390eb15a7d617cecc2d0e03c6fe7e9",
+    "value": {
+      "completion_counts": {
+        "worker0": {
+          "7": 1
+        },
+        "worker1": {
+          "7": 1
+        },
+        "aggregate": {
+          "7": 2
+        }
+      }
+    }
+  },
+  "ch27-metrics-data": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/metrics-contract/trace.json",
+    "paths": [
+      "updates",
+      "finished"
+    ],
+    "file_sha256": "ca9133cd2e19ab05cb96f716f26fbe0d78c5c3572e47161ea510e5336a2e7c7b",
+    "value": {
+      "updates": [
+        {
+          "frontend_time": 100.5,
+          "core_time": 10.4,
+          "ttft_samples": [
+            0.5
+          ],
+          "itl_samples": [],
+          "scheduled_ts": 10.1,
+          "preemptions": 0
+        },
+        {
+          "frontend_time": 100.65,
+          "core_time": 10.55,
+          "ttft_samples": [],
+          "itl_samples": [
+            0.15000000000000036
+          ],
+          "scheduled_ts": 10.1,
+          "preemptions": 1
+        },
+        {
+          "frontend_time": 100.8,
+          "core_time": 10.7,
+          "ttft_samples": [],
+          "itl_samples": [
+            0.14999999999999858
+          ],
+          "scheduled_ts": 10.1,
+          "preemptions": 1
+        }
+      ],
+      "finished": {
+        "finish_reason": 1,
+        "request_id": "B-metrics",
+        "e2e_latency": 0.7999999999999972,
+        "num_prompt_tokens": 6,
+        "num_preemptions": 1,
+        "num_generation_tokens": 3,
+        "max_tokens_param": 3,
+        "queued_time": 0.09999999999999964,
+        "prefill_time": 0.3000000000000007,
+        "inference_time": 0.5999999999999996,
+        "decode_time": 0.29999999999999893,
+        "mean_time_per_output_token": 0.14999999999999947,
+        "is_corrupted": false,
+        "num_cached_tokens": 0
+      }
+    }
+  },
+  "ch27-error-data": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/metrics-contract/trace.json",
+    "paths": [
+      "error_delivery"
+    ],
+    "file_sha256": "ca9133cd2e19ab05cb96f716f26fbe0d78c5c3572e47161ea510e5336a2e7c7b",
+    "value": {
+      "error_delivery": {
+        "A": {
+          "type": "RuntimeError",
+          "message": "synthetic core failure",
+          "ready_after_get": false
+        },
+        "B": {
+          "type": "RuntimeError",
+          "message": "synthetic core failure",
+          "ready_after_get": false
+        }
+      }
+    }
+  },
+  "ch28-rounds": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/closing/trace.json",
+    "paths": [
+      "rounds"
+    ],
+    "file_sha256": "19e4839f72f533e66501afca894f28944ec5295affe7364be414ea714e97ed8a",
+    "value": {
+      "rounds": [
+        {
+          "front_step": 1,
+          "plan_event_seq": 21,
+          "sample_event_seq": 25,
+          "pid": 2136405,
+          "num_scheduled_tokens": {
+            "A-93858a1e": 5,
+            "B-9078dc24": 6
+          },
+          "finished_req_ids_in_plan": [],
+          "sampled": {
+            "A-93858a1e": [
+              12095
+            ],
+            "B-9078dc24": [
+              279
+            ]
+          }
+        },
+        {
+          "front_step": 2,
+          "plan_event_seq": 37,
+          "sample_event_seq": 41,
+          "pid": 2136405,
+          "num_scheduled_tokens": {
+            "A-93858a1e": 1,
+            "B-9078dc24": 1
+          },
+          "finished_req_ids_in_plan": [],
+          "sampled": {
+            "A-93858a1e": [
+              13
+            ],
+            "B-9078dc24": [
+              16462
+            ]
+          }
+        },
+        {
+          "front_step": 3,
+          "plan_event_seq": 53,
+          "sample_event_seq": 57,
+          "pid": 2136405,
+          "num_scheduled_tokens": {
+            "B-9078dc24": 1
+          },
+          "finished_req_ids_in_plan": [
+            "A-93858a1e"
+          ],
+          "sampled": {
+            "B-9078dc24": [
+              21575
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "ch28-final": {
+    "kind": "observation",
+    "file": "drafts/Book8-vLLM源码剖析/evidence/closing/trace.json",
+    "paths": [
+      "final"
+    ],
+    "file_sha256": "19e4839f72f533e66501afca894f28944ec5295affe7364be414ea714e97ed8a",
+    "value": {
+      "final": {
+        "A": {
+          "token_ids": [
+            12095,
+            13
+          ],
+          "text": " Paris.",
+          "finish_reason": "length"
+        },
+        "B": {
+          "token_ids": [
+            279,
+            16462,
+            21575
+          ],
+          "text": " the Pacific Ocean",
+          "finish_reason": "length"
+        }
+      }
+    }
+  }
+}

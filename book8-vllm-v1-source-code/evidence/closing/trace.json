@@ -1,0 +1,84 @@
+{
+  "kind": "projection of one existing NPU baseline run; no re-execution",
+  "probe_sha256": "1ec1a1695a3336731a3d6d7b57a0e5b257c6ed22d7084446e3b8e10eaa10748b",
+  "input_sha256": {
+    "drafts/Book8-vLLM源码剖析/evidence/baseline-inproc-traced/events.jsonl": "7f539865e51c4417a21cf5a4c5f1e66b897ae0d104bc724f3b593368ef1be192",
+    "drafts/Book8-vLLM源码剖析/evidence/baseline-inproc-traced/result.json": "c4a45abb4abb7d630fc716ea3d9ea1b58df748c73d37ccec58e1879429b1703b"
+  },
+  "rounds": [
+    {
+      "front_step": 1,
+      "plan_event_seq": 21,
+      "sample_event_seq": 25,
+      "pid": 2136405,
+      "num_scheduled_tokens": {
+        "A-93858a1e": 5,
+        "B-9078dc24": 6
+      },
+      "finished_req_ids_in_plan": [],
+      "sampled": {
+        "A-93858a1e": [
+          12095
+        ],
+        "B-9078dc24": [
+          279
+        ]
+      }
+    },
+    {
+      "front_step": 2,
+      "plan_event_seq": 37,
+      "sample_event_seq": 41,
+      "pid": 2136405,
+      "num_scheduled_tokens": {
+        "A-93858a1e": 1,
+        "B-9078dc24": 1
+      },
+      "finished_req_ids_in_plan": [],
+      "sampled": {
+        "A-93858a1e": [
+          13
+        ],
+        "B-9078dc24": [
+          16462
+        ]
+      }
+    },
+    {
+      "front_step": 3,
+      "plan_event_seq": 53,
+      "sample_event_seq": 57,
+      "pid": 2136405,
+      "num_scheduled_tokens": {
+        "B-9078dc24": 1
+      },
+      "finished_req_ids_in_plan": [
+        "A-93858a1e"
+      ],
+      "sampled": {
+        "B-9078dc24": [
+          21575
+        ]
+      }
+    }
+  ],
+  "final": {
+    "A": {
+      "token_ids": [
+        12095,
+        13
+      ],
+      "text": " Paris.",
+      "finish_reason": "length"
+    },
+    "B": {
+      "token_ids": [
+        279,
+        16462,
+        21575
+      ],
+      "text": " the Pacific Ocean",
+      "finish_reason": "length"
+    }
+  }
+}

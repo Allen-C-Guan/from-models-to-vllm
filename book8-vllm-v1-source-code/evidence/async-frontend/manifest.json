@@ -1,0 +1,47 @@
+{
+  "packages": {
+    "vllm": "0.30.0",
+    "vllm-ascend": "0.30.0",
+    "torch": "2.10.0",
+    "torch-npu": "2.10.0.post7"
+  },
+  "requested_settings": {
+    "model": "/home/g00594152/vllm/model_analysis_project/log/huggingface/hub/models--Qwen--Qwen3-0.6B/snapshots/c1899de289a04d12100db370d81485cdf75e47ca",
+    "tokenizer": "/home/g00594152/vllm/model_analysis_project/log/huggingface/hub/models--Qwen--Qwen3-0.6B/snapshots/c1899de289a04d12100db370d81485cdf75e47ca",
+    "dtype": "bfloat16",
+    "max_model_len": 128,
+    "max_num_seqs": 4,
+    "max_num_batched_tokens": 32,
+    "enforce_eager": true,
+    "async_scheduling": false,
+    "enable_prefix_caching": false,
+    "enable_chunked_prefill": true,
+    "gpu_memory_utilization": 0.15,
+    "kv_cache_memory_bytes": 67108864,
+    "seed": 0,
+    "disable_log_stats": true
+  },
+  "effective": {
+    "client": "vllm.v1.engine.core_client.AsyncMPClient",
+    "async_scheduling": false,
+    "use_v2_model_runner": true
+  },
+  "model_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+  "visible_devices": null,
+  "probe_sha256": "cc0f89f02eacbbe69764fa9f4c5d283035dbbde19e722a10d91cef79eb9f89db",
+  "methods": {
+    "generate": {
+      "symbol": "vllm.v1.engine.async_llm.AsyncLLM.generate",
+      "file": "/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/vllm/v1/engine/async_llm.py",
+      "line": 638,
+      "sha256": "52cbf404f1dbc99c6bebf4a50a7eb18ff842a1f53106a45f365523192d816be1"
+    },
+    "abort": {
+      "symbol": "vllm.v1.engine.async_llm.AsyncLLM.abort",
+      "file": "/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/vllm/v1/engine/async_llm.py",
+      "line": 848,
+      "sha256": "52cbf404f1dbc99c6bebf4a50a7eb18ff842a1f53106a45f365523192d816be1"
+    }
+  },
+  "boundary": "AsyncLLM frontend observed; no HTTP server or core-process internal probes"
+}

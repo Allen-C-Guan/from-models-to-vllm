@@ -1,0 +1,6022 @@
+[
+  {
+    "project": "vllm",
+    "commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+    "path": "vllm/entrypoints/llm.py",
+    "sha256": "52de4ac99489e004ef6c61d0bedc84aa96020dd58b8bd1ae500814b548b2b83e",
+    "url": "https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/vllm/entrypoints/llm.py",
+    "definitions": [
+      {
+        "symbol": "LLM",
+        "start": 67,
+        "end": 920
+      },
+      {
+        "symbol": "LLM.__init__",
+        "start": 179,
+        "end": 380
+      },
+      {
+        "symbol": "LLM.from_engine_args",
+        "start": 383,
+        "end": 385
+      },
+      {
+        "symbol": "LLM.get_tokenizer",
+        "start": 387,
+        "end": 388
+      },
+      {
+        "symbol": "LLM.get_world_size",
+        "start": 390,
+        "end": 405
+      },
+      {
+        "symbol": "LLM.reset_mm_cache",
+        "start": 407,
+        "end": 409
+      },
+      {
+        "symbol": "LLM.get_default_sampling_params",
+        "start": 411,
+        "end": 416
+      },
+      {
+        "symbol": "LLM.generate",
+        "start": 418,
+        "end": 481
+      },
+      {
+        "symbol": "LLM.enqueue",
+        "start": 483,
+        "end": 526
+      },
+      {
+        "symbol": "LLM.wait_for_completion",
+        "start": 529,
+        "end": 533
+      },
+      {
+        "symbol": "LLM.wait_for_completion",
+        "start": 536,
+        "end": 541
+      },
+      {
+        "symbol": "LLM.wait_for_completion",
+        "start": 543,
+        "end": 565
+      },
+      {
+        "symbol": "LLM.collective_rpc",
+        "start": 567,
+        "end": 597
+      },
+      {
+        "symbol": "LLM.apply_model",
+        "start": 599,
+        "end": 610
+      },
+      {
+        "symbol": "LLM.chat",
+        "start": 612,
+        "end": 704
+      },
+      {
+        "symbol": "LLM.enqueue_chat",
+        "start": 706,
+        "end": 781
+      },
+      {
+        "symbol": "LLM.start_profile",
+        "start": 783,
+        "end": 791
+      },
+      {
+        "symbol": "LLM.stop_profile",
+        "start": 793,
+        "end": 794
+      },
+      {
+        "symbol": "LLM.reset_prefix_cache",
+        "start": 796,
+        "end": 801
+      },
+      {
+        "symbol": "LLM.sleep",
+        "start": 803,
+        "end": 826
+      },
+      {
+        "symbol": "LLM.wake_up",
+        "start": 828,
+        "end": 841
+      },
+      {
+        "symbol": "LLM.get_metrics",
+        "start": 843,
+        "end": 853
+      },
+      {
+        "symbol": "LLM.init_weight_transfer_engine",
+        "start": 855,
+        "end": 870
+      },
+      {
+        "symbol": "LLM.start_weight_update",
+        "start": 872,
+        "end": 874
+      },
+      {
+        "symbol": "LLM.start_draft_weight_update",
+        "start": 876,
+        "end": 878
+      },
+      {
+        "symbol": "LLM.update_weights",
+        "start": 880,
+        "end": 893
+      },
+      {
+        "symbol": "LLM.finish_weight_update",
+        "start": 895,
+        "end": 899
+      },
+      {
+        "symbol": "LLM.update_weight_version",
+        "start": 901,
+        "end": 903
+      },
+      {
+        "symbol": "LLM.get_weight_version",
+        "start": 905,
+        "end": 907
+      },
+      {
+        "symbol": "LLM.__repr__",
+        "start": 909,
+        "end": 920
+      }
+    ],
+    "installed_sha256": "52de4ac99489e004ef6c61d0bedc84aa96020dd58b8bd1ae500814b548b2b83e",
+    "installed_matches": true
+  },
+  {
+    "project": "vllm",
+    "commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+    "path": "vllm/entrypoints/offline_utils.py",
+    "sha256": "da427e190c1439c98cdc44e9c05117dcac6c65febb042c89327c33dec2a8af2d",
+    "url": "https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/vllm/entrypoints/offline_utils.py",
+    "definitions": [
+      {
+        "symbol": "OfflineInferenceMixin",
+        "start": 50,
+        "end": 634
+      },
+      {
+        "symbol": "OfflineInferenceMixin._resolve_mm_lora",
+        "start": 58,
+        "end": 108
+      },
+      {
+        "symbol": "OfflineInferenceMixin._preprocess_cmpl",
+        "start": 110,
+        "end": 144
+      },
+      {
+        "symbol": "OfflineInferenceMixin._preprocess_cmpl_one",
+        "start": 146,
+        "end": 157
+      },
+      {
+        "symbol": "OfflineInferenceMixin._preprocess_chat",
+        "start": 159,
+        "end": 222
+      },
+      {
+        "symbol": "OfflineInferenceMixin._preprocess_chat_one",
+        "start": 224,
+        "end": 248
+      },
+      {
+        "symbol": "OfflineInferenceMixin._params_to_seq",
+        "start": 250,
+        "end": 264
+      },
+      {
+        "symbol": "OfflineInferenceMixin._lora_request_to_seq",
+        "start": 266,
+        "end": 280
+      },
+      {
+        "symbol": "OfflineInferenceMixin._priority_to_seq",
+        "start": 282,
+        "end": 296
+      },
+      {
+        "symbol": "OfflineInferenceMixin._add_completion_requests",
+        "start": 298,
+        "end": 332
+      },
+      {
+        "symbol": "OfflineInferenceMixin._run_completion",
+        "start": 334,
+        "end": 357
+      },
+      {
+        "symbol": "OfflineInferenceMixin._run_chat",
+        "start": 359,
+        "end": 393
+      },
+      {
+        "symbol": "OfflineInferenceMixin._add_chat_requests",
+        "start": 395,
+        "end": 453
+      },
+      {
+        "symbol": "OfflineInferenceMixin._adjust_params_for_parsing",
+        "start": 455,
+        "end": 500
+      },
+      {
+        "symbol": "OfflineInferenceMixin._render_and_run_requests",
+        "start": 502,
+        "end": 529
+      },
+      {
+        "symbol": "OfflineInferenceMixin._render_and_add_requests",
+        "start": 531,
+        "end": 558
+      },
+      {
+        "symbol": "OfflineInferenceMixin._add_request",
+        "start": 560,
+        "end": 579
+      },
+      {
+        "symbol": "OfflineInferenceMixin._run_engine",
+        "start": 581,
+        "end": 634
+      }
+    ],
+    "installed_sha256": "da427e190c1439c98cdc44e9c05117dcac6c65febb042c89327c33dec2a8af2d",
+    "installed_matches": true
+  },
+  {
+    "project": "vllm",
+    "commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+    "path": "vllm/renderers/base.py",
+    "sha256": "4db44560f4d331bf0f184626ed7cac97b350355a5c64bce648bf1fa971b16d68",
+    "url": "https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/vllm/renderers/base.py",
+    "definitions": [
+      {
+        "symbol": "BaseRenderer",
+        "start": 74,
+        "end": 1235
+      },
+      {
+        "symbol": "BaseRenderer.__init__",
+        "start": 75,
+        "end": 182
+      },
+      {
+        "symbol": "BaseRenderer.get_tokenizer",
+        "start": 184,
+        "end": 189
+      },
+      {
+        "symbol": "BaseRenderer._decode",
+        "start": 191,
+        "end": 192
+      },
+      {
+        "symbol": "BaseRenderer.get_mm_processor",
+        "start": 194,
+        "end": 198
+      },
+      {
+        "symbol": "BaseRenderer.mm_processor_cache",
+        "start": 201,
+        "end": 205
+      },
+      {
+        "symbol": "BaseRenderer.stat_mm_cache",
+        "start": 207,
+        "end": 214
+      },
+      {
+        "symbol": "BaseRenderer.update_mm_cache_stats",
+        "start": 216,
+        "end": 222
+      },
+      {
+        "symbol": "BaseRenderer.clear_mm_cache",
+        "start": 224,
+        "end": 230
+      },
+      {
+        "symbol": "BaseRenderer._clear_processor_cache",
+        "start": 233,
+        "end": 241
+      },
+      {
+        "symbol": "BaseRenderer._warmup_mm_processor",
+        "start": 243,
+        "end": 261
+      },
+      {
+        "symbol": "BaseRenderer.warmup_mm",
+        "start": 263,
+        "end": 300
+      },
+      {
+        "symbol": "BaseRenderer.start_mm_warmup_in_background",
+        "start": 302,
+        "end": 330
+      },
+      {
+        "symbol": "BaseRenderer._join_mm_warmup",
+        "start": 332,
+        "end": 340
+      },
+      {
+        "symbol": "BaseRenderer.warmup",
+        "start": 342,
+        "end": 377
+      },
+      {
+        "symbol": "BaseRenderer.clear_mm_cache_async",
+        "start": 379,
+        "end": 382
+      },
+      {
+        "symbol": "BaseRenderer.shutdown",
+        "start": 384,
+        "end": 390
+      },
+      {
+        "symbol": "BaseRenderer.get_bos_token_id",
+        "start": 392,
+        "end": 399
+      },
+      {
+        "symbol": "BaseRenderer.get_eos_token_id",
+        "start": 401,
+        "end": 408
+      },
+      {
+        "symbol": "BaseRenderer.get_dec_start_token_id",
+        "start": 410,
+        "end": 429
+      },
+      {
+        "symbol": "BaseRenderer.default_cmpl_tok_params",
+        "start": 432,
+        "end": 444
+      },
+      {
+        "symbol": "BaseRenderer.default_chat_tok_params",
+        "start": 447,
+        "end": 459
+      },
+      {
+        "symbol": "BaseRenderer.render_prompt",
+        "start": 462,
+        "end": 470
+      },
+      {
+        "symbol": "BaseRenderer.render_prompts",
+        "start": 472,
+        "end": 479
+      },
+      {
+        "symbol": "BaseRenderer._render_prompt_async",
+        "start": 481,
+        "end": 491
+      },
+      {
+        "symbol": "BaseRenderer.render_prompts_async",
+        "start": 493,
+        "end": 502
+      },
+      {
+        "symbol": "BaseRenderer.render_messages",
+        "start": 505,
+        "end": 510
+      },
+      {
+        "symbol": "BaseRenderer.render_messages_async",
+        "start": 512,
+        "end": 517
+      },
+      {
+        "symbol": "BaseRenderer._can_produce_offsets",
+        "start": 520,
+        "end": 526
+      },
+      {
+        "symbol": "BaseRenderer._wants_offsets",
+        "start": 528,
+        "end": 538
+      },
+      {
+        "symbol": "BaseRenderer._build_tokens_prompt",
+        "start": 541,
+        "end": 559
+      },
+      {
+        "symbol": "BaseRenderer._apply_prompt_char_offset",
+        "start": 562,
+        "end": 580
+      },
+      {
+        "symbol": "BaseRenderer._tokenize_prompt",
+        "start": 582,
+        "end": 597
+      },
+      {
+        "symbol": "BaseRenderer._detokenize_prompt",
+        "start": 599,
+        "end": 603
+      },
+      {
+        "symbol": "BaseRenderer._detokenize_prompt_async",
+        "start": 605,
+        "end": 610
+      },
+      {
+        "symbol": "BaseRenderer._tokenize_singleton_prompt",
+        "start": 613,
+        "end": 617
+      },
+      {
+        "symbol": "BaseRenderer._tokenize_singleton_prompt",
+        "start": 620,
+        "end": 624
+      },
+      {
+        "symbol": "BaseRenderer._tokenize_singleton_prompt",
+        "start": 626,
+        "end": 650
+      },
+      {
+        "symbol": "BaseRenderer._tokenize_singleton_prompt_async",
+        "start": 653,
+        "end": 657
+      },
+      {
+        "symbol": "BaseRenderer._tokenize_singleton_prompt_async",
+        "start": 660,
+        "end": 664
+      },
+      {
+        "symbol": "BaseRenderer._tokenize_singleton_prompt_async",
+        "start": 666,
+        "end": 690
+      },
+      {
+        "symbol": "BaseRenderer._tokenize_enc_dec_prompt",
+        "start": 692,
+        "end": 709
+      },
+      {
+        "symbol": "BaseRenderer._tokenize_enc_dec_prompt_async",
+        "start": 711,
+        "end": 730
+      },
+      {
+        "symbol": "BaseRenderer.tokenize_prompt",
+        "start": 732,
+        "end": 740
+      },
+      {
+        "symbol": "BaseRenderer.tokenize_prompts",
+        "start": 742,
+        "end": 747
+      },
+      {
+        "symbol": "BaseRenderer.tokenize_prompt_async",
+        "start": 749,
+        "end": 757
+      },
+      {
+        "symbol": "BaseRenderer.tokenize_prompts_async",
+        "start": 759,
+        "end": 766
+      },
+      {
+        "symbol": "BaseRenderer._apply_prompt_extras",
+        "start": 769,
+        "end": 779
+      },
+      {
+        "symbol": "BaseRenderer._validate_mm_uuids",
+        "start": 782,
+        "end": 816
+      },
+      {
+        "symbol": "BaseRenderer._process_mm_uuids",
+        "start": 818,
+        "end": 846
+      },
+      {
+        "symbol": "BaseRenderer._process_multimodal",
+        "start": 848,
+        "end": 886
+      },
+      {
+        "symbol": "BaseRenderer._process_tokens",
+        "start": 888,
+        "end": 922
+      },
+      {
+        "symbol": "BaseRenderer._process_embeds",
+        "start": 924,
+        "end": 952
+      },
+      {
+        "symbol": "BaseRenderer._process_tokens_async",
+        "start": 954,
+        "end": 985
+      },
+      {
+        "symbol": "BaseRenderer._process_singleton",
+        "start": 987,
+        "end": 996
+      },
+      {
+        "symbol": "BaseRenderer._process_singleton_async",
+        "start": 998,
+        "end": 1007
+      },
+      {
+        "symbol": "BaseRenderer._get_skip_decoder_start_token",
+        "start": 1009,
+        "end": 1016
+      },
+      {
+        "symbol": "BaseRenderer._process_enc_dec",
+        "start": 1018,
+        "end": 1038
+      },
+      {
+        "symbol": "BaseRenderer._process_enc_dec_async",
+        "start": 1040,
+        "end": 1065
+      },
+      {
+        "symbol": "BaseRenderer.process_for_engine",
+        "start": 1067,
+        "end": 1082
+      },
+      {
+        "symbol": "BaseRenderer.process_for_engine_async",
+        "start": 1084,
+        "end": 1104
+      },
+      {
+        "symbol": "BaseRenderer.render_cmpl",
+        "start": 1107,
+        "end": 1128
+      },
+      {
+        "symbol": "BaseRenderer.render_cmpl_async",
+        "start": 1130,
+        "end": 1155
+      },
+      {
+        "symbol": "BaseRenderer.render_chat",
+        "start": 1157,
+        "end": 1193
+      },
+      {
+        "symbol": "BaseRenderer.render_chat_async",
+        "start": 1195,
+        "end": 1235
+      }
+    ],
+    "installed_sha256": "4db44560f4d331bf0f184626ed7cac97b350355a5c64bce648bf1fa971b16d68",
+    "installed_matches": true
+  },
+  {
+    "project": "vllm",
+    "commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+    "path": "vllm/v1/engine/input_processor.py",
+    "sha256": "c8abd8e4e14d99929d45a7ff3b2a74898269c5e2a7fa30b826623ee85e4ce813",
+    "url": "https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/vllm/v1/engine/input_processor.py",
+    "definitions": [
+      {
+        "symbol": "InputProcessor",
+        "start": 38,
+        "end": 559
+      },
+      {
+        "symbol": "InputProcessor.__init__",
+        "start": 39,
+        "end": 75
+      },
+      {
+        "symbol": "InputProcessor.tokenizer",
+        "start": 78,
+        "end": 79
+      },
+      {
+        "symbol": "InputProcessor.get_tokenizer",
+        "start": 81,
+        "end": 82
+      },
+      {
+        "symbol": "InputProcessor._validate_params",
+        "start": 84,
+        "end": 159
+      },
+      {
+        "symbol": "InputProcessor._normalize_trace_replay_params",
+        "start": 161,
+        "end": 183
+      },
+      {
+        "symbol": "InputProcessor._validate_lora",
+        "start": 185,
+        "end": 202
+      },
+      {
+        "symbol": "InputProcessor._get_mm_identifier",
+        "start": 204,
+        "end": 220
+      },
+      {
+        "symbol": "InputProcessor.inject_into_mm_cache",
+        "start": 222,
+        "end": 259
+      },
+      {
+        "symbol": "InputProcessor.assign_request_id",
+        "start": 262,
+        "end": 279
+      },
+      {
+        "symbol": "InputProcessor.process_inputs",
+        "start": 281,
+        "end": 438
+      },
+      {
+        "symbol": "InputProcessor._validate_prompt_len",
+        "start": 440,
+        "end": 485
+      },
+      {
+        "symbol": "InputProcessor._validate_model_input",
+        "start": 487,
+        "end": 549
+      },
+      {
+        "symbol": "InputProcessor._validate_model_inputs",
+        "start": 551,
+        "end": 559
+      }
+    ],
+    "installed_sha256": "c8abd8e4e14d99929d45a7ff3b2a74898269c5e2a7fa30b826623ee85e4ce813",
+    "installed_matches": true
+  },
+  {
+    "project": "vllm",
+    "commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+    "path": "vllm/v1/engine/llm_engine.py",
+    "sha256": "d4d5fba309db4d3f271ac7479e3ddaa623045499e4c6cfac41c0c7710012413c",
+    "url": "https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/vllm/v1/engine/llm_engine.py",
+    "definitions": [
+      {
+        "symbol": "LLMEngine",
+        "start": 48,
+        "end": 469
+      },
+      {
+        "symbol": "LLMEngine.__init__",
+        "start": 51,
+        "end": 146
+      },
+      {
+        "symbol": "LLMEngine.from_vllm_config",
+        "start": 149,
+        "end": 163
+      },
+      {
+        "symbol": "LLMEngine.from_engine_args",
+        "start": 166,
+        "end": 191
+      },
+      {
+        "symbol": "LLMEngine.get_num_unfinished_requests",
+        "start": 193,
+        "end": 194
+      },
+      {
+        "symbol": "LLMEngine.has_unfinished_requests",
+        "start": 196,
+        "end": 200
+      },
+      {
+        "symbol": "LLMEngine.has_unfinished_requests_dp",
+        "start": 202,
+        "end": 208
+      },
+      {
+        "symbol": "LLMEngine.get_supported_tasks",
+        "start": 210,
+        "end": 215
+      },
+      {
+        "symbol": "LLMEngine.abort_request",
+        "start": 217,
+        "end": 221
+      },
+      {
+        "symbol": "LLMEngine.add_request",
+        "start": 223,
+        "end": 302
+      },
+      {
+        "symbol": "LLMEngine.step",
+        "start": 304,
+        "end": 342
+      },
+      {
+        "symbol": "LLMEngine.start_profile",
+        "start": 344,
+        "end": 345
+      },
+      {
+        "symbol": "LLMEngine.stop_profile",
+        "start": 347,
+        "end": 348
+      },
+      {
+        "symbol": "LLMEngine.reset_mm_cache",
+        "start": 350,
+        "end": 355
+      },
+      {
+        "symbol": "LLMEngine.reset_prefix_cache",
+        "start": 357,
+        "end": 362
+      },
+      {
+        "symbol": "LLMEngine.reset_encoder_cache",
+        "start": 364,
+        "end": 370
+      },
+      {
+        "symbol": "LLMEngine.sleep",
+        "start": 372,
+        "end": 378
+      },
+      {
+        "symbol": "LLMEngine.wake_up",
+        "start": 380,
+        "end": 384
+      },
+      {
+        "symbol": "LLMEngine.is_sleeping",
+        "start": 386,
+        "end": 387
+      },
+      {
+        "symbol": "LLMEngine.get_metrics",
+        "start": 389,
+        "end": 391
+      },
+      {
+        "symbol": "LLMEngine.tokenizer",
+        "start": 394,
+        "end": 395
+      },
+      {
+        "symbol": "LLMEngine.get_tokenizer",
+        "start": 397,
+        "end": 398
+      },
+      {
+        "symbol": "LLMEngine.do_log_stats",
+        "start": 400,
+        "end": 403
+      },
+      {
+        "symbol": "LLMEngine.do_log_stats_with_interval",
+        "start": 405,
+        "end": 412
+      },
+      {
+        "symbol": "LLMEngine.add_lora",
+        "start": 414,
+        "end": 416
+      },
+      {
+        "symbol": "LLMEngine.remove_lora",
+        "start": 418,
+        "end": 420
+      },
+      {
+        "symbol": "LLMEngine.list_loras",
+        "start": 422,
+        "end": 424
+      },
+      {
+        "symbol": "LLMEngine.pin_lora",
+        "start": 426,
+        "end": 428
+      },
+      {
+        "symbol": "LLMEngine.collective_rpc",
+        "start": 430,
+        "end": 437
+      },
+      {
+        "symbol": "LLMEngine.set_weight_version",
+        "start": 439,
+        "end": 440
+      },
+      {
+        "symbol": "LLMEngine.get_weight_version",
+        "start": 442,
+        "end": 444
+      },
+      {
+        "symbol": "LLMEngine.apply_model",
+        "start": 446,
+        "end": 447
+      },
+      {
+        "symbol": "LLMEngine._get_driver_model_for_cleanup",
+        "start": 449,
+        "end": 452
+      },
+      {
+        "symbol": "LLMEngine._cleanup_instance_caches",
+        "start": 455,
+        "end": 464
+      },
+      {
+        "symbol": "LLMEngine.__del__",
+        "start": 466,
+        "end": 469
+      }
+    ],
+    "installed_sha256": "d4d5fba309db4d3f271ac7479e3ddaa623045499e4c6cfac41c0c7710012413c",
+    "installed_matches": true
+  },
+  {
+    "project": "vllm",
+    "commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+    "path": "vllm/v1/engine/core_client.py",
+    "sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8",
+    "url": "https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/vllm/v1/engine/core_client.py",
+    "definitions": [
+      {
+        "symbol": "EngineCoreClient",
+        "start": 79,
+        "end": 330
+      },
+      {
+        "symbol": "EngineCoreClient.make_client",
+        "start": 91,
+        "end": 129
+      },
+      {
+        "symbol": "EngineCoreClient.make_async_mp_client",
+        "start": 133,
+        "end": 166
+      },
+      {
+        "symbol": "EngineCoreClient.shutdown",
+        "start": 169,
+        "end": 169
+      },
+      {
+        "symbol": "EngineCoreClient.get_output",
+        "start": 171,
+        "end": 172
+      },
+      {
+        "symbol": "EngineCoreClient.get_supported_tasks",
+        "start": 174,
+        "end": 175
+      },
+      {
+        "symbol": "EngineCoreClient.add_request",
+        "start": 177,
+        "end": 178
+      },
+      {
+        "symbol": "EngineCoreClient.profile",
+        "start": 180,
+        "end": 181
+      },
+      {
+        "symbol": "EngineCoreClient.reset_mm_cache",
+        "start": 183,
+        "end": 184
+      },
+      {
+        "symbol": "EngineCoreClient.reset_prefix_cache",
+        "start": 186,
+        "end": 189
+      },
+      {
+        "symbol": "EngineCoreClient.reset_encoder_cache",
+        "start": 191,
+        "end": 192
+      },
+      {
+        "symbol": "EngineCoreClient.sleep",
+        "start": 194,
+        "end": 195
+      },
+      {
+        "symbol": "EngineCoreClient.wake_up",
+        "start": 197,
+        "end": 198
+      },
+      {
+        "symbol": "EngineCoreClient.is_sleeping",
+        "start": 200,
+        "end": 201
+      },
+      {
+        "symbol": "EngineCoreClient.execute_dummy_batch",
+        "start": 203,
+        "end": 204
+      },
+      {
+        "symbol": "EngineCoreClient.set_weight_version",
+        "start": 206,
+        "end": 207
+      },
+      {
+        "symbol": "EngineCoreClient.get_weight_version",
+        "start": 209,
+        "end": 210
+      },
+      {
+        "symbol": "EngineCoreClient.execute_dummy_batch_async",
+        "start": 212,
+        "end": 213
+      },
+      {
+        "symbol": "EngineCoreClient.set_weight_version_async",
+        "start": 215,
+        "end": 216
+      },
+      {
+        "symbol": "EngineCoreClient.get_weight_version_async",
+        "start": 218,
+        "end": 219
+      },
+      {
+        "symbol": "EngineCoreClient.abort_requests",
+        "start": 221,
+        "end": 222
+      },
+      {
+        "symbol": "EngineCoreClient.add_lora",
+        "start": 224,
+        "end": 225
+      },
+      {
+        "symbol": "EngineCoreClient.remove_lora",
+        "start": 227,
+        "end": 228
+      },
+      {
+        "symbol": "EngineCoreClient.list_loras",
+        "start": 230,
+        "end": 231
+      },
+      {
+        "symbol": "EngineCoreClient.pin_lora",
+        "start": 233,
+        "end": 234
+      },
+      {
+        "symbol": "EngineCoreClient.save_sharded_state",
+        "start": 236,
+        "end": 239
+      },
+      {
+        "symbol": "EngineCoreClient.collective_rpc",
+        "start": 241,
+        "end": 248
+      },
+      {
+        "symbol": "EngineCoreClient.dp_engines_running",
+        "start": 250,
+        "end": 253
+      },
+      {
+        "symbol": "EngineCoreClient.commit_elastic_ep",
+        "start": 255,
+        "end": 256
+      },
+      {
+        "symbol": "EngineCoreClient.prepare_elastic_ep",
+        "start": 258,
+        "end": 259
+      },
+      {
+        "symbol": "EngineCoreClient.get_output_async",
+        "start": 261,
+        "end": 262
+      },
+      {
+        "symbol": "EngineCoreClient.get_supported_tasks_async",
+        "start": 264,
+        "end": 265
+      },
+      {
+        "symbol": "EngineCoreClient.add_request_async",
+        "start": 267,
+        "end": 268
+      },
+      {
+        "symbol": "EngineCoreClient.profile_async",
+        "start": 270,
+        "end": 273
+      },
+      {
+        "symbol": "EngineCoreClient.reset_mm_cache_async",
+        "start": 275,
+        "end": 276
+      },
+      {
+        "symbol": "EngineCoreClient.reset_prefix_cache_async",
+        "start": 278,
+        "end": 281
+      },
+      {
+        "symbol": "EngineCoreClient.reset_encoder_cache_async",
+        "start": 283,
+        "end": 284
+      },
+      {
+        "symbol": "EngineCoreClient.sleep_async",
+        "start": 286,
+        "end": 287
+      },
+      {
+        "symbol": "EngineCoreClient.wake_up_async",
+        "start": 289,
+        "end": 290
+      },
+      {
+        "symbol": "EngineCoreClient.is_sleeping_async",
+        "start": 292,
+        "end": 293
+      },
+      {
+        "symbol": "EngineCoreClient.abort_requests_async",
+        "start": 295,
+        "end": 296
+      },
+      {
+        "symbol": "EngineCoreClient.add_lora_async",
+        "start": 298,
+        "end": 299
+      },
+      {
+        "symbol": "EngineCoreClient.remove_lora_async",
+        "start": 301,
+        "end": 302
+      },
+      {
+        "symbol": "EngineCoreClient.list_loras_async",
+        "start": 304,
+        "end": 305
+      },
+      {
+        "symbol": "EngineCoreClient.pin_lora_async",
+        "start": 307,
+        "end": 308
+      },
+      {
+        "symbol": "EngineCoreClient.save_sharded_state_async",
+        "start": 310,
+        "end": 313
+      },
+      {
+        "symbol": "EngineCoreClient.collective_rpc_async",
+        "start": 315,
+        "end": 322
+      },
+      {
+        "symbol": "EngineCoreClient.handle_fault",
+        "start": 324,
+        "end": 327
+      },
+      {
+        "symbol": "EngineCoreClient.get_status",
+        "start": 329,
+        "end": 330
+      },
+      {
+        "symbol": "InprocClient",
+        "start": 333,
+        "end": 444
+      },
+      {
+        "symbol": "InprocClient.__init__",
+        "start": 346,
+        "end": 359
+      },
+      {
+        "symbol": "InprocClient.get_output",
+        "start": 361,
+        "end": 364
+      },
+      {
+        "symbol": "InprocClient.get_supported_tasks",
+        "start": 366,
+        "end": 367
+      },
+      {
+        "symbol": "InprocClient.add_request",
+        "start": 369,
+        "end": 371
+      },
+      {
+        "symbol": "InprocClient.abort_requests",
+        "start": 373,
+        "end": 375
+      },
+      {
+        "symbol": "InprocClient.shutdown",
+        "start": 377,
+        "end": 378
+      },
+      {
+        "symbol": "InprocClient.profile",
+        "start": 380,
+        "end": 381
+      },
+      {
+        "symbol": "InprocClient.reset_mm_cache",
+        "start": 383,
+        "end": 384
+      },
+      {
+        "symbol": "InprocClient.reset_prefix_cache",
+        "start": 386,
+        "end": 391
+      },
+      {
+        "symbol": "InprocClient.reset_encoder_cache",
+        "start": 393,
+        "end": 394
+      },
+      {
+        "symbol": "InprocClient.sleep",
+        "start": 396,
+        "end": 400
+      },
+      {
+        "symbol": "InprocClient.wake_up",
+        "start": 402,
+        "end": 403
+      },
+      {
+        "symbol": "InprocClient.is_sleeping",
+        "start": 405,
+        "end": 406
+      },
+      {
+        "symbol": "InprocClient.execute_dummy_batch",
+        "start": 408,
+        "end": 409
+      },
+      {
+        "symbol": "InprocClient.set_weight_version",
+        "start": 411,
+        "end": 412
+      },
+      {
+        "symbol": "InprocClient.get_weight_version",
+        "start": 414,
+        "end": 415
+      },
+      {
+        "symbol": "InprocClient.add_lora",
+        "start": 417,
+        "end": 418
+      },
+      {
+        "symbol": "InprocClient.remove_lora",
+        "start": 420,
+        "end": 421
+      },
+      {
+        "symbol": "InprocClient.list_loras",
+        "start": 423,
+        "end": 424
+      },
+      {
+        "symbol": "InprocClient.pin_lora",
+        "start": 426,
+        "end": 427
+      },
+      {
+        "symbol": "InprocClient.save_sharded_state",
+        "start": 429,
+        "end": 432
+      },
+      {
+        "symbol": "InprocClient.collective_rpc",
+        "start": 434,
+        "end": 441
+      },
+      {
+        "symbol": "InprocClient.dp_engines_running",
+        "start": 443,
+        "end": 444
+      },
+      {
+        "symbol": "BackgroundResources",
+        "start": 448,
+        "end": 535
+      },
+      {
+        "symbol": "BackgroundResources.__call__",
+        "start": 470,
+        "end": 530
+      },
+      {
+        "symbol": "BackgroundResources.validate_alive",
+        "start": 532,
+        "end": 535
+      },
+      {
+        "symbol": "ElasticScalingCache",
+        "start": 539,
+        "end": 542
+      },
+      {
+        "symbol": "MPClient",
+        "start": 545,
+        "end": 844
+      },
+      {
+        "symbol": "MPClient.__init__",
+        "start": 558,
+        "end": 738
+      },
+      {
+        "symbol": "MPClient.shutdown",
+        "start": 740,
+        "end": 751
+      },
+      {
+        "symbol": "MPClient._format_exception",
+        "start": 753,
+        "end": 757
+      },
+      {
+        "symbol": "MPClient.ensure_alive",
+        "start": 759,
+        "end": 761
+      },
+      {
+        "symbol": "MPClient.dp_engines_running",
+        "start": 763,
+        "end": 764
+      },
+      {
+        "symbol": "MPClient._start_mm_warmup",
+        "start": 766,
+        "end": 772
+      },
+      {
+        "symbol": "MPClient.start_engine_core_monitor",
+        "start": 774,
+        "end": 801
+      },
+      {
+        "symbol": "MPClient._apply_ready_response",
+        "start": 803,
+        "end": 844
+      },
+      {
+        "symbol": "_process_utility_output",
+        "start": 847,
+        "end": 866
+      },
+      {
+        "symbol": "SyncMPClient",
+        "start": 869,
+        "end": 1043
+      },
+      {
+        "symbol": "SyncMPClient.__init__",
+        "start": 873,
+        "end": 942
+      },
+      {
+        "symbol": "SyncMPClient.get_output",
+        "start": 944,
+        "end": 954
+      },
+      {
+        "symbol": "SyncMPClient._send_input",
+        "start": 956,
+        "end": 963
+      },
+      {
+        "symbol": "SyncMPClient.call_utility",
+        "start": 965,
+        "end": 971
+      },
+      {
+        "symbol": "SyncMPClient.get_supported_tasks",
+        "start": 973,
+        "end": 974
+      },
+      {
+        "symbol": "SyncMPClient.add_request",
+        "start": 976,
+        "end": 979
+      },
+      {
+        "symbol": "SyncMPClient.abort_requests",
+        "start": 981,
+        "end": 983
+      },
+      {
+        "symbol": "SyncMPClient.profile",
+        "start": 985,
+        "end": 986
+      },
+      {
+        "symbol": "SyncMPClient.reset_mm_cache",
+        "start": 988,
+        "end": 989
+      },
+      {
+        "symbol": "SyncMPClient.reset_prefix_cache",
+        "start": 991,
+        "end": 996
+      },
+      {
+        "symbol": "SyncMPClient.reset_encoder_cache",
+        "start": 998,
+        "end": 999
+      },
+      {
+        "symbol": "SyncMPClient.add_lora",
+        "start": 1001,
+        "end": 1002
+      },
+      {
+        "symbol": "SyncMPClient.remove_lora",
+        "start": 1004,
+        "end": 1005
+      },
+      {
+        "symbol": "SyncMPClient.list_loras",
+        "start": 1007,
+        "end": 1008
+      },
+      {
+        "symbol": "SyncMPClient.pin_lora",
+        "start": 1010,
+        "end": 1011
+      },
+      {
+        "symbol": "SyncMPClient.sleep",
+        "start": 1013,
+        "end": 1014
+      },
+      {
+        "symbol": "SyncMPClient.wake_up",
+        "start": 1016,
+        "end": 1017
+      },
+      {
+        "symbol": "SyncMPClient.is_sleeping",
+        "start": 1019,
+        "end": 1020
+      },
+      {
+        "symbol": "SyncMPClient.execute_dummy_batch",
+        "start": 1022,
+        "end": 1023
+      },
+      {
+        "symbol": "SyncMPClient.set_weight_version",
+        "start": 1025,
+        "end": 1026
+      },
+      {
+        "symbol": "SyncMPClient.get_weight_version",
+        "start": 1028,
+        "end": 1029
+      },
+      {
+        "symbol": "SyncMPClient.collective_rpc",
+        "start": 1031,
+        "end": 1038
+      },
+      {
+        "symbol": "SyncMPClient.save_sharded_state",
+        "start": 1040,
+        "end": 1043
+      },
+      {
+        "symbol": "AsyncMPClient",
+        "start": 1046,
+        "end": 1320
+      },
+      {
+        "symbol": "AsyncMPClient.__init__",
+        "start": 1050,
+        "end": 1088
+      },
+      {
+        "symbol": "AsyncMPClient._ensure_output_queue_task",
+        "start": 1090,
+        "end": 1165
+      },
+      {
+        "symbol": "AsyncMPClient.get_output_async",
+        "start": 1167,
+        "end": 1176
+      },
+      {
+        "symbol": "AsyncMPClient._send_input",
+        "start": 1178,
+        "end": 1188
+      },
+      {
+        "symbol": "AsyncMPClient._send_input_message",
+        "start": 1190,
+        "end": 1197
+      },
+      {
+        "symbol": "AsyncMPClient.call_utility_async",
+        "start": 1199,
+        "end": 1200
+      },
+      {
+        "symbol": "AsyncMPClient._call_utility_async",
+        "start": 1202,
+        "end": 1214
+      },
+      {
+        "symbol": "AsyncMPClient.get_supported_tasks_async",
+        "start": 1216,
+        "end": 1217
+      },
+      {
+        "symbol": "AsyncMPClient.add_request_async",
+        "start": 1219,
+        "end": 1222
+      },
+      {
+        "symbol": "AsyncMPClient.abort_requests_async",
+        "start": 1224,
+        "end": 1226
+      },
+      {
+        "symbol": "AsyncMPClient.pause_scheduler_async",
+        "start": 1228,
+        "end": 1231
+      },
+      {
+        "symbol": "AsyncMPClient.resume_scheduler_async",
+        "start": 1233,
+        "end": 1234
+      },
+      {
+        "symbol": "AsyncMPClient.is_scheduler_paused_async",
+        "start": 1236,
+        "end": 1237
+      },
+      {
+        "symbol": "AsyncMPClient.profile_async",
+        "start": 1239,
+        "end": 1242
+      },
+      {
+        "symbol": "AsyncMPClient.reset_mm_cache_async",
+        "start": 1244,
+        "end": 1245
+      },
+      {
+        "symbol": "AsyncMPClient.reset_prefix_cache_async",
+        "start": 1247,
+        "end": 1252
+      },
+      {
+        "symbol": "AsyncMPClient.reset_encoder_cache_async",
+        "start": 1254,
+        "end": 1255
+      },
+      {
+        "symbol": "AsyncMPClient.sleep_async",
+        "start": 1257,
+        "end": 1258
+      },
+      {
+        "symbol": "AsyncMPClient.wake_up_async",
+        "start": 1260,
+        "end": 1261
+      },
+      {
+        "symbol": "AsyncMPClient.is_sleeping_async",
+        "start": 1263,
+        "end": 1264
+      },
+      {
+        "symbol": "AsyncMPClient.execute_dummy_batch_async",
+        "start": 1266,
+        "end": 1267
+      },
+      {
+        "symbol": "AsyncMPClient.set_weight_version_async",
+        "start": 1269,
+        "end": 1270
+      },
+      {
+        "symbol": "AsyncMPClient.get_weight_version_async",
+        "start": 1272,
+        "end": 1273
+      },
+      {
+        "symbol": "AsyncMPClient.add_lora_async",
+        "start": 1275,
+        "end": 1276
+      },
+      {
+        "symbol": "AsyncMPClient.remove_lora_async",
+        "start": 1278,
+        "end": 1279
+      },
+      {
+        "symbol": "AsyncMPClient.list_loras_async",
+        "start": 1281,
+        "end": 1282
+      },
+      {
+        "symbol": "AsyncMPClient.pin_lora_async",
+        "start": 1284,
+        "end": 1285
+      },
+      {
+        "symbol": "AsyncMPClient.save_sharded_state_async",
+        "start": 1287,
+        "end": 1290
+      },
+      {
+        "symbol": "AsyncMPClient.collective_rpc_async",
+        "start": 1292,
+        "end": 1301
+      },
+      {
+        "symbol": "AsyncMPClient.handle_fault",
+        "start": 1303,
+        "end": 1313
+      },
+      {
+        "symbol": "AsyncMPClient.get_status",
+        "start": 1315,
+        "end": 1320
+      },
+      {
+        "symbol": "DPAsyncMPClient",
+        "start": 1323,
+        "end": 1504
+      },
+      {
+        "symbol": "DPAsyncMPClient.__init__",
+        "start": 1327,
+        "end": 1367
+      },
+      {
+        "symbol": "DPAsyncMPClient._ensure_stats_update_task",
+        "start": 1369,
+        "end": 1484
+      },
+      {
+        "symbol": "DPAsyncMPClient.add_request_async",
+        "start": 1486,
+        "end": 1501
+      },
+      {
+        "symbol": "DPAsyncMPClient.get_core_engine_for_request",
+        "start": 1503,
+        "end": 1504
+      },
+      {
+        "symbol": "DPLBAsyncMPClient",
+        "start": 1507,
+        "end": 1969
+      },
+      {
+        "symbol": "DPLBAsyncMPClient.__init__",
+        "start": 1511,
+        "end": 1544
+      },
+      {
+        "symbol": "DPLBAsyncMPClient.get_core_engine_for_request",
+        "start": 1546,
+        "end": 1597
+      },
+      {
+        "symbol": "DPLBAsyncMPClient.call_utility_async",
+        "start": 1599,
+        "end": 1608
+      },
+      {
+        "symbol": "DPLBAsyncMPClient.process_engine_outputs",
+        "start": 1611,
+        "end": 1617
+      },
+      {
+        "symbol": "DPLBAsyncMPClient.eep_process_engine_core_notification",
+        "start": 1620,
+        "end": 1663
+      },
+      {
+        "symbol": "DPLBAsyncMPClient.abort_requests_async",
+        "start": 1665,
+        "end": 1680
+      },
+      {
+        "symbol": "DPLBAsyncMPClient._abort_requests",
+        "start": 1682,
+        "end": 1685
+      },
+      {
+        "symbol": "DPLBAsyncMPClient.commit_elastic_ep",
+        "start": 1687,
+        "end": 1701
+      },
+      {
+        "symbol": "DPLBAsyncMPClient.prepare_elastic_ep",
+        "start": 1703,
+        "end": 1742
+      },
+      {
+        "symbol": "DPLBAsyncMPClient._eep_wait_for_setup_switch_complete",
+        "start": 1744,
+        "end": 1756
+      },
+      {
+        "symbol": "DPLBAsyncMPClient._wait_for_new_engine_ready",
+        "start": 1758,
+        "end": 1773
+      },
+      {
+        "symbol": "DPLBAsyncMPClient._setup_elastic_ep_reconfig_bootstrap",
+        "start": 1775,
+        "end": 1794
+      },
+      {
+        "symbol": "DPLBAsyncMPClient._make_reconfig_request",
+        "start": 1796,
+        "end": 1810
+      },
+      {
+        "symbol": "DPLBAsyncMPClient._prepare_scale_up_elastic_ep",
+        "start": 1812,
+        "end": 1848
+      },
+      {
+        "symbol": "DPLBAsyncMPClient._commit_scale_up_elastic_ep",
+        "start": 1850,
+        "end": 1892
+      },
+      {
+        "symbol": "DPLBAsyncMPClient._prepare_scale_down_elastic_ep",
+        "start": 1894,
+        "end": 1906
+      },
+      {
+        "symbol": "DPLBAsyncMPClient._commit_scale_down_elastic_ep",
+        "start": 1908,
+        "end": 1969
+      }
+    ],
+    "installed_sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8",
+    "installed_matches": true
+  },
+  {
+    "project": "vllm",
+    "commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+    "path": "vllm/v1/engine/core.py",
+    "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5",
+    "url": "https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/vllm/v1/engine/core.py",
+    "definitions": [
+      {
+        "symbol": "EngineCore",
+        "start": 105,
+        "end": 1010
+      },
+      {
+        "symbol": "EngineCore.__init__",
+        "start": 108,
+        "end": 251
+      },
+      {
+        "symbol": "EngineCore._initialize_kv_caches",
+        "start": 254,
+        "end": 383
+      },
+      {
+        "symbol": "EngineCore.get_supported_tasks",
+        "start": 385,
+        "end": 388
+      },
+      {
+        "symbol": "EngineCore._log_pooler_config",
+        "start": 390,
+        "end": 442
+      },
+      {
+        "symbol": "EngineCore.add_request",
+        "start": 444,
+        "end": 488
+      },
+      {
+        "symbol": "EngineCore.abort_requests",
+        "start": 490,
+        "end": 496
+      },
+      {
+        "symbol": "EngineCore.log_error_detail",
+        "start": 499,
+        "end": 512
+      },
+      {
+        "symbol": "EngineCore.capture_iteration_details",
+        "start": 515,
+        "end": 560
+      },
+      {
+        "symbol": "EngineCore._make_iteration_details_stats",
+        "start": 562,
+        "end": 567
+      },
+      {
+        "symbol": "EngineCore._attach_iteration_details",
+        "start": 569,
+        "end": 582
+      },
+      {
+        "symbol": "EngineCore._should_throttle_prefills",
+        "start": 584,
+        "end": 587
+      },
+      {
+        "symbol": "EngineCore.step",
+        "start": 589,
+        "end": 619
+      },
+      {
+        "symbol": "EngineCore.post_step",
+        "start": 621,
+        "end": 628
+      },
+      {
+        "symbol": "EngineCore.step_with_batch_queue",
+        "start": 630,
+        "end": 744
+      },
+      {
+        "symbol": "EngineCore._process_aborts_queue",
+        "start": 746,
+        "end": 754
+      },
+      {
+        "symbol": "EngineCore.shutdown",
+        "start": 756,
+        "end": 772
+      },
+      {
+        "symbol": "EngineCore.profile",
+        "start": 774,
+        "end": 775
+      },
+      {
+        "symbol": "EngineCore.reset_mm_cache",
+        "start": 777,
+        "end": 790
+      },
+      {
+        "symbol": "EngineCore.reset_prefix_cache",
+        "start": 792,
+        "end": 797
+      },
+      {
+        "symbol": "EngineCore.reset_encoder_cache",
+        "start": 799,
+        "end": 817
+      },
+      {
+        "symbol": "EngineCore._reset_caches",
+        "start": 819,
+        "end": 832
+      },
+      {
+        "symbol": "EngineCore._finish_pause",
+        "start": 834,
+        "end": 839
+      },
+      {
+        "symbol": "EngineCore.pause_scheduler",
+        "start": 841,
+        "end": 869
+      },
+      {
+        "symbol": "EngineCore.resume_scheduler",
+        "start": 871,
+        "end": 873
+      },
+      {
+        "symbol": "EngineCore.is_scheduler_paused",
+        "start": 875,
+        "end": 877
+      },
+      {
+        "symbol": "EngineCore.sleep",
+        "start": 879,
+        "end": 915
+      },
+      {
+        "symbol": "EngineCore.wake_up",
+        "start": 917,
+        "end": 933
+      },
+      {
+        "symbol": "EngineCore.is_sleeping",
+        "start": 935,
+        "end": 937
+      },
+      {
+        "symbol": "EngineCore.execute_dummy_batch",
+        "start": 939,
+        "end": 940
+      },
+      {
+        "symbol": "EngineCore.add_lora",
+        "start": 942,
+        "end": 943
+      },
+      {
+        "symbol": "EngineCore.remove_lora",
+        "start": 945,
+        "end": 946
+      },
+      {
+        "symbol": "EngineCore.list_loras",
+        "start": 948,
+        "end": 949
+      },
+      {
+        "symbol": "EngineCore.pin_lora",
+        "start": 951,
+        "end": 952
+      },
+      {
+        "symbol": "EngineCore.save_sharded_state",
+        "start": 954,
+        "end": 962
+      },
+      {
+        "symbol": "EngineCore.collective_rpc",
+        "start": 964,
+        "end": 971
+      },
+      {
+        "symbol": "EngineCore.set_weight_version",
+        "start": 973,
+        "end": 974
+      },
+      {
+        "symbol": "EngineCore.get_weight_version",
+        "start": 976,
+        "end": 978
+      },
+      {
+        "symbol": "EngineCore.preprocess_add_request",
+        "start": 980,
+        "end": 1002
+      },
+      {
+        "symbol": "EngineCore._eep_scale_up_before_kv_init",
+        "start": 1004,
+        "end": 1005
+      },
+      {
+        "symbol": "EngineCore._eep_send_engine_core_notification",
+        "start": 1007,
+        "end": 1010
+      },
+      {
+        "symbol": "EngineShutdownState",
+        "start": 1013,
+        "end": 1016
+      },
+      {
+        "symbol": "EngineCoreProc",
+        "start": 1019,
+        "end": 1993
+      },
+      {
+        "symbol": "EngineCoreProc.__init__",
+        "start": 1026,
+        "end": 1138
+      },
+      {
+        "symbol": "EngineCoreProc._perform_handshakes",
+        "start": 1141,
+        "end": 1203
+      },
+      {
+        "symbol": "EngineCoreProc._perform_handshake",
+        "start": 1206,
+        "end": 1242
+      },
+      {
+        "symbol": "EngineCoreProc.startup_handshake",
+        "start": 1245,
+        "end": 1280
+      },
+      {
+        "symbol": "EngineCoreProc.run_engine_core",
+        "start": 1283,
+        "end": 1385
+      },
+      {
+        "symbol": "EngineCoreProc._init_data_parallel",
+        "start": 1387,
+        "end": 1388
+      },
+      {
+        "symbol": "EngineCoreProc.has_work",
+        "start": 1390,
+        "end": 1396
+      },
+      {
+        "symbol": "EngineCoreProc.is_running",
+        "start": 1398,
+        "end": 1400
+      },
+      {
+        "symbol": "EngineCoreProc.run_busy_loop",
+        "start": 1403,
+        "end": 1414
+      },
+      {
+        "symbol": "EngineCoreProc._maybe_publish_request_counts",
+        "start": 1416,
+        "end": 1427
+      },
+      {
+        "symbol": "EngineCoreProc._process_input_queue",
+        "start": 1429,
+        "end": 1458
+      },
+      {
+        "symbol": "EngineCoreProc._process_engine_step",
+        "start": 1460,
+        "end": 1477
+      },
+      {
+        "symbol": "EngineCoreProc._notify_idle_state_callbacks",
+        "start": 1479,
+        "end": 1482
+      },
+      {
+        "symbol": "EngineCoreProc._handle_shutdown",
+        "start": 1484,
+        "end": 1530
+      },
+      {
+        "symbol": "EngineCoreProc._handle_client_request",
+        "start": 1532,
+        "end": 1565
+      },
+      {
+        "symbol": "EngineCoreProc._reject_add_in_shutdown",
+        "start": 1567,
+        "end": 1576
+      },
+      {
+        "symbol": "EngineCoreProc._reject_utility_in_shutdown",
+        "start": 1578,
+        "end": 1592
+      },
+      {
+        "symbol": "EngineCoreProc._invoke_utility_method",
+        "start": 1595,
+        "end": 1611
+      },
+      {
+        "symbol": "EngineCoreProc._convert_msgspec_args",
+        "start": 1614,
+        "end": 1628
+      },
+      {
+        "symbol": "EngineCoreProc._send_engine_dead",
+        "start": 1630,
+        "end": 1642
+      },
+      {
+        "symbol": "EngineCoreProc._make_ready_response",
+        "start": 1644,
+        "end": 1684
+      },
+      {
+        "symbol": "EngineCoreProc.process_input_sockets",
+        "start": 1686,
+        "end": 1787
+      },
+      {
+        "symbol": "EngineCoreProc.process_output_sockets",
+        "start": 1789,
+        "end": 1856
+      },
+      {
+        "symbol": "EngineCoreProc._handle_mm_cache_miss",
+        "start": 1858,
+        "end": 1890
+      },
+      {
+        "symbol": "EngineCoreProc._send_msg_tracking_payload",
+        "start": 1893,
+        "end": 1907
+      },
+      {
+        "symbol": "EngineCoreProc._handle_request_preproc_error",
+        "start": 1909,
+        "end": 1916
+      },
+      {
+        "symbol": "EngineCoreProc.pause_scheduler",
+        "start": 1918,
+        "end": 1956
+      },
+      {
+        "symbol": "EngineCoreProc._pause_complete",
+        "start": 1958,
+        "end": 1963
+      },
+      {
+        "symbol": "EngineCoreProc._send_finish_outputs_to_client",
+        "start": 1965,
+        "end": 1973
+      },
+      {
+        "symbol": "EngineCoreProc._send_abort_outputs_to_client",
+        "start": 1975,
+        "end": 1978
+      },
+      {
+        "symbol": "EngineCoreProc._send_error_outputs_to_client",
+        "start": 1980,
+        "end": 1983
+      },
+      {
+        "symbol": "EngineCoreProc._send_abort_outputs",
+        "start": 1985,
+        "end": 1993
+      },
+      {
+        "symbol": "DPEngineCoreProc",
+        "start": 1996,
+        "end": 2395
+      },
+      {
+        "symbol": "DPEngineCoreProc.__init__",
+        "start": 2000,
+        "end": 2046
+      },
+      {
+        "symbol": "DPEngineCoreProc._init_data_parallel",
+        "start": 2048,
+        "end": 2062
+      },
+      {
+        "symbol": "DPEngineCoreProc.shutdown",
+        "start": 2064,
+        "end": 2067
+      },
+      {
+        "symbol": "DPEngineCoreProc._pause_complete",
+        "start": 2069,
+        "end": 2085
+      },
+      {
+        "symbol": "DPEngineCoreProc.add_request",
+        "start": 2087,
+        "end": 2101
+      },
+      {
+        "symbol": "DPEngineCoreProc.resume_scheduler",
+        "start": 2103,
+        "end": 2126
+      },
+      {
+        "symbol": "DPEngineCoreProc.barrier",
+        "start": 2128,
+        "end": 2132
+      },
+      {
+        "symbol": "DPEngineCoreProc._handle_client_request",
+        "start": 2134,
+        "end": 2152
+      },
+      {
+        "symbol": "DPEngineCoreProc._maybe_publish_request_counts",
+        "start": 2154,
+        "end": 2169
+      },
+      {
+        "symbol": "DPEngineCoreProc._should_throttle_prefills",
+        "start": 2171,
+        "end": 2178
+      },
+      {
+        "symbol": "DPEngineCoreProc.run_busy_loop",
+        "start": 2181,
+        "end": 2262
+      },
+      {
+        "symbol": "DPEngineCoreProc._has_global_unfinished_reqs",
+        "start": 2264,
+        "end": 2281
+      },
+      {
+        "symbol": "DPEngineCoreProc.reinitialize_distributed",
+        "start": 2283,
+        "end": 2335
+      },
+      {
+        "symbol": "DPEngineCoreProc.commit_prepared_elastic_ep",
+        "start": 2337,
+        "end": 2343
+      },
+      {
+        "symbol": "DPEngineCoreProc._eep_send_engine_core_notification",
+        "start": 2345,
+        "end": 2376
+      },
+      {
+        "symbol": "DPEngineCoreProc._eep_scale_up_before_kv_init",
+        "start": 2378,
+        "end": 2395
+      },
+      {
+        "symbol": "EngineCoreActorMixin",
+        "start": 2398,
+        "end": 2527
+      },
+      {
+        "symbol": "EngineCoreActorMixin.__init__",
+        "start": 2403,
+        "end": 2440
+      },
+      {
+        "symbol": "EngineCoreActorMixin._set_nixl_side_channel_host",
+        "start": 2443,
+        "end": 2450
+      },
+      {
+        "symbol": "EngineCoreActorMixin._set_visible_devices",
+        "start": 2452,
+        "end": 2461
+      },
+      {
+        "symbol": "EngineCoreActorMixin._set_assigned_physical_gpu_ids",
+        "start": 2463,
+        "end": 2486
+      },
+      {
+        "symbol": "EngineCoreActorMixin._perform_handshakes",
+        "start": 2489,
+        "end": 2502
+      },
+      {
+        "symbol": "EngineCoreActorMixin.wait_for_init",
+        "start": 2504,
+        "end": 2512
+      },
+      {
+        "symbol": "EngineCoreActorMixin.run",
+        "start": 2514,
+        "end": 2527
+      },
+      {
+        "symbol": "DPMoEEngineCoreActor",
+        "start": 2530,
+        "end": 2550
+      },
+      {
+        "symbol": "DPMoEEngineCoreActor.__init__",
+        "start": 2533,
+        "end": 2550
+      },
+      {
+        "symbol": "EngineCoreActor",
+        "start": 2553,
+        "end": 2578
+      },
+      {
+        "symbol": "EngineCoreActor.__init__",
+        "start": 2556,
+        "end": 2578
+      }
+    ],
+    "installed_sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5",
+    "installed_matches": true
+  },
+  {
+    "project": "vllm",
+    "commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+    "path": "vllm/v1/engine/__init__.py",
+    "sha256": "4e59828787634123026a6b424f48c21d691913dd338b59dd13f25fa260f2284b",
+    "url": "https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/vllm/v1/engine/__init__.py",
+    "definitions": [
+      {
+        "symbol": "EEPNotificationType",
+        "start": 42,
+        "end": 44
+      },
+      {
+        "symbol": "FinishReason",
+        "start": 47,
+        "end": 69
+      },
+      {
+        "symbol": "FinishReason.__str__",
+        "start": 68,
+        "end": 69
+      },
+      {
+        "symbol": "EngineCoreReadyResponse",
+        "start": 73,
+        "end": 104
+      },
+      {
+        "symbol": "EngineCoreRequest",
+        "start": 107,
+        "end": 166
+      },
+      {
+        "symbol": "EngineCoreRequest.params",
+        "start": 161,
+        "end": 166
+      },
+      {
+        "symbol": "EngineCoreEventType",
+        "start": 169,
+        "end": 174
+      },
+      {
+        "symbol": "EngineCoreEvent",
+        "start": 177,
+        "end": 193
+      },
+      {
+        "symbol": "EngineCoreEvent.new_event",
+        "start": 189,
+        "end": 193
+      },
+      {
+        "symbol": "EngineCoreOutput",
+        "start": 196,
+        "end": 238
+      },
+      {
+        "symbol": "EngineCoreOutput.finished",
+        "start": 237,
+        "end": 238
+      },
+      {
+        "symbol": "UtilityOutput",
+        "start": 241,
+        "end": 250
+      },
+      {
+        "symbol": "EngineCoreOutputs",
+        "start": 253,
+        "end": 281
+      },
+      {
+        "symbol": "EngineCoreOutputs.__post_init__",
+        "start": 279,
+        "end": 281
+      },
+      {
+        "symbol": "EngineCoreRequestType",
+        "start": 284,
+        "end": 297
+      },
+      {
+        "symbol": "ReconfigureDistributedRequest",
+        "start": 300,
+        "end": 307
+      },
+      {
+        "symbol": "ReconfigureRankType",
+        "start": 310,
+        "end": 316
+      },
+      {
+        "symbol": "EngineStatusType",
+        "start": 319,
+        "end": 322
+      }
+    ],
+    "installed_sha256": "4e59828787634123026a6b424f48c21d691913dd338b59dd13f25fa260f2284b",
+    "installed_matches": true
+  },
+  {
+    "project": "vllm",
+    "commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+    "path": "vllm/v1/engine/output_processor.py",
+    "sha256": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329",
+    "url": "https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/vllm/v1/engine/output_processor.py",
+    "definitions": [
+      {
+        "symbol": "RequestOutputCollector",
+        "start": 51,
+        "end": 112
+      },
+      {
+        "symbol": "RequestOutputCollector.__init__",
+        "start": 60,
+        "end": 66
+      },
+      {
+        "symbol": "RequestOutputCollector.put",
+        "start": 68,
+        "end": 82
+      },
+      {
+        "symbol": "RequestOutputCollector.get",
+        "start": 84,
+        "end": 92
+      },
+      {
+        "symbol": "RequestOutputCollector.get_nowait",
+        "start": 94,
+        "end": 102
+      },
+      {
+        "symbol": "RequestOutputCollector.close",
+        "start": 104,
+        "end": 107
+      },
+      {
+        "symbol": "RequestOutputCollector.__del__",
+        "start": 109,
+        "end": 112
+      },
+      {
+        "symbol": "OutputProcessorOutput",
+        "start": 116,
+        "end": 118
+      },
+      {
+        "symbol": "StreamingUpdate",
+        "start": 122,
+        "end": 132
+      },
+      {
+        "symbol": "RequestState",
+        "start": 135,
+        "end": 448
+      },
+      {
+        "symbol": "RequestState.__init__",
+        "start": 136,
+        "end": 200
+      },
+      {
+        "symbol": "RequestState.apply_streaming_update",
+        "start": 202,
+        "end": 219
+      },
+      {
+        "symbol": "RequestState.from_new_request",
+        "start": 222,
+        "end": 284
+      },
+      {
+        "symbol": "RequestState.make_request_output",
+        "start": 286,
+        "end": 350
+      },
+      {
+        "symbol": "RequestState._new_request_output",
+        "start": 352,
+        "end": 396
+      },
+      {
+        "symbol": "RequestState._new_completion_output",
+        "start": 398,
+        "end": 445
+      },
+      {
+        "symbol": "RequestState._new_pooling_output",
+        "start": 447,
+        "end": 448
+      },
+      {
+        "symbol": "OutputProcessor",
+        "start": 451,
+        "end": 888
+      },
+      {
+        "symbol": "OutputProcessor.__init__",
+        "start": 454,
+        "end": 471
+      },
+      {
+        "symbol": "OutputProcessor.get_num_unfinished_requests",
+        "start": 473,
+        "end": 474
+      },
+      {
+        "symbol": "OutputProcessor.has_request",
+        "start": 476,
+        "end": 477
+      },
+      {
+        "symbol": "OutputProcessor.get_num_queued_tokens",
+        "start": 479,
+        "end": 488
+      },
+      {
+        "symbol": "OutputProcessor.has_unfinished_requests",
+        "start": 490,
+        "end": 491
+      },
+      {
+        "symbol": "OutputProcessor.propagate_error",
+        "start": 493,
+        "end": 498
+      },
+      {
+        "symbol": "OutputProcessor.abort_requests",
+        "start": 500,
+        "end": 562
+      },
+      {
+        "symbol": "OutputProcessor.add_request",
+        "start": 564,
+        "end": 594
+      },
+      {
+        "symbol": "OutputProcessor._update_streaming_request_state",
+        "start": 596,
+        "end": 627
+      },
+      {
+        "symbol": "OutputProcessor.process_outputs",
+        "start": 629,
+        "end": 758
+      },
+      {
+        "symbol": "OutputProcessor._finish_request",
+        "start": 760,
+        "end": 773
+      },
+      {
+        "symbol": "OutputProcessor._update_admission_stats",
+        "start": 775,
+        "end": 777
+      },
+      {
+        "symbol": "OutputProcessor.update_scheduler_stats",
+        "start": 779,
+        "end": 780
+      },
+      {
+        "symbol": "OutputProcessor.do_tracing",
+        "start": 782,
+        "end": 842
+      },
+      {
+        "symbol": "OutputProcessor._update_stats_from_output",
+        "start": 844,
+        "end": 863
+      },
+      {
+        "symbol": "OutputProcessor._update_stats_from_finished",
+        "start": 865,
+        "end": 888
+      }
+    ],
+    "installed_sha256": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329",
+    "installed_matches": true
+  },
+  {
+    "project": "vllm",
+    "commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+    "path": "vllm/v1/request.py",
+    "sha256": "da610d5203e72d2d524adc5fb39df11502a23520f2f31d9a44cf13d343f9c25d",
+    "url": "https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/vllm/v1/request.py",
+    "definitions": [
+      {
+        "symbol": "StreamingUpdate",
+        "start": 33,
+        "end": 56
+      },
+      {
+        "symbol": "StreamingUpdate.from_request",
+        "start": 47,
+        "end": 56
+      },
+      {
+        "symbol": "Request",
+        "start": 59,
+        "end": 361
+      },
+      {
+        "symbol": "Request.__init__",
+        "start": 60,
+        "end": 235
+      },
+      {
+        "symbol": "Request.from_engine_core_request",
+        "start": 238,
+        "end": 263
+      },
+      {
+        "symbol": "Request.append_output_token_ids",
+        "start": 265,
+        "end": 276
+      },
+      {
+        "symbol": "Request.update_block_hashes",
+        "start": 278,
+        "end": 281
+      },
+      {
+        "symbol": "Request.use_structured_output",
+        "start": 284,
+        "end": 285
+      },
+      {
+        "symbol": "Request.num_tokens",
+        "start": 288,
+        "end": 289
+      },
+      {
+        "symbol": "Request.num_tokens_with_spec",
+        "start": 292,
+        "end": 293
+      },
+      {
+        "symbol": "Request.num_output_tokens",
+        "start": 296,
+        "end": 297
+      },
+      {
+        "symbol": "Request.num_encoder_inputs",
+        "start": 300,
+        "end": 301
+      },
+      {
+        "symbol": "Request.has_encoder_inputs",
+        "start": 304,
+        "end": 305
+      },
+      {
+        "symbol": "Request.get_skip_reading_prefix_cache",
+        "start": 307,
+        "end": 318
+      },
+      {
+        "symbol": "Request.is_finished",
+        "start": 320,
+        "end": 321
+      },
+      {
+        "symbol": "Request.get_finished_reason",
+        "start": 323,
+        "end": 324
+      },
+      {
+        "symbol": "Request.get_num_encoder_embeds",
+        "start": 326,
+        "end": 328
+      },
+      {
+        "symbol": "Request.record_event",
+        "start": 330,
+        "end": 335
+      },
+      {
+        "symbol": "Request.take_events",
+        "start": 337,
+        "end": 341
+      },
+      {
+        "symbol": "Request.take_prefill_stats",
+        "start": 343,
+        "end": 348
+      },
+      {
+        "symbol": "Request.__lt__",
+        "start": 350,
+        "end": 361
+      },
+      {
+        "symbol": "RequestStatus",
+        "start": 364,
+        "end": 391
+      },
+      {
+        "symbol": "RequestStatus.__str__",
+        "start": 382,
+        "end": 383
+      },
+      {
+        "symbol": "RequestStatus.is_finished",
+        "start": 386,
+        "end": 387
+      },
+      {
+        "symbol": "RequestStatus.get_finished_reason",
+        "start": 390,
+        "end": 391
+      }
+    ],
+    "installed_sha256": "da610d5203e72d2d524adc5fb39df11502a23520f2f31d9a44cf13d343f9c25d",
+    "installed_matches": true
+  },
+  {
+    "project": "vllm",
+    "commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+    "path": "vllm/v1/core/sched/scheduler.py",
+    "sha256": "c1db45f3bbad3a875dd8638331b8870c4380ac1ab4734265ba5c863833a82884",
+    "url": "https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/vllm/v1/core/sched/scheduler.py",
+    "definitions": [
+      {
+        "symbol": "Scheduler",
+        "start": 79,
+        "end": 3250
+      },
+      {
+        "symbol": "Scheduler.__init__",
+        "start": 80,
+        "end": 411
+      },
+      {
+        "symbol": "Scheduler._mamba_block_aligned_split",
+        "start": 413,
+        "end": 526
+      },
+      {
+        "symbol": "Scheduler._get_local_prefix_cache_hit",
+        "start": 528,
+        "end": 538
+      },
+      {
+        "symbol": "Scheduler._reserve_prefill_lookahead",
+        "start": 540,
+        "end": 559
+      },
+      {
+        "symbol": "Scheduler.schedule",
+        "start": 561,
+        "end": 1456
+      },
+      {
+        "symbol": "Scheduler._build_kv_connector_meta",
+        "start": 1458,
+        "end": 1461
+      },
+      {
+        "symbol": "Scheduler._get_new_block_ids_to_zero",
+        "start": 1463,
+        "end": 1475
+      },
+      {
+        "symbol": "Scheduler._preempt_request",
+        "start": 1477,
+        "end": 1518
+      },
+      {
+        "symbol": "Scheduler._update_after_schedule",
+        "start": 1520,
+        "end": 1568
+      },
+      {
+        "symbol": "Scheduler._update_request_as_session",
+        "start": 1570,
+        "end": 1611
+      },
+      {
+        "symbol": "Scheduler._make_cached_request_data",
+        "start": 1613,
+        "end": 1670
+      },
+      {
+        "symbol": "Scheduler._try_schedule_encoder_inputs",
+        "start": 1672,
+        "end": 1831
+      },
+      {
+        "symbol": "Scheduler._make_scheduled_encoder_input_stats",
+        "start": 1833,
+        "end": 1848
+      },
+      {
+        "symbol": "Scheduler.get_grammar_bitmask",
+        "start": 1850,
+        "end": 1872
+      },
+      {
+        "symbol": "Scheduler.update_from_output",
+        "start": 1874,
+        "end": 2291
+      },
+      {
+        "symbol": "Scheduler._ec_transfer_pending",
+        "start": 2293,
+        "end": 2301
+      },
+      {
+        "symbol": "Scheduler._is_blocked_waiting_status",
+        "start": 2304,
+        "end": 2309
+      },
+      {
+        "symbol": "Scheduler._enqueue_waiting_request",
+        "start": 2311,
+        "end": 2315
+      },
+      {
+        "symbol": "Scheduler._select_waiting_queue_for_scheduling",
+        "start": 2317,
+        "end": 2327
+      },
+      {
+        "symbol": "Scheduler._handle_stopped_request",
+        "start": 2329,
+        "end": 2345
+      },
+      {
+        "symbol": "Scheduler._update_request_with_output",
+        "start": 2347,
+        "end": 2364
+      },
+      {
+        "symbol": "Scheduler._free_encoder_inputs",
+        "start": 2366,
+        "end": 2397
+      },
+      {
+        "symbol": "Scheduler._free_encoder_input",
+        "start": 2399,
+        "end": 2402
+      },
+      {
+        "symbol": "Scheduler.update_draft_token_ids",
+        "start": 2404,
+        "end": 2423
+      },
+      {
+        "symbol": "Scheduler.update_draft_token_ids_in_output",
+        "start": 2425,
+        "end": 2460
+      },
+      {
+        "symbol": "Scheduler.get_request_counts",
+        "start": 2462,
+        "end": 2464
+      },
+      {
+        "symbol": "Scheduler.get_kv_cache_usage",
+        "start": 2466,
+        "end": 2468
+      },
+      {
+        "symbol": "Scheduler.add_request",
+        "start": 2470,
+        "end": 2496
+      },
+      {
+        "symbol": "Scheduler.finish_requests",
+        "start": 2498,
+        "end": 2559
+      },
+      {
+        "symbol": "Scheduler._free_request",
+        "start": 2561,
+        "end": 2588
+      },
+      {
+        "symbol": "Scheduler._free_blocks",
+        "start": 2590,
+        "end": 2593
+      },
+      {
+        "symbol": "Scheduler.pause_state",
+        "start": 2596,
+        "end": 2597
+      },
+      {
+        "symbol": "Scheduler.set_pause_state",
+        "start": 2599,
+        "end": 2601
+      },
+      {
+        "symbol": "Scheduler._request_blocks_can_be_freed",
+        "start": 2603,
+        "end": 2608
+      },
+      {
+        "symbol": "Scheduler._free_request_blocks",
+        "start": 2610,
+        "end": 2619
+      },
+      {
+        "symbol": "Scheduler._free_cow_retained_blocks",
+        "start": 2621,
+        "end": 2630
+      },
+      {
+        "symbol": "Scheduler._drain_deferred_frees",
+        "start": 2632,
+        "end": 2645
+      },
+      {
+        "symbol": "Scheduler.get_num_unfinished_requests",
+        "start": 2647,
+        "end": 2657
+      },
+      {
+        "symbol": "Scheduler.has_finished_requests",
+        "start": 2659,
+        "end": 2669
+      },
+      {
+        "symbol": "Scheduler.has_requests",
+        "start": 2671,
+        "end": 2686
+      },
+      {
+        "symbol": "Scheduler.reset_prefix_cache",
+        "start": 2688,
+        "end": 2728
+      },
+      {
+        "symbol": "Scheduler.reset_connector_cache",
+        "start": 2730,
+        "end": 2750
+      },
+      {
+        "symbol": "Scheduler.reset_encoder_cache",
+        "start": 2752,
+        "end": 2758
+      },
+      {
+        "symbol": "Scheduler.make_stats",
+        "start": 2760,
+        "end": 2796
+      },
+      {
+        "symbol": "Scheduler.make_spec_decoding_stats",
+        "start": 2798,
+        "end": 2815
+      },
+      {
+        "symbol": "Scheduler.shutdown",
+        "start": 2817,
+        "end": 2827
+      },
+      {
+        "symbol": "Scheduler.get_kv_connector",
+        "start": 2833,
+        "end": 2834
+      },
+      {
+        "symbol": "Scheduler.get_ec_connector",
+        "start": 2836,
+        "end": 2837
+      },
+      {
+        "symbol": "Scheduler.get_kv_event_publisher_config",
+        "start": 2839,
+        "end": 2840
+      },
+      {
+        "symbol": "Scheduler._connector_finished",
+        "start": 2842,
+        "end": 2896
+      },
+      {
+        "symbol": "Scheduler._request_remaining_blocks",
+        "start": 2898,
+        "end": 2910
+      },
+      {
+        "symbol": "Scheduler._inflight_prefill_reserved_blocks",
+        "start": 2912,
+        "end": 2917
+      },
+      {
+        "symbol": "Scheduler._update_waiting_for_remote_kv",
+        "start": 2919,
+        "end": 2960
+      },
+      {
+        "symbol": "Scheduler._try_promote_blocked_waiting_request",
+        "start": 2962,
+        "end": 2996
+      },
+      {
+        "symbol": "Scheduler._update_from_kv_xfer_finished",
+        "start": 2998,
+        "end": 3025
+      },
+      {
+        "symbol": "Scheduler._update_requests_with_invalid_blocks",
+        "start": 3027,
+        "end": 3164
+      },
+      {
+        "symbol": "Scheduler._handle_failed_recving",
+        "start": 3166,
+        "end": 3179
+      },
+      {
+        "symbol": "Scheduler._handle_invalid_blocks",
+        "start": 3181,
+        "end": 3250
+      }
+    ],
+    "installed_sha256": "c1db45f3bbad3a875dd8638331b8870c4380ac1ab4734265ba5c863833a82884",
+    "installed_matches": true
+  },
+  {
+    "project": "vllm",
+    "commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+    "path": "vllm/v1/core/sched/output.py",
+    "sha256": "3a66c8efaefe10c572f6f33cf1f8aa4610758c945130cad62eb9f7331005677c",
+    "url": "https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/vllm/v1/core/sched/output.py",
+    "definitions": [
+      {
+        "symbol": "NewRequestData",
+        "start": 37,
+        "end": 127
+      },
+      {
+        "symbol": "NewRequestData.from_request",
+        "start": 53,
+        "end": 76
+      },
+      {
+        "symbol": "NewRequestData.prompt_len",
+        "start": 79,
+        "end": 84
+      },
+      {
+        "symbol": "NewRequestData.__repr__",
+        "start": 86,
+        "end": 102
+      },
+      {
+        "symbol": "NewRequestData.anon_repr",
+        "start": 105,
+        "end": 127
+      },
+      {
+        "symbol": "CachedRequestData",
+        "start": 131,
+        "end": 196
+      },
+      {
+        "symbol": "CachedRequestData.anon_repr",
+        "start": 148,
+        "end": 163
+      },
+      {
+        "symbol": "CachedRequestData.__repr__",
+        "start": 165,
+        "end": 166
+      },
+      {
+        "symbol": "CachedRequestData.num_reqs",
+        "start": 169,
+        "end": 170
+      },
+      {
+        "symbol": "CachedRequestData._req_id_to_num_output_tokens",
+        "start": 173,
+        "end": 180
+      },
+      {
+        "symbol": "CachedRequestData.is_context_phase",
+        "start": 182,
+        "end": 184
+      },
+      {
+        "symbol": "CachedRequestData.make_empty",
+        "start": 187,
+        "end": 196
+      },
+      {
+        "symbol": "ScheduledEncoderInputStats",
+        "start": 200,
+        "end": 204
+      },
+      {
+        "symbol": "KVConnectorBlockState",
+        "start": 208,
+        "end": 221
+      },
+      {
+        "symbol": "KVConnectorBlockState.get_block_ids",
+        "start": 218,
+        "end": 221
+      },
+      {
+        "symbol": "SchedulerOutput",
+        "start": 225,
+        "end": 319
+      },
+      {
+        "symbol": "SchedulerOutput.make_empty",
+        "start": 308,
+        "end": 319
+      },
+      {
+        "symbol": "GrammarOutput",
+        "start": 323,
+        "end": 327
+      }
+    ],
+    "installed_sha256": "3a66c8efaefe10c572f6f33cf1f8aa4610758c945130cad62eb9f7331005677c",
+    "installed_matches": true
+  },
+  {
+    "project": "vllm",
+    "commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+    "path": "vllm/v1/core/sched/interface.py",
+    "sha256": "be6c008664096c5660a8879de72b315bbe479bf1d688be9b25891063ec53a367",
+    "url": "https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/vllm/v1/core/sched/interface.py",
+    "definitions": [
+      {
+        "symbol": "PauseState",
+        "start": 24,
+        "end": 35
+      },
+      {
+        "symbol": "SchedulerInterface",
+        "start": 38,
+        "end": 262
+      },
+      {
+        "symbol": "SchedulerInterface.__init__",
+        "start": 40,
+        "end": 51
+      },
+      {
+        "symbol": "SchedulerInterface.schedule",
+        "start": 54,
+        "end": 83
+      },
+      {
+        "symbol": "SchedulerInterface.get_grammar_bitmask",
+        "start": 86,
+        "end": 89
+      },
+      {
+        "symbol": "SchedulerInterface.update_from_output",
+        "start": 92,
+        "end": 109
+      },
+      {
+        "symbol": "SchedulerInterface.update_draft_token_ids",
+        "start": 112,
+        "end": 119
+      },
+      {
+        "symbol": "SchedulerInterface.update_draft_token_ids_in_output",
+        "start": 122,
+        "end": 133
+      },
+      {
+        "symbol": "SchedulerInterface.add_request",
+        "start": 136,
+        "end": 142
+      },
+      {
+        "symbol": "SchedulerInterface.finish_requests",
+        "start": 145,
+        "end": 166
+      },
+      {
+        "symbol": "SchedulerInterface.get_num_unfinished_requests",
+        "start": 169,
+        "end": 171
+      },
+      {
+        "symbol": "SchedulerInterface.has_unfinished_requests",
+        "start": 173,
+        "end": 176
+      },
+      {
+        "symbol": "SchedulerInterface.has_finished_requests",
+        "start": 179,
+        "end": 191
+      },
+      {
+        "symbol": "SchedulerInterface.has_requests",
+        "start": 193,
+        "end": 196
+      },
+      {
+        "symbol": "SchedulerInterface.pause_state",
+        "start": 200,
+        "end": 202
+      },
+      {
+        "symbol": "SchedulerInterface.set_pause_state",
+        "start": 205,
+        "end": 206
+      },
+      {
+        "symbol": "SchedulerInterface.reset_prefix_cache",
+        "start": 209,
+        "end": 222
+      },
+      {
+        "symbol": "SchedulerInterface.reset_encoder_cache",
+        "start": 225,
+        "end": 231
+      },
+      {
+        "symbol": "SchedulerInterface.get_request_counts",
+        "start": 234,
+        "end": 236
+      },
+      {
+        "symbol": "SchedulerInterface.get_kv_cache_usage",
+        "start": 238,
+        "end": 240
+      },
+      {
+        "symbol": "SchedulerInterface.make_stats",
+        "start": 243,
+        "end": 248
+      },
+      {
+        "symbol": "SchedulerInterface.shutdown",
+        "start": 251,
+        "end": 253
+      },
+      {
+        "symbol": "SchedulerInterface.get_kv_connector",
+        "start": 255,
+        "end": 256
+      },
+      {
+        "symbol": "SchedulerInterface.get_ec_connector",
+        "start": 258,
+        "end": 259
+      },
+      {
+        "symbol": "SchedulerInterface.get_kv_event_publisher_config",
+        "start": 261,
+        "end": 262
+      }
+    ],
+    "installed_sha256": "be6c008664096c5660a8879de72b315bbe479bf1d688be9b25891063ec53a367",
+    "installed_matches": true
+  },
+  {
+    "project": "vllm",
+    "commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+    "path": "vllm/v1/core/kv_cache_manager.py",
+    "sha256": "58800535eda854580d84e1025bf32fe01b2a43ce0bba501b4f3d125e4f2c8afa",
+    "url": "https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/vllm/v1/core/kv_cache_manager.py",
+    "definitions": [
+      {
+        "symbol": "KVCacheBlocks",
+        "start": 35,
+        "end": 131
+      },
+      {
+        "symbol": "KVCacheBlocks.__add__",
+        "start": 57,
+        "end": 64
+      },
+      {
+        "symbol": "KVCacheBlocks.get_block_ids",
+        "start": 67,
+        "end": 72
+      },
+      {
+        "symbol": "KVCacheBlocks.get_block_ids",
+        "start": 75,
+        "end": 80
+      },
+      {
+        "symbol": "KVCacheBlocks.get_block_ids",
+        "start": 82,
+        "end": 108
+      },
+      {
+        "symbol": "KVCacheBlocks.get_unhashed_block_ids",
+        "start": 110,
+        "end": 113
+      },
+      {
+        "symbol": "KVCacheBlocks.get_unhashed_block_ids_all_groups",
+        "start": 115,
+        "end": 125
+      },
+      {
+        "symbol": "KVCacheBlocks.new_empty",
+        "start": 127,
+        "end": 131
+      },
+      {
+        "symbol": "KVCacheManager",
+        "start": 134,
+        "end": 941
+      },
+      {
+        "symbol": "KVCacheManager.__init__",
+        "start": 135,
+        "end": 227
+      },
+      {
+        "symbol": "KVCacheManager.usage",
+        "start": 230,
+        "end": 236
+      },
+      {
+        "symbol": "KVCacheManager.make_prefix_cache_stats",
+        "start": 238,
+        "end": 248
+      },
+      {
+        "symbol": "KVCacheManager.prefix_cache_lookup_enabled",
+        "start": 250,
+        "end": 252
+      },
+      {
+        "symbol": "KVCacheManager.record_prefix_cache_stats",
+        "start": 254,
+        "end": 263
+      },
+      {
+        "symbol": "KVCacheManager.get_computed_blocks",
+        "start": 265,
+        "end": 321
+      },
+      {
+        "symbol": "KVCacheManager.get_computed_blocks_for_connector",
+        "start": 323,
+        "end": 368
+      },
+      {
+        "symbol": "KVCacheManager.allocate_slots",
+        "start": 370,
+        "end": 601
+      },
+      {
+        "symbol": "KVCacheManager.free",
+        "start": 603,
+        "end": 611
+      },
+      {
+        "symbol": "KVCacheManager.remove_skipped_blocks",
+        "start": 613,
+        "end": 630
+      },
+      {
+        "symbol": "KVCacheManager.pop_blocks_for_free",
+        "start": 632,
+        "end": 643
+      },
+      {
+        "symbol": "KVCacheManager.evict_blocks",
+        "start": 645,
+        "end": 651
+      },
+      {
+        "symbol": "KVCacheManager.reset_prefix_cache",
+        "start": 653,
+        "end": 667
+      },
+      {
+        "symbol": "KVCacheManager.get_num_common_prefix_blocks",
+        "start": 669,
+        "end": 701
+      },
+      {
+        "symbol": "KVCacheManager.take_events",
+        "start": 703,
+        "end": 727
+      },
+      {
+        "symbol": "KVCacheManager.get_blocks",
+        "start": 729,
+        "end": 731
+      },
+      {
+        "symbol": "KVCacheManager.get_block_ids",
+        "start": 733,
+        "end": 735
+      },
+      {
+        "symbol": "KVCacheManager.get_block_ids_for_computed_tokens",
+        "start": 737,
+        "end": 755
+      },
+      {
+        "symbol": "KVCacheManager.estimate_cached_tokens",
+        "start": 757,
+        "end": 786
+      },
+      {
+        "symbol": "KVCacheManager.cache_blocks",
+        "start": 788,
+        "end": 797
+      },
+      {
+        "symbol": "KVCacheManager.create_kv_cache_blocks",
+        "start": 799,
+        "end": 803
+      },
+      {
+        "symbol": "KVCacheManager.truncate_computed_blocks",
+        "start": 805,
+        "end": 836
+      },
+      {
+        "symbol": "KVCacheManager.take_new_block_ids",
+        "start": 838,
+        "end": 843
+      },
+      {
+        "symbol": "KVCacheManager.get_zeroing_block_ids_in_range",
+        "start": 845,
+        "end": 857
+      },
+      {
+        "symbol": "KVCacheManager.record_blocks_for_zeroing",
+        "start": 859,
+        "end": 871
+      },
+      {
+        "symbol": "KVCacheManager.take_kv_cache_block_copies",
+        "start": 873,
+        "end": 888
+      },
+      {
+        "symbol": "KVCacheManager.take_boundary_state_offloads",
+        "start": 890,
+        "end": 914
+      },
+      {
+        "symbol": "KVCacheManager.finalize_partial_tail_offloads",
+        "start": 916,
+        "end": 937
+      },
+      {
+        "symbol": "KVCacheManager.new_step_starts",
+        "start": 939,
+        "end": 941
+      }
+    ],
+    "installed_sha256": "58800535eda854580d84e1025bf32fe01b2a43ce0bba501b4f3d125e4f2c8afa",
+    "installed_matches": true
+  },
+  {
+    "project": "vllm",
+    "commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+    "path": "vllm/v1/core/block_pool.py",
+    "sha256": "34c2fd67148cecb7763ff49ad694a57073759b0fa67572a4270dc995b4acf8fc",
+    "url": "https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/vllm/v1/core/block_pool.py",
+    "definitions": [
+      {
+        "symbol": "BlockHashToBlockMap",
+        "start": 33,
+        "end": 140
+      },
+      {
+        "symbol": "BlockHashToBlockMap.__init__",
+        "start": 56,
+        "end": 59
+      },
+      {
+        "symbol": "BlockHashToBlockMap.get_one_block",
+        "start": 61,
+        "end": 72
+      },
+      {
+        "symbol": "BlockHashToBlockMap.contain",
+        "start": 74,
+        "end": 86
+      },
+      {
+        "symbol": "BlockHashToBlockMap.insert",
+        "start": 88,
+        "end": 104
+      },
+      {
+        "symbol": "BlockHashToBlockMap.pop",
+        "start": 106,
+        "end": 134
+      },
+      {
+        "symbol": "BlockHashToBlockMap.__len__",
+        "start": 136,
+        "end": 137
+      },
+      {
+        "symbol": "BlockHashToBlockMap._unexpected_blocks_type",
+        "start": 139,
+        "end": 140
+      },
+      {
+        "symbol": "BlockPool",
+        "start": 143,
+        "end": 892
+      },
+      {
+        "symbol": "BlockPool.__init__",
+        "start": 163,
+        "end": 202
+      },
+      {
+        "symbol": "BlockPool.get_cached_block",
+        "start": 204,
+        "end": 229
+      },
+      {
+        "symbol": "BlockPool.cache_full_blocks",
+        "start": 231,
+        "end": 348
+      },
+      {
+        "symbol": "BlockPool._build_block_stored_event",
+        "start": 350,
+        "end": 378
+      },
+      {
+        "symbol": "BlockPool.emit_cached_block_events",
+        "start": 380,
+        "end": 450
+      },
+      {
+        "symbol": "BlockPool.cache_partial_block",
+        "start": 452,
+        "end": 561
+      },
+      {
+        "symbol": "BlockPool._get_partial_block_hash",
+        "start": 563,
+        "end": 574
+      },
+      {
+        "symbol": "BlockPool._get_partial_block_parent_hash_and_start",
+        "start": 576,
+        "end": 586
+      },
+      {
+        "symbol": "BlockPool._remove_cached_block_hashes",
+        "start": 588,
+        "end": 607
+      },
+      {
+        "symbol": "BlockPool._emit_block_removed_events",
+        "start": 609,
+        "end": 622
+      },
+      {
+        "symbol": "BlockPool._insert_block_hash",
+        "start": 624,
+        "end": 644
+      },
+      {
+        "symbol": "BlockPool.move_block_hashes",
+        "start": 646,
+        "end": 662
+      },
+      {
+        "symbol": "BlockPool.get_new_blocks",
+        "start": 664,
+        "end": 697
+      },
+      {
+        "symbol": "BlockPool._notify_reuse",
+        "start": 699,
+        "end": 703
+      },
+      {
+        "symbol": "BlockPool.unpin_blocks",
+        "start": 705,
+        "end": 724
+      },
+      {
+        "symbol": "BlockPool._maybe_evict_cached_block",
+        "start": 726,
+        "end": 747
+      },
+      {
+        "symbol": "BlockPool.touch",
+        "start": 749,
+        "end": 764
+      },
+      {
+        "symbol": "BlockPool.is_block_writable",
+        "start": 766,
+        "end": 768
+      },
+      {
+        "symbol": "BlockPool.free_blocks",
+        "start": 770,
+        "end": 800
+      },
+      {
+        "symbol": "BlockPool.evict_blocks",
+        "start": 802,
+        "end": 819
+      },
+      {
+        "symbol": "BlockPool.reset_prefix_cache",
+        "start": 821,
+        "end": 859
+      },
+      {
+        "symbol": "BlockPool.get_num_free_blocks",
+        "start": 861,
+        "end": 867
+      },
+      {
+        "symbol": "BlockPool.get_usage",
+        "start": 869,
+        "end": 880
+      },
+      {
+        "symbol": "BlockPool.take_events",
+        "start": 882,
+        "end": 892
+      }
+    ],
+    "installed_sha256": "34c2fd67148cecb7763ff49ad694a57073759b0fa67572a4270dc995b4acf8fc",
+    "installed_matches": true
+  },
+  {
+    "project": "vllm",
+    "commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+    "path": "vllm/v1/outputs.py",
+    "sha256": "65ab7698bbdea1d53502ef8df3689bec860521ab6e2fab3c7bff63151be039b1",
+    "url": "https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/vllm/v1/outputs.py",
+    "definitions": [
+      {
+        "symbol": "LogprobsLists",
+        "start": 31,
+        "end": 53
+      },
+      {
+        "symbol": "LogprobsLists.slice_request",
+        "start": 44,
+        "end": 53
+      },
+      {
+        "symbol": "SamplingMaskLists",
+        "start": 56,
+        "end": 77
+      },
+      {
+        "symbol": "SamplingMaskLists.slice_request",
+        "start": 66,
+        "end": 70
+      },
+      {
+        "symbol": "SamplingMaskLists.to_nested_list",
+        "start": 72,
+        "end": 77
+      },
+      {
+        "symbol": "LogprobsTensors",
+        "start": 80,
+        "end": 188
+      },
+      {
+        "symbol": "LogprobsTensors.tolists",
+        "start": 94,
+        "end": 105
+      },
+      {
+        "symbol": "LogprobsTensors.to_cpu_nonblocking",
+        "start": 107,
+        "end": 119
+      },
+      {
+        "symbol": "LogprobsTensors.filter",
+        "start": 121,
+        "end": 133
+      },
+      {
+        "symbol": "LogprobsTensors.cat",
+        "start": 136,
+        "end": 162
+      },
+      {
+        "symbol": "LogprobsTensors.empty_cpu",
+        "start": 165,
+        "end": 188
+      },
+      {
+        "symbol": "RoutedExpertsTensors",
+        "start": 191,
+        "end": 239
+      },
+      {
+        "symbol": "RoutedExpertsTensors.to_cpu_nonblocking",
+        "start": 213,
+        "end": 227
+      },
+      {
+        "symbol": "RoutedExpertsTensors.tolists",
+        "start": 229,
+        "end": 239
+      },
+      {
+        "symbol": "RoutedExpertsLists",
+        "start": 242,
+        "end": 255
+      },
+      {
+        "symbol": "SamplerOutput",
+        "start": 264,
+        "end": 270
+      },
+      {
+        "symbol": "KVConnectorOutput",
+        "start": 274,
+        "end": 303
+      },
+      {
+        "symbol": "KVConnectorOutput.is_empty",
+        "start": 294,
+        "end": 303
+      },
+      {
+        "symbol": "ECConnectorOutput",
+        "start": 307,
+        "end": 318
+      },
+      {
+        "symbol": "ECConnectorOutput.is_empty",
+        "start": 313,
+        "end": 318
+      },
+      {
+        "symbol": "ModelRunnerOutput",
+        "start": 324,
+        "end": 413
+      },
+      {
+        "symbol": "ModelRunnerOutput.with_kv_conn_output_only",
+        "start": 377,
+        "end": 387
+      },
+      {
+        "symbol": "ModelRunnerOutput.with_ec_conn_output_only",
+        "start": 390,
+        "end": 396
+      },
+      {
+        "symbol": "ModelRunnerOutput.with_ec_conn_output",
+        "start": 399,
+        "end": 413
+      },
+      {
+        "symbol": "AsyncModelRunnerOutput",
+        "start": 417,
+        "end": 426
+      },
+      {
+        "symbol": "AsyncModelRunnerOutput.get_output",
+        "start": 419,
+        "end": 426
+      },
+      {
+        "symbol": "DraftTokenIds",
+        "start": 430,
+        "end": 434
+      },
+      {
+        "symbol": "make_empty_encoder_model_runner_output",
+        "start": 437,
+        "end": 466
+      }
+    ],
+    "installed_sha256": "65ab7698bbdea1d53502ef8df3689bec860521ab6e2fab3c7bff63151be039b1",
+    "installed_matches": true
+  },
+  {
+    "project": "vllm",
+    "commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+    "path": "vllm/outputs.py",
+    "sha256": "346d1f9204a441867efc3af7c5a99d8a70ef0f69fe607dfa8a4a2557a82ca425",
+    "url": "https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/vllm/outputs.py",
+    "definitions": [
+      {
+        "symbol": "SamplingMask",
+        "start": 22,
+        "end": 29
+      },
+      {
+        "symbol": "CompletionOutput",
+        "start": 33,
+        "end": 84
+      },
+      {
+        "symbol": "CompletionOutput.finished",
+        "start": 70,
+        "end": 71
+      },
+      {
+        "symbol": "CompletionOutput.__repr__",
+        "start": 73,
+        "end": 84
+      },
+      {
+        "symbol": "PoolingOutput",
+        "start": 88,
+        "end": 103
+      },
+      {
+        "symbol": "PoolingOutput.__repr__",
+        "start": 97,
+        "end": 98
+      },
+      {
+        "symbol": "PoolingOutput.__eq__",
+        "start": 100,
+        "end": 103
+      },
+      {
+        "symbol": "RequestOutput",
+        "start": 106,
+        "end": 218
+      },
+      {
+        "symbol": "RequestOutput.__init__",
+        "start": 133,
+        "end": 171
+      },
+      {
+        "symbol": "RequestOutput.add",
+        "start": 173,
+        "end": 202
+      },
+      {
+        "symbol": "RequestOutput.__repr__",
+        "start": 204,
+        "end": 218
+      },
+      {
+        "symbol": "PoolingRequestOutput",
+        "start": 234,
+        "end": 267
+      },
+      {
+        "symbol": "PoolingRequestOutput.__init__",
+        "start": 246,
+        "end": 258
+      },
+      {
+        "symbol": "PoolingRequestOutput.__repr__",
+        "start": 260,
+        "end": 267
+      },
+      {
+        "symbol": "EmbeddingOutput",
+        "start": 271,
+        "end": 294
+      },
+      {
+        "symbol": "EmbeddingOutput.from_base",
+        "start": 282,
+        "end": 287
+      },
+      {
+        "symbol": "EmbeddingOutput.hidden_size",
+        "start": 290,
+        "end": 291
+      },
+      {
+        "symbol": "EmbeddingOutput.__repr__",
+        "start": 293,
+        "end": 294
+      },
+      {
+        "symbol": "EmbeddingRequestOutput",
+        "start": 297,
+        "end": 308
+      },
+      {
+        "symbol": "EmbeddingRequestOutput.from_base",
+        "start": 299,
+        "end": 308
+      },
+      {
+        "symbol": "ClassificationOutput",
+        "start": 312,
+        "end": 336
+      },
+      {
+        "symbol": "ClassificationOutput.from_base",
+        "start": 323,
+        "end": 329
+      },
+      {
+        "symbol": "ClassificationOutput.num_classes",
+        "start": 332,
+        "end": 333
+      },
+      {
+        "symbol": "ClassificationOutput.__repr__",
+        "start": 335,
+        "end": 336
+      },
+      {
+        "symbol": "ClassificationRequestOutput",
+        "start": 339,
+        "end": 350
+      },
+      {
+        "symbol": "ClassificationRequestOutput.from_base",
+        "start": 341,
+        "end": 350
+      },
+      {
+        "symbol": "ScoringOutput",
+        "start": 354,
+        "end": 375
+      },
+      {
+        "symbol": "ScoringOutput.from_base",
+        "start": 364,
+        "end": 372
+      },
+      {
+        "symbol": "ScoringOutput.__repr__",
+        "start": 374,
+        "end": 375
+      },
+      {
+        "symbol": "ScoringRequestOutput",
+        "start": 378,
+        "end": 389
+      },
+      {
+        "symbol": "ScoringRequestOutput.from_base",
+        "start": 380,
+        "end": 389
+      }
+    ],
+    "installed_sha256": "346d1f9204a441867efc3af7c5a99d8a70ef0f69fe607dfa8a4a2557a82ca425",
+    "installed_matches": true
+  },
+  {
+    "project": "vllm",
+    "commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+    "path": "vllm/v1/executor/abstract.py",
+    "sha256": "97791426b549e4447c967f8b8e668c2e376c6a75fa7091fd9df11bc9dafb65f7",
+    "url": "https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/vllm/v1/executor/abstract.py",
+    "definitions": [
+      {
+        "symbol": "Executor",
+        "start": 38,
+        "end": 387
+      },
+      {
+        "symbol": "Executor.get_class",
+        "start": 49,
+        "end": 93
+      },
+      {
+        "symbol": "Executor.__init__",
+        "start": 96,
+        "end": 114
+      },
+      {
+        "symbol": "Executor._init_executor",
+        "start": 117,
+        "end": 118
+      },
+      {
+        "symbol": "Executor.initialize_from_config",
+        "start": 120,
+        "end": 122
+      },
+      {
+        "symbol": "Executor.compile_or_warm_up_model",
+        "start": 124,
+        "end": 139
+      },
+      {
+        "symbol": "Executor.register_failure_callback",
+        "start": 141,
+        "end": 146
+      },
+      {
+        "symbol": "Executor.determine_available_memory",
+        "start": 148,
+        "end": 149
+      },
+      {
+        "symbol": "Executor.get_kv_cache_specs",
+        "start": 151,
+        "end": 152
+      },
+      {
+        "symbol": "Executor.get_supported_kv_cache_layouts",
+        "start": 154,
+        "end": 156
+      },
+      {
+        "symbol": "Executor.set_kv_cache_layout",
+        "start": 158,
+        "end": 160
+      },
+      {
+        "symbol": "Executor.collective_rpc",
+        "start": 163,
+        "end": 195
+      },
+      {
+        "symbol": "Executor.collective_rpc",
+        "start": 198,
+        "end": 206
+      },
+      {
+        "symbol": "Executor.collective_rpc",
+        "start": 209,
+        "end": 212
+      },
+      {
+        "symbol": "Executor.get_kv_connector_handshake_metadata",
+        "start": 214,
+        "end": 217
+      },
+      {
+        "symbol": "Executor.execute_model",
+        "start": 220,
+        "end": 223
+      },
+      {
+        "symbol": "Executor.execute_model",
+        "start": 226,
+        "end": 229
+      },
+      {
+        "symbol": "Executor.execute_model",
+        "start": 231,
+        "end": 237
+      },
+      {
+        "symbol": "Executor.sample_tokens",
+        "start": 240,
+        "end": 243
+      },
+      {
+        "symbol": "Executor.sample_tokens",
+        "start": 246,
+        "end": 249
+      },
+      {
+        "symbol": "Executor.sample_tokens",
+        "start": 251,
+        "end": 257
+      },
+      {
+        "symbol": "Executor.execute_dummy_batch",
+        "start": 259,
+        "end": 260
+      },
+      {
+        "symbol": "Executor.take_draft_token_ids",
+        "start": 262,
+        "end": 264
+      },
+      {
+        "symbol": "Executor.profile",
+        "start": 266,
+        "end": 267
+      },
+      {
+        "symbol": "Executor.save_sharded_state",
+        "start": 269,
+        "end": 278
+      },
+      {
+        "symbol": "Executor.check_health",
+        "start": 281,
+        "end": 284
+      },
+      {
+        "symbol": "Executor.shutdown",
+        "start": 286,
+        "end": 288
+      },
+      {
+        "symbol": "Executor.init_kv_output_aggregator",
+        "start": 290,
+        "end": 294
+      },
+      {
+        "symbol": "Executor.init_ec_output_aggregator",
+        "start": 296,
+        "end": 297
+      },
+      {
+        "symbol": "Executor.supported_tasks",
+        "start": 300,
+        "end": 303
+      },
+      {
+        "symbol": "Executor.supports_draft_weight_updates",
+        "start": 305,
+        "end": 309
+      },
+      {
+        "symbol": "Executor.add_lora",
+        "start": 311,
+        "end": 313
+      },
+      {
+        "symbol": "Executor.remove_lora",
+        "start": 315,
+        "end": 317
+      },
+      {
+        "symbol": "Executor.pin_lora",
+        "start": 319,
+        "end": 321
+      },
+      {
+        "symbol": "Executor.list_loras",
+        "start": 323,
+        "end": 327
+      },
+      {
+        "symbol": "Executor.reset_mm_cache",
+        "start": 329,
+        "end": 331
+      },
+      {
+        "symbol": "Executor.reset_encoder_cache",
+        "start": 333,
+        "end": 335
+      },
+      {
+        "symbol": "Executor.sleep",
+        "start": 337,
+        "end": 348
+      },
+      {
+        "symbol": "Executor.wake_up",
+        "start": 350,
+        "end": 375
+      },
+      {
+        "symbol": "Executor.reinitialize_distributed",
+        "start": 377,
+        "end": 380
+      },
+      {
+        "symbol": "Executor.supports_async_scheduling",
+        "start": 383,
+        "end": 387
+      }
+    ],
+    "installed_sha256": "97791426b549e4447c967f8b8e668c2e376c6a75fa7091fd9df11bc9dafb65f7",
+    "installed_matches": true
+  },
+  {
+    "project": "vllm",
+    "commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+    "path": "vllm/v1/executor/uniproc_executor.py",
+    "sha256": "3cb039b80fe9b03dc1122f93c1f8a4098ef1355104b317ff6df25358f4349494",
+    "url": "https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/vllm/v1/executor/uniproc_executor.py",
+    "definitions": [
+      {
+        "symbol": "AsyncOutputFuture",
+        "start": 32,
+        "end": 48
+      },
+      {
+        "symbol": "AsyncOutputFuture.__init__",
+        "start": 33,
+        "end": 36
+      },
+      {
+        "symbol": "AsyncOutputFuture.result",
+        "start": 38,
+        "end": 48
+      },
+      {
+        "symbol": "UniProcExecutor",
+        "start": 51,
+        "end": 158
+      },
+      {
+        "symbol": "UniProcExecutor._init_executor",
+        "start": 52,
+        "end": 75
+      },
+      {
+        "symbol": "UniProcExecutor._distributed_args",
+        "start": 77,
+        "end": 88
+      },
+      {
+        "symbol": "UniProcExecutor.collective_rpc",
+        "start": 90,
+        "end": 117
+      },
+      {
+        "symbol": "UniProcExecutor.execute_model",
+        "start": 119,
+        "end": 132
+      },
+      {
+        "symbol": "UniProcExecutor.sample_tokens",
+        "start": 134,
+        "end": 142
+      },
+      {
+        "symbol": "UniProcExecutor.take_draft_token_ids",
+        "start": 144,
+        "end": 145
+      },
+      {
+        "symbol": "UniProcExecutor.check_health",
+        "start": 147,
+        "end": 150
+      },
+      {
+        "symbol": "UniProcExecutor.shutdown",
+        "start": 152,
+        "end": 154
+      },
+      {
+        "symbol": "UniProcExecutor.supports_async_scheduling",
+        "start": 157,
+        "end": 158
+      },
+      {
+        "symbol": "ExecutorWithExternalLauncher",
+        "start": 161,
+        "end": 207
+      },
+      {
+        "symbol": "ExecutorWithExternalLauncher._init_executor",
+        "start": 178,
+        "end": 184
+      },
+      {
+        "symbol": "ExecutorWithExternalLauncher._distributed_args",
+        "start": 186,
+        "end": 197
+      },
+      {
+        "symbol": "ExecutorWithExternalLauncher.determine_available_memory",
+        "start": 199,
+        "end": 207
+      }
+    ],
+    "installed_sha256": "3cb039b80fe9b03dc1122f93c1f8a4098ef1355104b317ff6df25358f4349494",
+    "installed_matches": true
+  },
+  {
+    "project": "vllm",
+    "commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+    "path": "vllm/v1/worker/gpu_worker.py",
+    "sha256": "6994436e4547c0996ab555b3e814e8ccea26b650dfc1b378b97d640745309347",
+    "url": "https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/vllm/v1/worker/gpu_worker.py",
+    "definitions": [
+      {
+        "symbol": "_num_workspace_lanes",
+        "start": 107,
+        "end": 113
+      },
+      {
+        "symbol": "maybe_rocm_profiling_fallback",
+        "start": 116,
+        "end": 140
+      },
+      {
+        "symbol": "AsyncIntermediateTensors",
+        "start": 150,
+        "end": 179
+      },
+      {
+        "symbol": "AsyncIntermediateTensors.__init__",
+        "start": 153,
+        "end": 162
+      },
+      {
+        "symbol": "AsyncIntermediateTensors.wait_for_comm",
+        "start": 164,
+        "end": 173
+      },
+      {
+        "symbol": "AsyncIntermediateTensors.__getattribute__",
+        "start": 175,
+        "end": 179
+      },
+      {
+        "symbol": "Worker",
+        "start": 182,
+        "end": 1512
+      },
+      {
+        "symbol": "Worker.__init__",
+        "start": 183,
+        "end": 231
+      },
+      {
+        "symbol": "Worker.sleep_mode_backend",
+        "start": 234,
+        "end": 243
+      },
+      {
+        "symbol": "Worker.sleep",
+        "start": 245,
+        "end": 280
+      },
+      {
+        "symbol": "Worker.wake_up",
+        "start": 282,
+        "end": 304
+      },
+      {
+        "symbol": "Worker.checkpoint_prepare",
+        "start": 306,
+        "end": 307
+      },
+      {
+        "symbol": "Worker.checkpoint_restore",
+        "start": 309,
+        "end": 310
+      },
+      {
+        "symbol": "Worker._maybe_get_memory_pool_context",
+        "start": 312,
+        "end": 333
+      },
+      {
+        "symbol": "Worker._scoped_allocator_max_split",
+        "start": 336,
+        "end": 357
+      },
+      {
+        "symbol": "Worker.init_device",
+        "start": 360,
+        "end": 492
+      },
+      {
+        "symbol": "Worker.handle_ft_command",
+        "start": 494,
+        "end": 496
+      },
+      {
+        "symbol": "Worker.load_model",
+        "start": 500,
+        "end": 518
+      },
+      {
+        "symbol": "Worker.update_config",
+        "start": 520,
+        "end": 521
+      },
+      {
+        "symbol": "Worker.reload_weights",
+        "start": 523,
+        "end": 525
+      },
+      {
+        "symbol": "Worker.determine_available_memory",
+        "start": 528,
+        "end": 688
+      },
+      {
+        "symbol": "Worker.get_kv_connector_handshake_metadata",
+        "start": 690,
+        "end": 717
+      },
+      {
+        "symbol": "Worker.get_kv_cache_spec",
+        "start": 719,
+        "end": 720
+      },
+      {
+        "symbol": "Worker.update_max_model_len",
+        "start": 722,
+        "end": 732
+      },
+      {
+        "symbol": "Worker.initialize_from_config",
+        "start": 735,
+        "end": 770
+      },
+      {
+        "symbol": "Worker.compile_or_warm_up_model",
+        "start": 773,
+        "end": 953
+      },
+      {
+        "symbol": "Worker._get_cudagraph_capture_context",
+        "start": 955,
+        "end": 968
+      },
+      {
+        "symbol": "Worker.reset_mm_cache",
+        "start": 970,
+        "end": 971
+      },
+      {
+        "symbol": "Worker.reset_encoder_cache",
+        "start": 973,
+        "end": 974
+      },
+      {
+        "symbol": "Worker.get_model",
+        "start": 976,
+        "end": 977
+      },
+      {
+        "symbol": "Worker.get_draft_model",
+        "start": 979,
+        "end": 980
+      },
+      {
+        "symbol": "Worker.supports_draft_weight_updates",
+        "start": 982,
+        "end": 993
+      },
+      {
+        "symbol": "Worker._set_draft_weight_update_target",
+        "start": 995,
+        "end": 1013
+      },
+      {
+        "symbol": "Worker.get_supported_tasks",
+        "start": 1015,
+        "end": 1016
+      },
+      {
+        "symbol": "Worker.get_compilation_match_table",
+        "start": 1018,
+        "end": 1021
+      },
+      {
+        "symbol": "Worker.get_encoder_timing_stats",
+        "start": 1023,
+        "end": 1025
+      },
+      {
+        "symbol": "Worker.annotate_profile",
+        "start": 1027,
+        "end": 1138
+      },
+      {
+        "symbol": "Worker.sample_tokens",
+        "start": 1142,
+        "end": 1145
+      },
+      {
+        "symbol": "Worker.execute_model",
+        "start": 1149,
+        "end": 1243
+      },
+      {
+        "symbol": "Worker.take_draft_token_ids",
+        "start": 1245,
+        "end": 1246
+      },
+      {
+        "symbol": "Worker.profile",
+        "start": 1248,
+        "end": 1315
+      },
+      {
+        "symbol": "Worker.execute_dummy_batch",
+        "start": 1317,
+        "end": 1319
+      },
+      {
+        "symbol": "Worker.add_lora",
+        "start": 1321,
+        "end": 1322
+      },
+      {
+        "symbol": "Worker.remove_lora",
+        "start": 1324,
+        "end": 1325
+      },
+      {
+        "symbol": "Worker.list_loras",
+        "start": 1327,
+        "end": 1328
+      },
+      {
+        "symbol": "Worker.pin_lora",
+        "start": 1330,
+        "end": 1331
+      },
+      {
+        "symbol": "Worker.check_health",
+        "start": 1333,
+        "end": 1335
+      },
+      {
+        "symbol": "Worker.save_sharded_state",
+        "start": 1337,
+        "end": 1350
+      },
+      {
+        "symbol": "Worker.save_tensorized_model",
+        "start": 1352,
+        "end": 1357
+      },
+      {
+        "symbol": "Worker._check_weight_transfer_engine",
+        "start": 1359,
+        "end": 1364
+      },
+      {
+        "symbol": "Worker.init_weight_transfer_engine",
+        "start": 1366,
+        "end": 1378
+      },
+      {
+        "symbol": "Worker.start_weight_update",
+        "start": 1380,
+        "end": 1389
+      },
+      {
+        "symbol": "Worker.start_draft_weight_update",
+        "start": 1391,
+        "end": 1397
+      },
+      {
+        "symbol": "Worker._start_weight_update",
+        "start": 1399,
+        "end": 1423
+      },
+      {
+        "symbol": "Worker.update_weights",
+        "start": 1425,
+        "end": 1460
+      },
+      {
+        "symbol": "Worker.finish_weight_update",
+        "start": 1462,
+        "end": 1479
+      },
+      {
+        "symbol": "Worker.shutdown",
+        "start": 1481,
+        "end": 1509
+      },
+      {
+        "symbol": "Worker.elastic_ep_execute",
+        "start": 1511,
+        "end": 1512
+      },
+      {
+        "symbol": "init_worker_distributed_environment",
+        "start": 1515,
+        "end": 1557
+      }
+    ],
+    "installed_sha256": "6994436e4547c0996ab555b3e814e8ccea26b650dfc1b378b97d640745309347",
+    "installed_matches": true
+  },
+  {
+    "project": "vllm",
+    "commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+    "path": "vllm/v1/worker/gpu/model_runner.py",
+    "sha256": "174c93db921c23cf0396eee4764be25b2bd2d4b6a06e9fa41ce3598b884ce8ce",
+    "url": "https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/vllm/v1/worker/gpu/model_runner.py",
+    "definitions": [
+      {
+        "symbol": "GPUModelRunner",
+        "start": 187,
+        "end": 2302
+      },
+      {
+        "symbol": "GPUModelRunner.__init__",
+        "start": 188,
+        "end": 362
+      },
+      {
+        "symbol": "GPUModelRunner.update_max_model_len",
+        "start": 364,
+        "end": 366
+      },
+      {
+        "symbol": "GPUModelRunner.init_routed_experts_capturer",
+        "start": 368,
+        "end": 375
+      },
+      {
+        "symbol": "GPUModelRunner.get_supported_tasks",
+        "start": 377,
+        "end": 386
+      },
+      {
+        "symbol": "GPUModelRunner.load_model",
+        "start": 388,
+        "end": 534
+      },
+      {
+        "symbol": "GPUModelRunner.get_model",
+        "start": 536,
+        "end": 537
+      },
+      {
+        "symbol": "GPUModelRunner.get_draft_model",
+        "start": 539,
+        "end": 543
+      },
+      {
+        "symbol": "GPUModelRunner.reload_weights",
+        "start": 545,
+        "end": 549
+      },
+      {
+        "symbol": "GPUModelRunner.update_config",
+        "start": 551,
+        "end": 560
+      },
+      {
+        "symbol": "GPUModelRunner.main_stream",
+        "start": 563,
+        "end": 565
+      },
+      {
+        "symbol": "GPUModelRunner.get_encoder_timing_stats",
+        "start": 567,
+        "end": 571
+      },
+      {
+        "symbol": "GPUModelRunner.get_kv_cache_spec",
+        "start": 573,
+        "end": 574
+      },
+      {
+        "symbol": "GPUModelRunner.initialize_kv_cache",
+        "start": 576,
+        "end": 761
+      },
+      {
+        "symbol": "GPUModelRunner._init_kv_zero_meta",
+        "start": 763,
+        "end": 771
+      },
+      {
+        "symbol": "GPUModelRunner._dummy_run",
+        "start": 775,
+        "end": 916
+      },
+      {
+        "symbol": "GPUModelRunner._dummy_sampler_run",
+        "start": 919,
+        "end": 930
+      },
+      {
+        "symbol": "GPUModelRunner._dummy_pooler_run",
+        "start": 933,
+        "end": 935
+      },
+      {
+        "symbol": "GPUModelRunner.profile_run",
+        "start": 938,
+        "end": 970
+      },
+      {
+        "symbol": "GPUModelRunner.reset_mm_cache",
+        "start": 972,
+        "end": 974
+      },
+      {
+        "symbol": "GPUModelRunner.reset_encoder_cache",
+        "start": 976,
+        "end": 980
+      },
+      {
+        "symbol": "GPUModelRunner.profile_cudagraph_memory",
+        "start": 983,
+        "end": 985
+      },
+      {
+        "symbol": "GPUModelRunner.needs_cudagraph_capture",
+        "start": 987,
+        "end": 995
+      },
+      {
+        "symbol": "GPUModelRunner.capture_model",
+        "start": 998,
+        "end": 1071
+      },
+      {
+        "symbol": "GPUModelRunner._remove_request",
+        "start": 1073,
+        "end": 1089
+      },
+      {
+        "symbol": "GPUModelRunner.finish_requests",
+        "start": 1091,
+        "end": 1103
+      },
+      {
+        "symbol": "GPUModelRunner.free_states",
+        "start": 1105,
+        "end": 1108
+      },
+      {
+        "symbol": "GPUModelRunner.update_pp_decode_requests",
+        "start": 1110,
+        "end": 1118
+      },
+      {
+        "symbol": "GPUModelRunner.add_requests",
+        "start": 1120,
+        "end": 1175
+      },
+      {
+        "symbol": "GPUModelRunner.update_requests",
+        "start": 1177,
+        "end": 1215
+      },
+      {
+        "symbol": "GPUModelRunner.gather_batch_req_state",
+        "start": 1217,
+        "end": 1268
+      },
+      {
+        "symbol": "GPUModelRunner.prepare_inputs",
+        "start": 1270,
+        "end": 1470
+      },
+      {
+        "symbol": "GPUModelRunner.prepare_attn",
+        "start": 1472,
+        "end": 1491
+      },
+      {
+        "symbol": "GPUModelRunner.prepare_dummy_attn",
+        "start": 1493,
+        "end": 1510
+      },
+      {
+        "symbol": "GPUModelRunner.sample",
+        "start": 1512,
+        "end": 1588
+      },
+      {
+        "symbol": "GPUModelRunner.postprocess_sampled",
+        "start": 1590,
+        "end": 1619
+      },
+      {
+        "symbol": "GPUModelRunner._merge_ec_connector_no_forward",
+        "start": 1621,
+        "end": 1628
+      },
+      {
+        "symbol": "GPUModelRunner.execute_model",
+        "start": 1631,
+        "end": 1993
+      },
+      {
+        "symbol": "GPUModelRunner.sample_tokens",
+        "start": 1997,
+        "end": 2181
+      },
+      {
+        "symbol": "GPUModelRunner.take_draft_token_ids",
+        "start": 2183,
+        "end": 2184
+      },
+      {
+        "symbol": "GPUModelRunner.pool",
+        "start": 2188,
+        "end": 2228
+      },
+      {
+        "symbol": "GPUModelRunner.postprocess_num_computed_tokens",
+        "start": 2230,
+        "end": 2236
+      },
+      {
+        "symbol": "GPUModelRunner.shutdown",
+        "start": 2238,
+        "end": 2268
+      },
+      {
+        "symbol": "GPUModelRunner.eplb_state",
+        "start": 2272,
+        "end": 2273
+      },
+      {
+        "symbol": "GPUModelRunner.eplb_state",
+        "start": 2276,
+        "end": 2277
+      },
+      {
+        "symbol": "GPUModelRunner.eep_eplb_suppressed",
+        "start": 2280,
+        "end": 2281
+      },
+      {
+        "symbol": "GPUModelRunner.eep_eplb_suppressed",
+        "start": 2284,
+        "end": 2285
+      },
+      {
+        "symbol": "GPUModelRunner.setup_eplb_from_mapping",
+        "start": 2287,
+        "end": 2295
+      },
+      {
+        "symbol": "GPUModelRunner.pcp_manager_cls",
+        "start": 2301,
+        "end": 2302
+      },
+      {
+        "symbol": "ExecuteModelState",
+        "start": 2305,
+        "end": 2315
+      },
+      {
+        "symbol": "BatchReqState",
+        "start": 2318,
+        "end": 2330
+      },
+      {
+        "symbol": "sort_batch_req_ids",
+        "start": 2333,
+        "end": 2345
+      }
+    ],
+    "installed_sha256": "174c93db921c23cf0396eee4764be25b2bd2d4b6a06e9fa41ce3598b884ce8ce",
+    "installed_matches": true
+  },
+  {
+    "project": "vllm",
+    "commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+    "path": "vllm/config/vllm.py",
+    "sha256": "956b812e5a719bcbfa3a3958801361b38b9c928c96b8c073311bbb96376dfb7a",
+    "url": "https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/vllm/config/vllm.py",
+    "definitions": [
+      {
+        "symbol": "default_breakable_cudagraph_architectures",
+        "start": 108,
+        "end": 124
+      },
+      {
+        "symbol": "OptimizationLevel",
+        "start": 127,
+        "end": 139
+      },
+      {
+        "symbol": "enable_norm_fusion",
+        "start": 154,
+        "end": 162
+      },
+      {
+        "symbol": "enable_act_fusion",
+        "start": 165,
+        "end": 175
+      },
+      {
+        "symbol": "enable_allreduce_rms_fusion",
+        "start": 178,
+        "end": 202
+      },
+      {
+        "symbol": "enable_rope_kvcache_fusion",
+        "start": 205,
+        "end": 218
+      },
+      {
+        "symbol": "enable_rope_kvcache_mla_fusion",
+        "start": 221,
+        "end": 227
+      },
+      {
+        "symbol": "enable_norm_pad_fusion",
+        "start": 230,
+        "end": 237
+      },
+      {
+        "symbol": "enable_mla_dual_rms_norm_fusion",
+        "start": 240,
+        "end": 244
+      },
+      {
+        "symbol": "enable_qk_norm_rope_kvcache",
+        "start": 247,
+        "end": 253
+      },
+      {
+        "symbol": "VllmConfig",
+        "start": 358,
+        "end": 3279
+      },
+      {
+        "symbol": "VllmConfig.compute_hash",
+        "start": 462,
+        "end": 577
+      },
+      {
+        "symbol": "VllmConfig.is_mm_encoder_only",
+        "start": 580,
+        "end": 586
+      },
+      {
+        "symbol": "VllmConfig.max_concurrent_batches",
+        "start": 589,
+        "end": 599
+      },
+      {
+        "symbol": "VllmConfig.max_in_flight_tokens",
+        "start": 602,
+        "end": 610
+      },
+      {
+        "symbol": "VllmConfig.num_speculative_tokens",
+        "start": 613,
+        "end": 624
+      },
+      {
+        "symbol": "VllmConfig.num_lookahead_tokens",
+        "start": 627,
+        "end": 651
+      },
+      {
+        "symbol": "VllmConfig.uniform_decode_query_len",
+        "start": 654,
+        "end": 672
+      },
+      {
+        "symbol": "VllmConfig.use_v2_model_runner",
+        "start": 675,
+        "end": 723
+      },
+      {
+        "symbol": "VllmConfig._is_dflash2_draft",
+        "start": 725,
+        "end": 734
+      },
+      {
+        "symbol": "VllmConfig._dflash_needs_multi_kv_group",
+        "start": 736,
+        "end": 746
+      },
+      {
+        "symbol": "VllmConfig._uses_breakable_cudagraph_by_default",
+        "start": 748,
+        "end": 754
+      },
+      {
+        "symbol": "VllmConfig._maybe_enable_breakable_cudagraph",
+        "start": 756,
+        "end": 774
+      },
+      {
+        "symbol": "VllmConfig.needs_dp_coordinator",
+        "start": 777,
+        "end": 797
+      },
+      {
+        "symbol": "VllmConfig.enable_trace_function_call_for_thread",
+        "start": 799,
+        "end": 819
+      },
+      {
+        "symbol": "VllmConfig._get_quantization_config",
+        "start": 822,
+        "end": 856
+      },
+      {
+        "symbol": "VllmConfig.get_quantization_config",
+        "start": 859,
+        "end": 868
+      },
+      {
+        "symbol": "VllmConfig.with_hf_config",
+        "start": 870,
+        "end": 926
+      },
+      {
+        "symbol": "VllmConfig._set_config_default",
+        "start": 928,
+        "end": 941
+      },
+      {
+        "symbol": "VllmConfig._apply_optimization_level_defaults",
+        "start": 943,
+        "end": 970
+      },
+      {
+        "symbol": "VllmConfig._maybe_override_dynamic_sd_cudagraph_mode",
+        "start": 972,
+        "end": 989
+      },
+      {
+        "symbol": "VllmConfig._maybe_disable_dynamic_sd_for_data_parallel",
+        "start": 991,
+        "end": 1008
+      },
+      {
+        "symbol": "VllmConfig._normalize_piecewise_cudagraph_mode",
+        "start": 1010,
+        "end": 1030
+      },
+      {
+        "symbol": "VllmConfig._post_init_kv_transfer_config",
+        "start": 1032,
+        "end": 1066
+      },
+      {
+        "symbol": "VllmConfig._verify_kv_transfer_compat",
+        "start": 1068,
+        "end": 1109
+      },
+      {
+        "symbol": "VllmConfig._verify_sampling_replay_config",
+        "start": 1111,
+        "end": 1134
+      },
+      {
+        "symbol": "VllmConfig._verify_trace_replay_config",
+        "start": 1136,
+        "end": 1141
+      },
+      {
+        "symbol": "VllmConfig._check_watermarking_unsupported",
+        "start": 1143,
+        "end": 1218
+      },
+      {
+        "symbol": "VllmConfig._resolve_and_verify_engram_config",
+        "start": 1220,
+        "end": 1252
+      },
+      {
+        "symbol": "VllmConfig.__post_init__",
+        "start": 1254,
+        "end": 2087
+      },
+      {
+        "symbol": "VllmConfig.update_sizes_for_sequence_parallelism",
+        "start": 2089,
+        "end": 2110
+      },
+      {
+        "symbol": "VllmConfig._set_max_num_scheduled_tokens",
+        "start": 2112,
+        "end": 2149
+      },
+      {
+        "symbol": "VllmConfig._set_cudagraph_sizes",
+        "start": 2151,
+        "end": 2418
+      },
+      {
+        "symbol": "VllmConfig._set_compile_ranges",
+        "start": 2420,
+        "end": 2528
+      },
+      {
+        "symbol": "VllmConfig.try_verify_and_update_config",
+        "start": 2530,
+        "end": 2590
+      },
+      {
+        "symbol": "VllmConfig.compile_debug_dump_path",
+        "start": 2592,
+        "end": 2602
+      },
+      {
+        "symbol": "VllmConfig.__str__",
+        "start": 2604,
+        "end": 2639
+      },
+      {
+        "symbol": "VllmConfig._resolve_mm_embedding_inputs",
+        "start": 2641,
+        "end": 2677
+      },
+      {
+        "symbol": "VllmConfig._resolve_mm_encoder_only",
+        "start": 2679,
+        "end": 2691
+      },
+      {
+        "symbol": "VllmConfig._resolve_mm_processor_device",
+        "start": 2693,
+        "end": 2747
+      },
+      {
+        "symbol": "VllmConfig._resolve_mm_video_decode_device",
+        "start": 2749,
+        "end": 2802
+      },
+      {
+        "symbol": "VllmConfig._validate_mm_processor_device",
+        "start": 2804,
+        "end": 2813
+      },
+      {
+        "symbol": "VllmConfig._get_v2_model_runner_unsupported_features",
+        "start": 2815,
+        "end": 2881
+      },
+      {
+        "symbol": "VllmConfig._get_v1_model_runner_unsupported_features",
+        "start": 2883,
+        "end": 2913
+      },
+      {
+        "symbol": "VllmConfig._validate_adaptive_verification",
+        "start": 2915,
+        "end": 2942
+      },
+      {
+        "symbol": "VllmConfig._validate_batch_sharded_sampling",
+        "start": 2944,
+        "end": 2997
+      },
+      {
+        "symbol": "VllmConfig._get_dbo_unsupported_features",
+        "start": 2999,
+        "end": 3039
+      },
+      {
+        "symbol": "VllmConfig._validate_profiler_config",
+        "start": 3041,
+        "end": 3077
+      },
+      {
+        "symbol": "VllmConfig._validate_v2_model_runner",
+        "start": 3079,
+        "end": 3088
+      },
+      {
+        "symbol": "VllmConfig._validate_v1_model_runner",
+        "start": 3090,
+        "end": 3095
+      },
+      {
+        "symbol": "VllmConfig.adjust_dcp_kv_cache_interleave_size",
+        "start": 3097,
+        "end": 3144
+      },
+      {
+        "symbol": "VllmConfig.validate_block_size",
+        "start": 3146,
+        "end": 3175
+      },
+      {
+        "symbol": "VllmConfig.validate_nvfp4_kv_cache_with_mla",
+        "start": 3178,
+        "end": 3194
+      },
+      {
+        "symbol": "VllmConfig.validate_mamba_block_size",
+        "start": 3197,
+        "end": 3208
+      },
+      {
+        "symbol": "VllmConfig.validate_mamba_cached_kernel",
+        "start": 3211,
+        "end": 3279
+      },
+      {
+        "symbol": "set_current_vllm_config",
+        "start": 3287,
+        "end": 3338
+      },
+      {
+        "symbol": "get_cached_compilation_config",
+        "start": 3342,
+        "end": 3344
+      },
+      {
+        "symbol": "get_current_vllm_config",
+        "start": 3347,
+        "end": 3357
+      },
+      {
+        "symbol": "get_current_vllm_config_or_none",
+        "start": 3360,
+        "end": 3361
+      },
+      {
+        "symbol": "get_layers_from_vllm_config",
+        "start": 3367,
+        "end": 3389
+      }
+    ],
+    "installed_sha256": "956b812e5a719bcbfa3a3958801361b38b9c928c96b8c073311bbb96376dfb7a",
+    "installed_matches": true
+  },
+  {
+    "project": "vllm",
+    "commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+    "path": "vllm/config/scheduler.py",
+    "sha256": "822179da62be4bca0619c8590082ae09123f5c4415f9cc2037be673748239edb",
+    "url": "https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/vllm/config/scheduler.py",
+    "definitions": [
+      {
+        "symbol": "SchedulerConfig",
+        "start": 26,
+        "end": 331
+      },
+      {
+        "symbol": "SchedulerConfig.default_factory",
+        "start": 202,
+        "end": 210
+      },
+      {
+        "symbol": "SchedulerConfig.get_scheduler_cls",
+        "start": 212,
+        "end": 233
+      },
+      {
+        "symbol": "SchedulerConfig.compute_hash",
+        "start": 235,
+        "end": 265
+      },
+      {
+        "symbol": "SchedulerConfig._skip_none_validation",
+        "start": 269,
+        "end": 271
+      },
+      {
+        "symbol": "SchedulerConfig.__post_init__",
+        "start": 273,
+        "end": 293
+      },
+      {
+        "symbol": "SchedulerConfig.verify_max_model_len",
+        "start": 295,
+        "end": 331
+      }
+    ],
+    "installed_sha256": "822179da62be4bca0619c8590082ae09123f5c4415f9cc2037be673748239edb",
+    "installed_matches": true
+  },
+  {
+    "project": "vllm",
+    "commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+    "path": "docs/design/arch_overview.md",
+    "sha256": "75e2f3d93bd28aaec56da4663536e3f65561c29d5a2940dc9e6cbe29fe95f21e",
+    "url": "https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/docs/design/arch_overview.md"
+  },
+  {
+    "project": "vllm",
+    "commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+    "path": "docs/design/model_runner_v2.md",
+    "sha256": "5bb3b26d87976d32c90fbf1d297e8a2e4364e60c2f438475922072ed7fb2628e",
+    "url": "https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/docs/design/model_runner_v2.md"
+  },
+  {
+    "project": "vllm",
+    "commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+    "path": "docs/design/prefix_caching.md",
+    "sha256": "67ee4e2b7bc23d40e9b366e4a9053ae4ecd0925ddef51f412ac5c16b9dc83a61",
+    "url": "https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/docs/design/prefix_caching.md"
+  },
+  {
+    "project": "vllm",
+    "commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+    "path": "docs/design/plugin_system.md",
+    "sha256": "d1e80796c029bfaf337f620c047a7c9fab55b59b4c097d240a45cf1b0b794cea",
+    "url": "https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/docs/design/plugin_system.md"
+  },
+  {
+    "project": "vllm-ascend",
+    "commit": "c09d3e20b9c45c80b34ae3781440d90904a44023",
+    "path": "vllm_ascend/platform.py",
+    "sha256": "1ffa999960bb178a1d9b95bf3240f8a0a9e3bb08558fe6e5233b10c2a676e476",
+    "url": "https://github.com/vllm-project/vllm-ascend/blob/c09d3e20b9c45c80b34ae3781440d90904a44023/vllm_ascend/platform.py",
+    "definitions": [
+      {
+        "symbol": "NPUPlatform",
+        "start": 89,
+        "end": 672
+      },
+      {
+        "symbol": "NPUPlatform.pass_key",
+        "start": 111,
+        "end": 117
+      },
+      {
+        "symbol": "NPUPlatform.manual_seed_all",
+        "start": 120,
+        "end": 121
+      },
+      {
+        "symbol": "NPUPlatform.visible_device_id_to_physical_device_id",
+        "start": 124,
+        "end": 133
+      },
+      {
+        "symbol": "NPUPlatform.is_sleep_mode_available",
+        "start": 135,
+        "end": 136
+      },
+      {
+        "symbol": "NPUPlatform.is_cumem_allocator_available",
+        "start": 138,
+        "end": 144
+      },
+      {
+        "symbol": "NPUPlatform.is_pin_memory_available",
+        "start": 147,
+        "end": 148
+      },
+      {
+        "symbol": "NPUPlatform.opaque_attention_op",
+        "start": 151,
+        "end": 152
+      },
+      {
+        "symbol": "NPUPlatform.support_hybrid_kv_cache",
+        "start": 155,
+        "end": 156
+      },
+      {
+        "symbol": "NPUPlatform.support_static_graph_mode",
+        "start": 159,
+        "end": 160
+      },
+      {
+        "symbol": "NPUPlatform.use_custom_op_collectives",
+        "start": 163,
+        "end": 164
+      },
+      {
+        "symbol": "NPUPlatform.get_device_capability",
+        "start": 167,
+        "end": 168
+      },
+      {
+        "symbol": "NPUPlatform.get_device_name",
+        "start": 171,
+        "end": 172
+      },
+      {
+        "symbol": "NPUPlatform.inference_mode",
+        "start": 175,
+        "end": 176
+      },
+      {
+        "symbol": "NPUPlatform.set_device",
+        "start": 179,
+        "end": 180
+      },
+      {
+        "symbol": "NPUPlatform.register_custom_kv_cache_specs",
+        "start": 183,
+        "end": 186
+      },
+      {
+        "symbol": "NPUPlatform.get_pass_manager_cls",
+        "start": 189,
+        "end": 194
+      },
+      {
+        "symbol": "NPUPlatform.get_compile_backend",
+        "start": 197,
+        "end": 202
+      },
+      {
+        "symbol": "NPUPlatform.get_punica_wrapper",
+        "start": 205,
+        "end": 206
+      },
+      {
+        "symbol": "NPUPlatform.get_current_memory_usage",
+        "start": 209,
+        "end": 211
+      },
+      {
+        "symbol": "NPUPlatform.get_device_communicator_cls",
+        "start": 214,
+        "end": 215
+      },
+      {
+        "symbol": "NPUPlatform.get_static_graph_wrapper_cls",
+        "start": 218,
+        "end": 222
+      },
+      {
+        "symbol": "NPUPlatform.get_device_uuid",
+        "start": 225,
+        "end": 229
+      },
+      {
+        "symbol": "NPUPlatform.get_device_total_memory",
+        "start": 232,
+        "end": 244
+      },
+      {
+        "symbol": "NPUPlatform.get_attn_backend_cls",
+        "start": 247,
+        "end": 288
+      },
+      {
+        "symbol": "NPUPlatform.import_kernels",
+        "start": 291,
+        "end": 304
+      },
+      {
+        "symbol": "NPUPlatform.pre_register_and_update",
+        "start": 307,
+        "end": 351
+      },
+      {
+        "symbol": "NPUPlatform.apply_config_platform_defaults",
+        "start": 354,
+        "end": 362
+      },
+      {
+        "symbol": "NPUPlatform.num_compute_units",
+        "start": 364,
+        "end": 386
+      },
+      {
+        "symbol": "NPUPlatform._align_hybrid_block_size",
+        "start": 389,
+        "end": 402
+      },
+      {
+        "symbol": "NPUPlatform.update_block_size_for_backend",
+        "start": 405,
+        "end": 426
+      },
+      {
+        "symbol": "NPUPlatform._validate_indexer_pp_config",
+        "start": 429,
+        "end": 475
+      },
+      {
+        "symbol": "NPUPlatform.check_and_update_config",
+        "start": 478,
+        "end": 542
+      },
+      {
+        "symbol": "NPUPlatform.set_additional_forward_context",
+        "start": 545,
+        "end": 672
+      },
+      {
+        "symbol": "_configure_minimax_m3_a5_mixed_kv_cache",
+        "start": 675,
+        "end": 716
+      },
+      {
+        "symbol": "_fix_incompatible_config",
+        "start": 719,
+        "end": 949
+      },
+      {
+        "symbol": "_validate_model_runner_config",
+        "start": 952,
+        "end": 958
+      },
+      {
+        "symbol": "_validate_eplb_config",
+        "start": 961,
+        "end": 1017
+      },
+      {
+        "symbol": "_check_ascend_config",
+        "start": 1020,
+        "end": 1159
+      },
+      {
+        "symbol": "_validate_kv_load_failure_policy",
+        "start": 1162,
+        "end": 1168
+      },
+      {
+        "symbol": "_update_compilation_modes",
+        "start": 1171,
+        "end": 1246
+      },
+      {
+        "symbol": "_setup_compile_backend",
+        "start": 1249,
+        "end": 1352
+      },
+      {
+        "symbol": "_setup_worker_and_scheduler",
+        "start": 1355,
+        "end": 1407
+      },
+      {
+        "symbol": "_validate_sfa_dcp_kv_sp",
+        "start": 1410,
+        "end": 1442
+      },
+      {
+        "symbol": "_set_pytorch_npu_alloc_env",
+        "start": 1445,
+        "end": 1464
+      },
+      {
+        "symbol": "_disable_expandable_segments",
+        "start": 1467,
+        "end": 1481
+      },
+      {
+        "symbol": "_validate_fa3_backend",
+        "start": 1484,
+        "end": 1509
+      },
+      {
+        "symbol": "_get_reduced_cg_cap",
+        "start": 1512,
+        "end": 1546
+      },
+      {
+        "symbol": "_config_deprecated_logging",
+        "start": 1549,
+        "end": 1576
+      },
+      {
+        "symbol": "_get_recompute_scheduler_cls",
+        "start": 1579,
+        "end": 1590
+      },
+      {
+        "symbol": "_get_dyntra_lb_scheduler_cls",
+        "start": 1593,
+        "end": 1596
+      },
+      {
+        "symbol": "_validate_engram_config",
+        "start": 1599,
+        "end": 1633
+      },
+      {
+        "symbol": "_validate_routing_replay_config",
+        "start": 1636,
+        "end": 1647
+      },
+      {
+        "symbol": "_validate_parallel_config",
+        "start": 1650,
+        "end": 1685
+      },
+      {
+        "symbol": "_validate_model_pcp_dcp_config",
+        "start": 1688,
+        "end": 1701
+      },
+      {
+        "symbol": "_validate_pcp_dcp_config",
+        "start": 1704,
+        "end": 1711
+      },
+      {
+        "symbol": "_get_deepseek_v4_variant",
+        "start": 1714,
+        "end": 1739
+      },
+      {
+        "symbol": "_validate_deepseek_v4_tp_config",
+        "start": 1742,
+        "end": 1755
+      },
+      {
+        "symbol": "_validate_draft_decode_context_parallel_config",
+        "start": 1758,
+        "end": 1827
+      }
+    ],
+    "installed_sha256": "1ffa999960bb178a1d9b95bf3240f8a0a9e3bb08558fe6e5233b10c2a676e476",
+    "installed_matches": true
+  },
+  {
+    "project": "vllm-ascend",
+    "commit": "c09d3e20b9c45c80b34ae3781440d90904a44023",
+    "path": "vllm_ascend/worker/worker.py",
+    "sha256": "9d938de914cb6a8c6366a11ec63b3d3487204bf3d216884e307650e2e2d0c608",
+    "url": "https://github.com/vllm-project/vllm-ascend/blob/c09d3e20b9c45c80b34ae3781440d90904a44023/vllm_ascend/worker/worker.py",
+    "definitions": [
+      {
+        "symbol": "NPUWorker",
+        "start": 123,
+        "end": 1344
+      },
+      {
+        "symbol": "NPUWorker.__init__",
+        "start": 124,
+        "end": 213
+      },
+      {
+        "symbol": "NPUWorker.uninstall_static_kernel",
+        "start": 215,
+        "end": 245
+      },
+      {
+        "symbol": "NPUWorker.sleep",
+        "start": 247,
+        "end": 277
+      },
+      {
+        "symbol": "NPUWorker.wake_up",
+        "start": 279,
+        "end": 303
+      },
+      {
+        "symbol": "NPUWorker._check_weight_transfer_engine",
+        "start": 305,
+        "end": 309
+      },
+      {
+        "symbol": "NPUWorker.init_weight_transfer_engine",
+        "start": 311,
+        "end": 316
+      },
+      {
+        "symbol": "NPUWorker._check_nz_disabled",
+        "start": 318,
+        "end": 325
+      },
+      {
+        "symbol": "NPUWorker.start_weight_update",
+        "start": 327,
+        "end": 340
+      },
+      {
+        "symbol": "NPUWorker.update_weights",
+        "start": 342,
+        "end": 355
+      },
+      {
+        "symbol": "NPUWorker.finish_weight_update",
+        "start": 357,
+        "end": 367
+      },
+      {
+        "symbol": "NPUWorker.shutdown",
+        "start": 369,
+        "end": 385
+      },
+      {
+        "symbol": "NPUWorker.initialize_cache",
+        "start": 387,
+        "end": 389
+      },
+      {
+        "symbol": "NPUWorker._init_device",
+        "start": 391,
+        "end": 496
+      },
+      {
+        "symbol": "NPUWorker.init_device",
+        "start": 498,
+        "end": 520
+      },
+      {
+        "symbol": "NPUWorker._apply_kv_offload_decode_memory_constraints",
+        "start": 522,
+        "end": 556
+      },
+      {
+        "symbol": "NPUWorker._apply_kvpp_memory_budget",
+        "start": 558,
+        "end": 564
+      },
+      {
+        "symbol": "NPUWorker.determine_available_memory",
+        "start": 567,
+        "end": 666
+      },
+      {
+        "symbol": "NPUWorker._scale_kv_cache_memory_for_multi_group",
+        "start": 668,
+        "end": 760
+      },
+      {
+        "symbol": "NPUWorker.log_memory_stats",
+        "start": 762,
+        "end": 772
+      },
+      {
+        "symbol": "NPUWorker.execute_model",
+        "start": 774,
+        "end": 842
+      },
+      {
+        "symbol": "NPUWorker.sample_tokens",
+        "start": 845,
+        "end": 852
+      },
+      {
+        "symbol": "NPUWorker.load_model",
+        "start": 854,
+        "end": 877
+      },
+      {
+        "symbol": "NPUWorker.compile_or_warm_up_model",
+        "start": 879,
+        "end": 985
+      },
+      {
+        "symbol": "NPUWorker._warm_up_atb",
+        "start": 987,
+        "end": 991
+      },
+      {
+        "symbol": "NPUWorker.get_model",
+        "start": 993,
+        "end": 994
+      },
+      {
+        "symbol": "NPUWorker.profile_prefill_latency",
+        "start": 997,
+        "end": 1056
+      },
+      {
+        "symbol": "NPUWorker.get_kv_connector_handshake_metadata",
+        "start": 1058,
+        "end": 1077
+      },
+      {
+        "symbol": "NPUWorker._get_layerwise_kv_cache_memory_info",
+        "start": 1079,
+        "end": 1115
+      },
+      {
+        "symbol": "NPUWorker.get_kv_cache_spec",
+        "start": 1117,
+        "end": 1163
+      },
+      {
+        "symbol": "NPUWorker.update_max_model_len",
+        "start": 1165,
+        "end": 1176
+      },
+      {
+        "symbol": "NPUWorker._maybe_get_memory_pool_context",
+        "start": 1178,
+        "end": 1183
+      },
+      {
+        "symbol": "NPUWorker.initialize_from_config",
+        "start": 1185,
+        "end": 1228
+      },
+      {
+        "symbol": "NPUWorker.profile",
+        "start": 1230,
+        "end": 1258
+      },
+      {
+        "symbol": "NPUWorker.add_lora",
+        "start": 1260,
+        "end": 1261
+      },
+      {
+        "symbol": "NPUWorker.remove_lora",
+        "start": 1263,
+        "end": 1264
+      },
+      {
+        "symbol": "NPUWorker.list_loras",
+        "start": 1266,
+        "end": 1267
+      },
+      {
+        "symbol": "NPUWorker.pin_lora",
+        "start": 1269,
+        "end": 1270
+      },
+      {
+        "symbol": "NPUWorker.reset_encoder_cache",
+        "start": 1272,
+        "end": 1273
+      },
+      {
+        "symbol": "NPUWorker.synchronize_device",
+        "start": 1275,
+        "end": 1276
+      },
+      {
+        "symbol": "NPUWorker.execute_dummy_batch",
+        "start": 1278,
+        "end": 1281
+      },
+      {
+        "symbol": "NPUWorker._init_worker_distributed_environment",
+        "start": 1283,
+        "end": 1304
+      },
+      {
+        "symbol": "NPUWorker.get_supported_pooling_tasks",
+        "start": 1306,
+        "end": 1307
+      },
+      {
+        "symbol": "NPUWorker.get_supported_tasks",
+        "start": 1309,
+        "end": 1310
+      },
+      {
+        "symbol": "NPUWorker.take_draft_token_ids",
+        "start": 1312,
+        "end": 1313
+      },
+      {
+        "symbol": "NPUWorker.update_config",
+        "start": 1315,
+        "end": 1316
+      },
+      {
+        "symbol": "NPUWorker.reload_weights",
+        "start": 1318,
+        "end": 1319
+      },
+      {
+        "symbol": "NPUWorker.check_health",
+        "start": 1321,
+        "end": 1344
+      },
+      {
+        "symbol": "parse_text_output",
+        "start": 1347,
+        "end": 1354
+      }
+    ],
+    "installed_sha256": "9d938de914cb6a8c6366a11ec63b3d3487204bf3d216884e307650e2e2d0c608",
+    "installed_matches": true
+  },
+  {
+    "project": "vllm-ascend",
+    "commit": "c09d3e20b9c45c80b34ae3781440d90904a44023",
+    "path": "vllm_ascend/worker/v2/model_runner.py",
+    "sha256": "533986687a50caa40afe7d3610d5fd9fb7d64d0ef167d95fe2c656bf0a3ccec5",
+    "url": "https://github.com/vllm-project/vllm-ascend/blob/c09d3e20b9c45c80b34ae3781440d90904a44023/vllm_ascend/worker/v2/model_runner.py",
+    "definitions": [
+      {
+        "symbol": "NPUModelRunner",
+        "start": 135,
+        "end": 1423
+      },
+      {
+        "symbol": "NPUModelRunner.__init__",
+        "start": 147,
+        "end": 297
+      },
+      {
+        "symbol": "NPUModelRunner.pcp_manager_cls",
+        "start": 300,
+        "end": 301
+      },
+      {
+        "symbol": "NPUModelRunner.load_model",
+        "start": 303,
+        "end": 311
+      },
+      {
+        "symbol": "NPUModelRunner._restore_replicated_draft_target_states",
+        "start": 313,
+        "end": 347
+      },
+      {
+        "symbol": "NPUModelRunner.sample_tokens",
+        "start": 349,
+        "end": 382
+      },
+      {
+        "symbol": "NPUModelRunner.pool",
+        "start": 384,
+        "end": 392
+      },
+      {
+        "symbol": "NPUModelRunner.get_kv_cache_spec",
+        "start": 394,
+        "end": 402
+      },
+      {
+        "symbol": "NPUModelRunner._init_kv_zero_meta",
+        "start": 404,
+        "end": 419
+      },
+      {
+        "symbol": "NPUModelRunner.initialize_kv_cache",
+        "start": 421,
+        "end": 541
+      },
+      {
+        "symbol": "NPUModelRunner._fill_c8_mxfp_v_scale_caches",
+        "start": 543,
+        "end": 555
+      },
+      {
+        "symbol": "NPUModelRunner.shutdown",
+        "start": 557,
+        "end": 567
+      },
+      {
+        "symbol": "NPUModelRunner._register_sparse_kv_caches",
+        "start": 569,
+        "end": 597
+      },
+      {
+        "symbol": "NPUModelRunner.execute_model",
+        "start": 600,
+        "end": 698
+      },
+      {
+        "symbol": "NPUModelRunner._maybe_send_draft_kv",
+        "start": 700,
+        "end": 726
+      },
+      {
+        "symbol": "NPUModelRunner.profile_run",
+        "start": 729,
+        "end": 749
+      },
+      {
+        "symbol": "NPUModelRunner.gather_batch_req_state",
+        "start": 751,
+        "end": 777
+      },
+      {
+        "symbol": "NPUModelRunner._check_finegrained_tp_graph_step",
+        "start": 779,
+        "end": 787
+      },
+      {
+        "symbol": "NPUModelRunner.prepare_inputs",
+        "start": 789,
+        "end": 1044
+      },
+      {
+        "symbol": "NPUModelRunner.prepare_dummy_attn",
+        "start": 1046,
+        "end": 1055
+      },
+      {
+        "symbol": "NPUModelRunner._maybe_extend_slot_mappings",
+        "start": 1057,
+        "end": 1061
+      },
+      {
+        "symbol": "NPUModelRunner._lmhead_tp_max_num_logits",
+        "start": 1063,
+        "end": 1066
+      },
+      {
+        "symbol": "NPUModelRunner.sample",
+        "start": 1068,
+        "end": 1113
+      },
+      {
+        "symbol": "NPUModelRunner._cap_parallel_draft_dummy_reqs",
+        "start": 1116,
+        "end": 1126
+      },
+      {
+        "symbol": "NPUModelRunner._preserve_dummy_query_tokens",
+        "start": 1129,
+        "end": 1148
+      },
+      {
+        "symbol": "NPUModelRunner._cpp_profile_dummy",
+        "start": 1151,
+        "end": 1170
+      },
+      {
+        "symbol": "NPUModelRunner._dummy_run",
+        "start": 1173,
+        "end": 1226
+      },
+      {
+        "symbol": "NPUModelRunner._can_skip_spec_cpu_length_sync",
+        "start": 1228,
+        "end": 1246
+      },
+      {
+        "symbol": "NPUModelRunner.postprocess_sampled",
+        "start": 1248,
+        "end": 1281
+      },
+      {
+        "symbol": "NPUModelRunner.postprocess_num_computed_tokens",
+        "start": 1283,
+        "end": 1287
+      },
+      {
+        "symbol": "NPUModelRunner._copy_num_computed_tokens_to_cpu",
+        "start": 1289,
+        "end": 1304
+      },
+      {
+        "symbol": "NPUModelRunner._update_seq_lens_cpu",
+        "start": 1306,
+        "end": 1330
+      },
+      {
+        "symbol": "NPUModelRunner._pad_query_start_loc_for_fia",
+        "start": 1332,
+        "end": 1385
+      },
+      {
+        "symbol": "NPUModelRunner._start_dump_data",
+        "start": 1387,
+        "end": 1391
+      },
+      {
+        "symbol": "NPUModelRunner._finalize_dump_data",
+        "start": 1393,
+        "end": 1400
+      },
+      {
+        "symbol": "NPUModelRunner._pad_adaptive_query_start_loc_for_fia",
+        "start": 1402,
+        "end": 1423
+      },
+      {
+        "symbol": "graph_manager_wrapper",
+        "start": 1427,
+        "end": 1455
+      }
+    ],
+    "installed_sha256": "533986687a50caa40afe7d3610d5fd9fb7d64d0ef167d95fe2c656bf0a3ccec5",
+    "installed_matches": true
+  },
+  {
+    "project": "vllm-ascend",
+    "commit": "c09d3e20b9c45c80b34ae3781440d90904a44023",
+    "path": "vllm_ascend/patch/platform/patch_balance_schedule.py",
+    "sha256": "190626c663c03ff98f32a6edab7b279fd64dce4ad81900de614fc291c7dd618e",
+    "url": "https://github.com/vllm-project/vllm-ascend/blob/c09d3e20b9c45c80b34ae3781440d90904a44023/vllm_ascend/patch/platform/patch_balance_schedule.py",
+    "definitions": [
+      {
+        "symbol": "_balance_scheduling_enabled",
+        "start": 83,
+        "end": 100
+      },
+      {
+        "symbol": "BalanceScheduler",
+        "start": 103,
+        "end": 840
+      },
+      {
+        "symbol": "BalanceScheduler.__init__",
+        "start": 104,
+        "end": 143
+      },
+      {
+        "symbol": "BalanceScheduler.balance_gather",
+        "start": 145,
+        "end": 161
+      },
+      {
+        "symbol": "BalanceScheduler.schedule",
+        "start": 163,
+        "end": 840
+      },
+      {
+        "symbol": "BalanceDPEngineCoreProc",
+        "start": 843,
+        "end": 889
+      },
+      {
+        "symbol": "BalanceDPEngineCoreProc._has_global_unfinished_reqs",
+        "start": 880,
+        "end": 889
+      }
+    ],
+    "installed_sha256": "190626c663c03ff98f32a6edab7b279fd64dce4ad81900de614fc291c7dd618e",
+    "installed_matches": true
+  }
+]

@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="1008pt" height="813.6pt" viewBox="0 0 1008 813.6" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 813.6
+L 1008 813.6
+L 1008 0
+L 0 0
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 64.08 115.2
+L 943.92 115.2
+Q 950.4 115.2 950.4 121.68
+L 950.4 216.72
+Q 950.4 223.2 943.92 223.2
+L 64.08 223.2
+Q 57.6 223.2 57.6 216.72
+L 57.6 121.68
+Q 57.6 115.2 64.08 115.2
+z
+" clip-path="url(#pc30845b1c3)" style="fill: #f3effa; stroke: #7055a1; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 64.08 270
+L 943.92 270
+Q 950.4 270 950.4 276.48
+L 950.4 371.52
+Q 950.4 378 943.92 378
+L 64.08 378
+Q 57.6 378 57.6 371.52
+L 57.6 276.48
+Q 57.6 270 64.08 270
+z
+" clip-path="url(#pc30845b1c3)" style="fill: #f3effa; stroke: #7055a1; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 64.08 424.8
+L 943.92 424.8
+Q 950.4 424.8 950.4 431.28
+L 950.4 526.32
+Q 950.4 532.8 943.92 532.8
+L 64.08 532.8
+Q 57.6 532.8 57.6 526.32
+L 57.6 431.28
+Q 57.6 424.8 64.08 424.8
+z
+" clip-path="url(#pc30845b1c3)" style="fill: #fff4e7; stroke: #b4611b; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 64.08 579.6
+L 943.92 579.6
+Q 950.4 579.6 950.4 586.08
+L 950.4 681.12
+Q 950.4 687.6 943.92 687.6
+L 64.08 687.6
+Q 57.6 687.6 57.6 681.12
+L 57.6 586.08
+Q 57.6 579.6 64.08 579.6
+z
+" clip-path="url(#pc30845b1c3)" style="fill: #eaf6f0; stroke: #20775f; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 504 225.202368
+Q 504 246.601823 504 266.10062
+" clip-path="url(#pc30845b1c3)" style="fill: none; stroke: #586575; stroke-width: 1.7; stroke-linecap: round"/>
+    <path d="M 506.8 260.50062
+L 504 266.10062
+L 501.2 260.50062
+z
+" clip-path="url(#pc30845b1c3)" style="fill: #586575; stroke: #586575; stroke-width: 1.7; stroke-linecap: round"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 504 380.002368
+Q 504 401.401823 504 420.90062
+" clip-path="url(#pc30845b1c3)" style="fill: none; stroke: #586575; stroke-width: 1.7; stroke-linecap: round"/>
+    <path d="M 506.8 415.30062
+L 504 420.90062
+L 501.2 415.30062
+z
+" clip-path="url(#pc30845b1c3)" style="fill: #586575; stroke: #586575; stroke-width: 1.7; stroke-linecap: round"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 504 534.802368
+Q 504 556.201823 504 575.70062
+" clip-path="url(#pc30845b1c3)" style="fill: none; stroke: #586575; stroke-width: 1.7; stroke-linecap: round"/>
+    <path d="M 506.8 570.10062
+L 504 575.70062
+L 501.2 570.10062
+z
+" clip-path="url(#pc30845b1c3)" style="fill: #586575; stroke: #586575; stroke-width: 1.7; stroke-linecap: round"/>
+   </g>
+   <g id="text_1">
+    <text style="font-size: 23px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: start; fill: #1e293b" x="28.8" y="34.031641" transform="rotate(-0 28.8 34.031641)">图 20.2  一次拒绝为什么必须丢弃后缀</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: start; fill: #586575" x="28.8" y="59.319219" transform="rotate(-0 28.8 59.319219)">构造例：已确认10但尚无其KV；草稿[20,30,40]，正常贪心验证。不是硬件记录。</text>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: start; fill: #586575" x="28.8" y="796.433437" transform="rotate(-0 28.8 796.433437)">依据 vLLM v0.30.0 源码；中文教学图。颜色：蓝＝前端，橙＝核心，紫＝执行，绿＝结果／资源。</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 17px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #7055a1" x="504" y="154.06" transform="rotate(-0 504 154.06)">候选输入</text>
+   </g>
+   <g id="text_5">
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #1e293b" x="504" y="194.621562" transform="rotate(-0 504 194.621562)">[10, 20, 30, 40] → hidden [4,H] → logits [4,V]</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 17px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #7055a1" x="504" y="308.842734" transform="rotate(-0 504 308.842734)">目标选择</text>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #1e293b" x="504" y="350.178437" transform="rotate(-0 504 350.178437)">[20, 99, 40, 50]：只需处理到首次不匹配</text>
+   </g>
+   <g id="text_8">
+    <text style="font-size: 17px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #b4611b" x="504" y="463.719766" transform="rotate(-0 504 463.719766)">验证结果</text>
+   </g>
+   <g id="text_9">
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #1e293b" x="504" y="505.635781" transform="rotate(-0 504 505.635781)">20接受；30拒绝→改为99；40与bonus50不提交</text>
+   </g>
+   <g id="text_10">
+    <text style="font-size: 17px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #20775f" x="504" y="618.477266" transform="rotate(-0 504 618.477266)">有效状态</text>
+   </g>
+   <g id="text_11">
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #1e293b" x="504" y="659.785" transform="rotate(-0 504 659.785)">计算进度 5 → 暂记9 → 回退2 → 7；确认返回[20,99]</text>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 15px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #586575" x="504" y="758.009766" transform="rotate(-0 504 758.009766)">下一轮从确认前缀继续：99尚无KV；被拒绝位置的旧字节不是有效历史。</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pc30845b1c3">
+   <rect x="0" y="0" width="1008" height="813.6"/>
+  </clipPath>
+ </defs>
+</svg>

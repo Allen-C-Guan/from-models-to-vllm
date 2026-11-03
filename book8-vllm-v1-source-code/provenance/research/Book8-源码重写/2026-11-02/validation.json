@@ -1,0 +1,28 @@
+{
+  "source_files_verified": 31,
+  "evidence_blocks_verified": 28,
+  "baseline-inproc-traced": {
+    "rounds": 3,
+    "events": 66,
+    "budget": 32
+  },
+  "chunked-inproc-traced": {
+    "rounds": 6,
+    "events": 122,
+    "budget": 4
+  },
+  "four_run_output_comparison": "passed",
+  "local_links": 265,
+  "fixed_commit_links": 203,
+  "reader": "4 documents, 14 embedded images, source hashes and anchors verified",
+  "preexisting_files_preserved": 33,
+  "workspace_diff_check": {
+    "preexisting_whitespace_only": [
+      "drafts/Book7-vLLM架构剖析/figures/fig-1-2-components.svg",
+      "drafts/Book7-vLLM架构剖析/figures/fig-1-3-iteration.svg"
+    ]
+  },
+  "book_repository_diff_check": "passed",
+  "new_text_whitespace": "passed",
+  "upstream_repositories": "clean"
+}

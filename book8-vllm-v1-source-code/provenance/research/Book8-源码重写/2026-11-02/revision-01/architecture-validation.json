@@ -1,0 +1,230 @@
+{
+  "verified_relations_and_calls": [
+    {
+      "kind": "generalization",
+      "file": "vllm/v1/engine/core_client.py",
+      "line": 333,
+      "relation": "InprocClient -> EngineCoreClient"
+    },
+    {
+      "kind": "generalization",
+      "file": "vllm/v1/core/sched/scheduler.py",
+      "line": 79,
+      "relation": "Scheduler -> SchedulerInterface"
+    },
+    {
+      "kind": "generalization",
+      "file": "vllm/v1/executor/uniproc_executor.py",
+      "line": 51,
+      "relation": "UniProcExecutor -> Executor"
+    },
+    {
+      "kind": "stored_reference",
+      "file": "vllm/v1/engine/llm_engine.py",
+      "line": 94,
+      "relation": "LLMEngine.input_processor"
+    },
+    {
+      "kind": "stored_reference",
+      "file": "vllm/v1/engine/llm_engine.py",
+      "line": 97,
+      "relation": "LLMEngine.output_processor"
+    },
+    {
+      "kind": "stored_reference",
+      "file": "vllm/v1/engine/llm_engine.py",
+      "line": 109,
+      "relation": "LLMEngine.engine_core"
+    },
+    {
+      "kind": "stored_reference",
+      "file": "vllm/v1/engine/output_processor.py",
+      "line": 466,
+      "relation": "OutputProcessor.request_states"
+    },
+    {
+      "kind": "stored_reference",
+      "file": "vllm/v1/engine/core_client.py",
+      "line": 354,
+      "relation": "InprocClient.engine_core"
+    },
+    {
+      "kind": "stored_reference",
+      "file": "vllm/v1/engine/core.py",
+      "line": 162,
+      "relation": "EngineCore.scheduler"
+    },
+    {
+      "kind": "stored_reference",
+      "file": "vllm/v1/engine/core.py",
+      "line": 134,
+      "relation": "EngineCore.model_executor"
+    },
+    {
+      "kind": "stored_reference",
+      "file": "vllm/v1/core/sched/scheduler.py",
+      "line": 193,
+      "relation": "Scheduler.requests"
+    },
+    {
+      "kind": "stored_reference",
+      "file": "vllm/v1/core/sched/scheduler.py",
+      "line": 299,
+      "relation": "Scheduler.kv_cache_manager"
+    },
+    {
+      "kind": "typed_plan_field",
+      "file": "vllm/v1/core/sched/output.py",
+      "line": 229,
+      "relation": "scheduled_new_reqs: list[NewRequestData]"
+    },
+    {
+      "kind": "typed_plan_field",
+      "file": "vllm/v1/core/sched/output.py",
+      "line": 233,
+      "relation": "scheduled_cached_reqs: CachedRequestData"
+    },
+    {
+      "kind": "call_site",
+      "file": "vllm/v1/engine/input_processor.py",
+      "line": 422,
+      "relation": "InputProcessor.process_inputs -> EngineCoreRequest"
+    },
+    {
+      "kind": "call_site",
+      "file": "vllm/v1/engine/llm_engine.py",
+      "line": 257,
+      "relation": "LLMEngine.add_request -> self.input_processor.process_inputs"
+    },
+    {
+      "kind": "call_site",
+      "file": "vllm/v1/engine/llm_engine.py",
+      "line": 271,
+      "relation": "LLMEngine.add_request -> self.input_processor.assign_request_id"
+    },
+    {
+      "kind": "call_site",
+      "file": "vllm/v1/engine/llm_engine.py",
+      "line": 282,
+      "relation": "LLMEngine.add_request -> self.output_processor.add_request"
+    },
+    {
+      "kind": "call_site",
+      "file": "vllm/v1/engine/llm_engine.py",
+      "line": 284,
+      "relation": "LLMEngine.add_request -> self.engine_core.add_request"
+    },
+    {
+      "kind": "call_site",
+      "file": "vllm/v1/engine/output_processor.py",
+      "line": 578,
+      "relation": "OutputProcessor.add_request -> RequestState.from_new_request"
+    },
+    {
+      "kind": "call_site",
+      "file": "vllm/v1/engine/core_client.py",
+      "line": 370,
+      "relation": "InprocClient.add_request -> self.engine_core.preprocess_add_request"
+    },
+    {
+      "kind": "call_site",
+      "file": "vllm/v1/engine/core_client.py",
+      "line": 371,
+      "relation": "InprocClient.add_request -> self.engine_core.add_request"
+    },
+    {
+      "kind": "call_site",
+      "file": "vllm/v1/engine/core.py",
+      "line": 994,
+      "relation": "EngineCore.preprocess_add_request -> Request.from_engine_core_request"
+    },
+    {
+      "kind": "call_site",
+      "file": "vllm/v1/engine/core.py",
+      "line": 484,
+      "relation": "EngineCore.add_request -> self.scheduler.add_request"
+    },
+    {
+      "kind": "call_site",
+      "file": "vllm/v1/core/sched/scheduler.py",
+      "line": 2487,
+      "relation": "Scheduler.add_request -> self._enqueue_waiting_request"
+    },
+    {
+      "kind": "call_site",
+      "file": "vllm/v1/engine/llm_engine.py",
+      "line": 312,
+      "relation": "LLMEngine.step -> self.engine_core.get_output"
+    },
+    {
+      "kind": "call_site",
+      "file": "vllm/v1/engine/core_client.py",
+      "line": 362,
+      "relation": "InprocClient.get_output -> self.engine_core.step_fn"
+    },
+    {
+      "kind": "call_site",
+      "file": "vllm/v1/engine/core_client.py",
+      "line": 363,
+      "relation": "InprocClient.get_output -> self.engine_core.post_step"
+    },
+    {
+      "kind": "call_site",
+      "file": "vllm/v1/engine/core.py",
+      "line": 600,
+      "relation": "EngineCore.step -> self.scheduler.schedule"
+    },
+    {
+      "kind": "call_site",
+      "file": "vllm/v1/engine/core.py",
+      "line": 601,
+      "relation": "EngineCore.step -> self.model_executor.execute_model"
+    },
+    {
+      "kind": "call_site",
+      "file": "vllm/v1/engine/core.py",
+      "line": 607,
+      "relation": "EngineCore.step -> future.result"
+    },
+    {
+      "kind": "call_site",
+      "file": "vllm/v1/engine/core.py",
+      "line": 609,
+      "relation": "EngineCore.step -> self.model_executor.sample_tokens"
+    },
+    {
+      "kind": "call_site",
+      "file": "vllm/v1/engine/core.py",
+      "line": 614,
+      "relation": "EngineCore.step -> self.scheduler.update_from_output"
+    },
+    {
+      "kind": "call_site",
+      "file": "vllm/v1/engine/llm_engine.py",
+      "line": 319,
+      "relation": "LLMEngine.step -> self.output_processor.process_outputs"
+    },
+    {
+      "kind": "call_site",
+      "file": "vllm/v1/engine/llm_engine.py",
+      "line": 328,
+      "relation": "LLMEngine.step -> self.engine_core.abort_requests"
+    },
+    {
+      "kind": "call_site",
+      "file": "vllm/v1/core/sched/scheduler.py",
+      "line": 1159,
+      "relation": "Scheduler.schedule -> self.kv_cache_manager.allocate_slots"
+    },
+    {
+      "kind": "call_site",
+      "file": "vllm/v1/core/sched/scheduler.py",
+      "line": 1407,
+      "relation": "Scheduler.schedule -> SchedulerOutput"
+    }
+  ],
+  "unchanged_observation_files": 17,
+  "chapter_maps_before_first_section": 3,
+  "call_path_blocks": 3,
+  "scope": "AST 核对源码中的边；不证明全部分支执行或运行时堆栈。"
+}

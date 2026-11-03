@@ -1,0 +1,66 @@
+{
+  "events_sha256": "0c728f94e4f6ae3ffd132653e5365ecc9443069403ef2bcadcf85ae5e825e96c",
+  "deltas": {
+    "A-online": [
+      {
+        "seq": 1,
+        "text": " Paris",
+        "token_ids": [
+          12095,
+          13
+        ],
+        "finished": false,
+        "finish_reason": null
+      },
+      {
+        "seq": 2,
+        "text": ".",
+        "token_ids": [
+          13
+        ],
+        "finished": true,
+        "finish_reason": "length"
+      }
+    ],
+    "B-online": [
+      {
+        "seq": 3,
+        "text": " the",
+        "token_ids": [
+          279
+        ],
+        "finished": false,
+        "finish_reason": null
+      },
+      {
+        "seq": 4,
+        "text": " Pacific",
+        "token_ids": [
+          16462
+        ],
+        "finished": false,
+        "finish_reason": null
+      },
+      {
+        "seq": 5,
+        "text": " Ocean",
+        "token_ids": [
+          21575
+        ],
+        "finished": true,
+        "finish_reason": "length"
+      }
+    ]
+  },
+  "collector_cpu": {
+    "kind": "replay recorded deltas through actual CPU RequestOutputCollector, without consumer reads between puts",
+    "put_count": 2,
+    "get_count": 1,
+    "text": " Paris.",
+    "token_ids": [
+      12095,
+      13
+    ],
+    "finished": true
+  }
+}

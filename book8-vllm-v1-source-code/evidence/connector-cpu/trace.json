@@ -1,0 +1,100 @@
+{
+  "kind": "CPU real ExampleConnector methods on manually initialized object and synthetic tensors; no scheduler/network/NPU",
+  "probe_sha256": "b68e7f6491707a7acf64c5e9571fad241e723c01af801258fde9cf03b92be764",
+  "source_sha256": {
+    "repos/vllm/vllm/distributed/kv_transfer/kv_connector/v1/example_connector.py": "6226876ef52d10d0d284d29c337ab44698e8bac6abdb2e0ece53b5756c55d068",
+    "repos/vllm/vllm/distributed/kv_transfer/kv_connector/v1/offloading/common.py": "9b3f042c6fa1581d10e8f688d2d9bc927bb41b780a9ea01f514d57228e20c978"
+  },
+  "roundtrip": {
+    "shape": [
+      6,
+      1,
+      4,
+      2
+    ],
+    "store_meta": {
+      "token_ids": [
+        785,
+        6722,
+        315,
+        9625
+      ],
+      "slot_mapping": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "is_store": true,
+      "mm_hashes": []
+    },
+    "load_meta": {
+      "token_ids": [
+        785,
+        6722,
+        315,
+        9625
+      ],
+      "slot_mapping": [
+        12,
+        13,
+        14,
+        15
+      ],
+      "is_store": false,
+      "mm_hashes": []
+    },
+    "source_block_1": [
+      [
+        [
+          8.0,
+          9.0
+        ],
+        [
+          10.0,
+          11.0
+        ],
+        [
+          12.0,
+          13.0
+        ],
+        [
+          14.0,
+          15.0
+        ]
+      ]
+    ],
+    "destination_block_3": [
+      [
+        [
+          8.0,
+          9.0
+        ],
+        [
+          10.0,
+          11.0
+        ],
+        [
+          12.0,
+          13.0
+        ],
+        [
+          14.0,
+          15.0
+        ]
+      ]
+    ],
+    "other_blocks_untouched": true
+  },
+  "completion_counts": {
+    "worker0": {
+      "7": 1
+    },
+    "worker1": {
+      "7": 1
+    },
+    "aggregate": {
+      "7": 2
+    }
+  }
+}

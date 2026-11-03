@@ -1,0 +1,101 @@
+{
+  "kind": "CPU actual specs and manager; manually seeded blocks; no device state/model",
+  "probe_sha256": "f7cd7302cd696d62a0dd058d5d8161c36fdd73dd8139b8ac80976cde497ee540",
+  "source_sha256": {
+    "repos/vllm/vllm/v1/kv_cache_interface.py": "1cf202f1a44d5bc5c3832b70b41507687ecceea3784e67a4f003bc0210d6eecb",
+    "repos/vllm/vllm/v1/core/kv_cache_utils.py": "2666c9f113584e52e7521058efd2c0d9598544559dc942d3a3da87001a3fedf2",
+    "repos/vllm/vllm/v1/core/block_pool.py": "34c2fd67148cecb7763ff49ad694a57073759b0fa67572a4270dc995b4acf8fc",
+    "repos/vllm/vllm/v1/core/single_type_kv_cache_manager.py": "0233531d85aeced9e57a38c76d83db970519c92902b7e55484390cb2b64985bf"
+  },
+  "pages": {
+    "before": {
+      "full": {
+        "type": "FullAttentionSpec",
+        "block_size": 4,
+        "page_bytes": 128,
+        "content_bytes": 128
+      },
+      "window": {
+        "type": "SlidingWindowSpec",
+        "block_size": 4,
+        "page_bytes": 64,
+        "content_bytes": 64
+      },
+      "mamba": {
+        "type": "MambaSpec",
+        "block_size": 4,
+        "page_bytes": 40,
+        "content_bytes": 40
+      }
+    },
+    "after": {
+      "full": {
+        "type": "FullAttentionSpec",
+        "block_size": 4,
+        "page_bytes": 128,
+        "content_bytes": 128
+      },
+      "window": {
+        "type": "SlidingWindowSpec",
+        "block_size": 8,
+        "page_bytes": 128,
+        "content_bytes": 128
+      },
+      "mamba": {
+        "type": "MambaSpec",
+        "block_size": 4,
+        "page_bytes": 128,
+        "content_bytes": 40
+      }
+    }
+  },
+  "window": {
+    "window_size": 4,
+    "block_size": 4,
+    "computed": 7,
+    "skipped_tokens": 4,
+    "before": {
+      "block_ids": [
+        1,
+        2,
+        3
+      ],
+      "is_null": [
+        false,
+        false,
+        false
+      ],
+      "free_blocks": 4
+    },
+    "after": {
+      "block_ids": [
+        0,
+        2,
+        3
+      ],
+      "is_null": [
+        true,
+        false,
+        false
+      ],
+      "free_blocks": 5
+    }
+  },
+  "mamba_modes": [
+    {
+      "mode": "none",
+      "max_state_bytes": 40,
+      "block_table_columns": 1
+    },
+    {
+      "mode": "align",
+      "max_state_bytes": 80,
+      "block_table_columns": 4
+    },
+    {
+      "mode": "all",
+      "max_state_bytes": 160,
+      "block_table_columns": 4
+    }
+  ]
+}

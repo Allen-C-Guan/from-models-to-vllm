@@ -1,0 +1,31 @@
+INFO 11-02 22:24:41 [__init__.py:52] Available plugins for group vllm.platform_plugins:
+INFO 11-02 22:24:41 [__init__.py:54] - ascend -> vllm_ascend:register
+INFO 11-02 22:24:41 [__init__.py:57] All plugins in this group will be loaded. Set `VLLM_PLUGINS` to control which plugins to load.
+/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/triton/language/extra/cann/extension/math_ops.py:13: FutureWarning: triton.language.extra.cann.extension.atan2 is deprecated and will be removed in the next release; use triton.language.extra.cann.libdevice.atan2 instead.
+  @_deprecated(replacement="triton.language.extra.cann.libdevice.atan2")
+/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/triton/language/extra/cann/extension/math_ops.py:35: FutureWarning: triton.language.extra.cann.extension.isfinited is deprecated and will be removed in the next release; use triton.language.extra.cann.libdevice.isfinited instead.
+  @_deprecated(replacement="triton.language.extra.cann.libdevice.isfinited")
+/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/triton/language/extra/cann/extension/math_ops.py:49: FutureWarning: triton.language.extra.cann.extension.finitef is deprecated and will be removed in the next release; use triton.language.extra.cann.libdevice.finitef instead.
+  @_deprecated(replacement="triton.language.extra.cann.libdevice.finitef")
+INFO 11-02 22:24:41 [__init__.py:272] Platform plugin ascend is activated
+INFO 11-02 22:24:41 [platform.py:74] Breakable CUDAGraph on Ascend is opt-in; using VLLM_USE_BREAKABLE_CUDAGRAPH=0.
+Traceback (most recent call last):
+  File "/home/g00594152/vllm/model_analysis_project/code/Book8-vLLM源码剖析/observe_grammar.py", line 41, in <module>
+    if __name__=='__main__':main()
+                            ^^^^^^
+  File "/home/g00594152/vllm/model_analysis_project/code/Book8-vLLM源码剖析/observe_grammar.py", line 27, in main
+    assert gram.accept_tokens('A-grammar',[9]);after_eos=snapshot()
+                                                         ^^^^^^^^^^
+  File "/home/g00594152/vllm/model_analysis_project/code/Book8-vLLM源码剖析/observe_grammar.py", line 18, in snapshot
+    mask=xgr.allocate_token_bitmask(1,len(vocab));gram.fill_bitmask(mask,0)
+                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/vllm/v1/structured_output/backend_xgrammar.py", line 209, in fill_bitmask
+    self.matcher.fill_next_token_bitmask(bitmask, idx)
+  File "/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/xgrammar/matcher.py", line 364, in fill_next_token_bitmask
+    return self._handle.fill_next_token_bitmask(bitmask, index, debug_print)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "python/tvm_ffi/cython/type_info.pxi", line 1424, in tvm_ffi.core._member_method_wrapper.wrapper
+  File "python/tvm_ffi/cython/function.pxi", line 1038, in tvm_ffi.core.Function.__call__
+RuntimeError: [22:24:46] /project/cpp/grammar_matcher.cc:1687: Check failed: (!IsStopTokenAccepted()) is false: GrammarMatcher has terminated after accepting the stop token, but is trying to find the next token mask
+
+[ERROR] 2026-11-02-22:24:46 (PID:2285129, Device:-1, RankID:-1) ERR99999 UNKNOWN applicaiton exception

@@ -1,0 +1,31 @@
+INFO 11-02 22:06:48 [__init__.py:52] Available plugins for group vllm.platform_plugins:
+INFO 11-02 22:06:48 [__init__.py:54] - ascend -> vllm_ascend:register
+INFO 11-02 22:06:48 [__init__.py:57] All plugins in this group will be loaded. Set `VLLM_PLUGINS` to control which plugins to load.
+/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/triton/language/extra/cann/extension/math_ops.py:13: FutureWarning: triton.language.extra.cann.extension.atan2 is deprecated and will be removed in the next release; use triton.language.extra.cann.libdevice.atan2 instead.
+  @_deprecated(replacement="triton.language.extra.cann.libdevice.atan2")
+/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/triton/language/extra/cann/extension/math_ops.py:35: FutureWarning: triton.language.extra.cann.extension.isfinited is deprecated and will be removed in the next release; use triton.language.extra.cann.libdevice.isfinited instead.
+  @_deprecated(replacement="triton.language.extra.cann.libdevice.isfinited")
+/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/triton/language/extra/cann/extension/math_ops.py:49: FutureWarning: triton.language.extra.cann.extension.finitef is deprecated and will be removed in the next release; use triton.language.extra.cann.libdevice.finitef instead.
+  @_deprecated(replacement="triton.language.extra.cann.libdevice.finitef")
+INFO 11-02 22:06:48 [__init__.py:272] Platform plugin ascend is activated
+INFO 11-02 22:06:49 [platform.py:74] Breakable CUDAGraph on Ascend is opt-in; using VLLM_USE_BREAKABLE_CUDAGRAPH=0.
+WARNING 11-02 22:06:57 [indexer_topk.py:29] Failed to import the DeepSelect extension (vllm._deepselect_C): libcudart.so.13: cannot open shared object file: No such file or directory
+INFO 11-02 22:06:59 [patch_indexer_kv_dtype.py:102] Patched AttentionConfig.indexer_kv_dtype to accept 'int8' (DeepSeek V4 Ascend indexer K cache dtype).
+INFO 11-02 22:06:59 [patch_kv_cache_dtype.py:117] Patched CacheConfig.cache_dtype to accept 'int8' and 'mxfp8' (Ascend KV cache dtypes).
+Traceback (most recent call last):
+  File "/home/g00594152/vllm/model_analysis_project/code/Book8-vLLM源码剖析/inspect_platform.py", line 32, in <module>
+    if __name__=='__main__':main()
+                            ^^^^^^
+  File "/home/g00594152/vllm/model_analysis_project/code/Book8-vLLM源码剖析/inspect_platform.py", line 25, in main
+    'attention_backend':info(AscendAttentionBackend),'attention_impl':info(AscendAttentionBackend.get_impl_cls()),
+                                                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/vllm_ascend/attention/attention_v1.py", line 86, in get_impl_cls
+    if enable_dcp():
+       ^^^^^^^^^^^^
+  File "/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/vllm_ascend/attention/utils.py", line 322, in enable_dcp
+    parallel_config = get_current_vllm_config().parallel_config
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/vllm/config/vllm.py", line 3349, in get_current_vllm_config
+    raise AssertionError(
+AssertionError: Current vLLM config is not set. This typically means get_current_vllm_config() was called outside of a set_current_vllm_config() context, or a CustomOp was instantiated at module import time or model forward time when config is not set. For tests that directly test custom ops/modules, use the 'default_vllm_config' pytest fixture from tests/conftest.py.
+[ERROR] 2026-11-02-22:07:00 (PID:2272409, Device:-1, RankID:-1) ERR99999 UNKNOWN applicaiton exception

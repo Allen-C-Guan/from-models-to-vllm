@@ -1,0 +1,109 @@
+{
+  "kind": "installed entry points and class introspection; no worker instance or model execution",
+  "probe_sha256": "9a6e144881d216e26b7930bfcd534e65269c0abefbe193fe60e1ecd618280f38",
+  "entry_points": [
+    {
+      "name": "vllm-ascend",
+      "group": "ms_service_metric.providers",
+      "value": "vllm_ascend.observability:get_metric_provider"
+    },
+    {
+      "name": "ascend_kv_connector",
+      "group": "vllm.general_plugins",
+      "value": "vllm_ascend:register_connector"
+    },
+    {
+      "name": "ascend_model",
+      "group": "vllm.general_plugins",
+      "value": "vllm_ascend:register_model"
+    },
+    {
+      "name": "ascend_model_loader",
+      "group": "vllm.general_plugins",
+      "value": "vllm_ascend:register_model_loader"
+    },
+    {
+      "name": "ascend_service_profiling",
+      "group": "vllm.general_plugins",
+      "value": "vllm_ascend:register_service_profiling"
+    },
+    {
+      "name": "ascend",
+      "group": "vllm.platform_plugins",
+      "value": "vllm_ascend:register"
+    }
+  ],
+  "platform": {
+    "class": "vllm_ascend.platform.NPUPlatform",
+    "mro": [
+      "vllm_ascend.platform.NPUPlatform",
+      "vllm.platforms.interface.Platform",
+      "builtins.object"
+    ],
+    "repo": "vllm-ascend",
+    "source": "vllm_ascend/platform.py",
+    "sha256": "1ffa999960bb178a1d9b95bf3240f8a0a9e3bb08558fe6e5233b10c2a676e476"
+  },
+  "worker": {
+    "class": "vllm_ascend.worker.worker.NPUWorker",
+    "mro": [
+      "vllm_ascend.worker.worker.NPUWorker",
+      "vllm.v1.worker.worker_base.WorkerBase",
+      "builtins.object"
+    ],
+    "repo": "vllm-ascend",
+    "source": "vllm_ascend/worker/worker.py",
+    "sha256": "9d938de914cb6a8c6366a11ec63b3d3487204bf3d216884e307650e2e2d0c608"
+  },
+  "runner": {
+    "class": "vllm_ascend.worker.v2.model_runner.NPUModelRunner",
+    "mro": [
+      "vllm_ascend.worker.v2.model_runner.NPUModelRunner",
+      "vllm.v1.worker.gpu.model_runner.GPUModelRunner",
+      "vllm.v1.worker.lora_model_runner_mixin.LoRAModelRunnerMixin",
+      "builtins.object"
+    ],
+    "repo": "vllm-ascend",
+    "source": "vllm_ascend/worker/v2/model_runner.py",
+    "sha256": "533986687a50caa40afe7d3610d5fd9fb7d64d0ef167d95fe2c656bf0a3ccec5"
+  },
+  "attention_backend": {
+    "class": "vllm_ascend.attention.attention_v1.AscendAttentionBackend",
+    "mro": [
+      "vllm_ascend.attention.attention_v1.AscendAttentionBackend",
+      "vllm.v1.attention.backend.AttentionBackend",
+      "abc.ABC",
+      "builtins.object"
+    ],
+    "repo": "vllm-ascend",
+    "source": "vllm_ascend/attention/attention_v1.py",
+    "sha256": "bea4e410f797557e29cedbb495024147606e74b0e056d725194760ca69296eba"
+  },
+  "attention_impl": {
+    "class": "vllm_ascend.attention.attention_v1.AscendAttentionBackendImpl",
+    "mro": [
+      "vllm_ascend.attention.attention_v1.AscendAttentionBackendImpl",
+      "vllm.v1.attention.backend.AttentionImpl",
+      "vllm.v1.attention.backend.AttentionImplBase",
+      "abc.ABC",
+      "typing.Generic",
+      "builtins.object"
+    ],
+    "repo": "vllm-ascend",
+    "source": "vllm_ascend/attention/attention_v1.py",
+    "sha256": "bea4e410f797557e29cedbb495024147606e74b0e056d725194760ca69296eba"
+  },
+  "attention_builder": {
+    "class": "vllm_ascend.attention.attention_v1.AscendAttentionMetadataBuilder",
+    "mro": [
+      "vllm_ascend.attention.attention_v1.AscendAttentionMetadataBuilder",
+      "vllm.v1.attention.backend.AttentionMetadataBuilder",
+      "abc.ABC",
+      "typing.Generic",
+      "builtins.object"
+    ],
+    "repo": "vllm-ascend",
+    "source": "vllm_ascend/attention/attention_v1.py",
+    "sha256": "bea4e410f797557e29cedbb495024147606e74b0e056d725194760ca69296eba"
+  }
+}

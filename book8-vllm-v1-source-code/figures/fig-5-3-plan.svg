@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="1008pt" height="612pt" viewBox="0 0 1008 612" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 612
+L 1008 612
+L 1008 0
+L 0 0
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="line2d_1">
+    <path d="M 190.8 309.6
+L 190.8 367.2
+" clip-path="url(#padf3ee390f)" style="fill: none; stroke: #7055a1; stroke-width: 1.7; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_2">
+    <path d="M 190.8 367.2
+L 504 367.2
+" clip-path="url(#padf3ee390f)" style="fill: none; stroke: #7055a1; stroke-width: 1.7; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_3">
+    <path d="M 817.2 309.6
+L 817.2 367.2
+" clip-path="url(#padf3ee390f)" style="fill: none; stroke: #7055a1; stroke-width: 1.7; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_4">
+    <path d="M 817.2 367.2
+L 504 367.2
+" clip-path="url(#padf3ee390f)" style="fill: none; stroke: #7055a1; stroke-width: 1.7; stroke-linecap: square"/>
+   </g>
+   <g id="patch_2">
+    <path d="M 56.88 122.4
+L 324.72 122.4
+Q 331.2 122.4 331.2 128.88
+L 331.2 303.12
+Q 331.2 309.6 324.72 309.6
+L 56.88 309.6
+Q 50.4 309.6 50.4 303.12
+L 50.4 128.88
+Q 50.4 122.4 56.88 122.4
+z
+" clip-path="url(#padf3ee390f)" style="fill: #edf5fc; stroke: #24659b; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 370.08 122.4
+L 637.92 122.4
+Q 644.4 122.4 644.4 128.88
+L 644.4 303.12
+Q 644.4 309.6 637.92 309.6
+L 370.08 309.6
+Q 363.6 309.6 363.6 303.12
+L 363.6 128.88
+Q 363.6 122.4 370.08 122.4
+z
+" clip-path="url(#padf3ee390f)" style="fill: #fff4e7; stroke: #b4611b; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 683.28 122.4
+L 951.12 122.4
+Q 957.6 122.4 957.6 128.88
+L 957.6 303.12
+Q 957.6 309.6 951.12 309.6
+L 683.28 309.6
+Q 676.8 309.6 676.8 303.12
+L 676.8 128.88
+Q 676.8 122.4 683.28 122.4
+z
+" clip-path="url(#padf3ee390f)" style="fill: #eaf6f0; stroke: #20775f; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 258.48 432
+L 749.52 432
+Q 756 432 756 438.48
+L 756 497.52
+Q 756 504 749.52 504
+L 258.48 504
+Q 252 504 252 497.52
+L 252 438.48
+Q 252 432 258.48 432
+z
+" clip-path="url(#padf3ee390f)" style="fill: #f3effa; stroke: #7055a1; stroke-width: 1.6; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 504 369.197314
+Q 504 399.600116 504 428.10226
+" clip-path="url(#padf3ee390f)" style="fill: none; stroke: #7055a1; stroke-width: 1.7; stroke-linecap: round"/>
+    <path d="M 506.8 422.50226
+L 504 428.10226
+L 501.2 422.50226
+z
+" clip-path="url(#padf3ee390f)" style="fill: #7055a1; stroke: #7055a1; stroke-width: 1.7; stroke-linecap: round"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 504 311.598413
+Q 504 370.797942 504 428.096813
+" clip-path="url(#padf3ee390f)" style="fill: none; stroke: #7055a1; stroke-width: 1.7; stroke-linecap: round"/>
+    <path d="M 506.8 422.496813
+L 504 428.096813
+L 501.2 422.496813
+z
+" clip-path="url(#padf3ee390f)" style="fill: #7055a1; stroke: #7055a1; stroke-width: 1.7; stroke-linecap: round"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 504 369.197314
+Q 504 399.600116 504 428.10226
+" clip-path="url(#padf3ee390f)" style="fill: none; stroke: #7055a1; stroke-width: 1.7; stroke-linecap: round"/>
+    <path d="M 506.8 422.50226
+L 504 428.10226
+L 501.2 422.50226
+z
+" clip-path="url(#padf3ee390f)" style="fill: #7055a1; stroke: #7055a1; stroke-width: 1.7; stroke-linecap: round"/>
+   </g>
+   <g id="text_1">
+    <text style="font-size: 23px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: start; fill: #1e293b" x="28.8" y="32.236563" transform="rotate(-0 28.8 32.236563)">图 5.3  SchedulerOutput 是一份执行协议</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: start; fill: #586575" x="28.8" y="59.038125" transform="rotate(-0 28.8 59.038125)">缓存请求表示执行侧已经认识它；这与 prompt 是否命中前缀缓存是两件事。</text>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: start; fill: #586575" x="28.8" y="594.833438" transform="rotate(-0 28.8 594.833438)">依据 vLLM v0.30.0 源码；中文教学图。颜色：蓝＝前端，橙＝核心，紫＝执行，绿＝结果／资源。</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 17px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #24659b" x="190.8" y="183.378438" transform="rotate(-0 190.8 183.378438)">scheduled_new_reqs</text>
+   </g>
+   <g id="text_5">
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; fill: #1e293b" transform="translate(98.104687 226.245)">首次接纳的 NewRequestData</text>
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; fill: #1e293b" transform="translate(130.235781 246.908125)">prompt_token_ids</text>
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; fill: #1e293b" transform="translate(132.322656 267.761563)">sampling_params</text>
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; fill: #1e293b" transform="translate(74.073906 288.908125)">block_ids · num_computed_tokens</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 17px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #b4611b" x="504" y="183.378438" transform="rotate(-0 504 183.378438)">scheduled_cached_reqs</text>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; fill: #1e293b" transform="translate(401.448906 226.245)">已知请求的 CachedRequestData</text>
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; fill: #1e293b" transform="translate(423.469375 246.908125)">req_ids · new_block_ids</text>
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; fill: #1e293b" transform="translate(425.781563 267.908125)">num_computed_tokens</text>
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; fill: #1e293b" transform="translate(436.889687 288.908125)">num_output_tokens</text>
+   </g>
+   <g id="text_8">
+    <text style="font-size: 17px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #20775f" x="817.2" y="184.986797" transform="rotate(-0 817.2 184.986797)">本轮工作与生命周期</text>
+   </g>
+   <g id="text_9">
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; fill: #1e293b" transform="translate(738.678594 226.531563)">num_scheduled_tokens</text>
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; fill: #1e293b" transform="translate(719.722812 247.531563)">total_num_scheduled_tokens</text>
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; fill: #1e293b" transform="translate(762.83625 268)">finished_req_ids</text>
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; fill: #1e293b" transform="translate(726.2 290.253438)">以及启用功能所需的其他字段</text>
+   </g>
+   <g id="text_10">
+    <text style="font-size: 17px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #7055a1" x="504" y="459.864766" transform="rotate(-0 504 459.864766)">执行层据此更新本地状态，再构造当步输入</text>
+   </g>
+   <g id="text_11">
+    <text style="font-size: 14px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle; fill: #1e293b" x="504" y="487.622656" transform="rotate(-0 504 487.622656)">请求状态可跨轮保留；计算批次每轮变化。</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="padf3ee390f">
+   <rect x="0" y="0" width="1008" height="612"/>
+  </clipPath>
+ </defs>
+</svg>

@@ -1,0 +1,7 @@
+{
+  "unmanaged_conflict": "refused before any writes",
+  "managed_modified_conflict": "refused and content retained",
+  "idempotent_sync": "passed",
+  "unmanaged_extra_file": "preserved",
+  "validation": "28 chapters, 4 appendices, 265 local links, 33 reader documents"
+}

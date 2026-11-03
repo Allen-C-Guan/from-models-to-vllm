@@ -1,0 +1,82 @@
+INFO 11-02 19:20:53 [__init__.py:52] Available plugins for group vllm.platform_plugins:
+INFO 11-02 19:20:53 [__init__.py:54] - ascend -> vllm_ascend:register
+INFO 11-02 19:20:53 [__init__.py:57] All plugins in this group will be loaded. Set `VLLM_PLUGINS` to control which plugins to load.
+/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/triton/language/extra/cann/extension/math_ops.py:13: FutureWarning: triton.language.extra.cann.extension.atan2 is deprecated and will be removed in the next release; use triton.language.extra.cann.libdevice.atan2 instead.
+  @_deprecated(replacement="triton.language.extra.cann.libdevice.atan2")
+/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/triton/language/extra/cann/extension/math_ops.py:35: FutureWarning: triton.language.extra.cann.extension.isfinited is deprecated and will be removed in the next release; use triton.language.extra.cann.libdevice.isfinited instead.
+  @_deprecated(replacement="triton.language.extra.cann.libdevice.isfinited")
+/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/triton/language/extra/cann/extension/math_ops.py:49: FutureWarning: triton.language.extra.cann.extension.finitef is deprecated and will be removed in the next release; use triton.language.extra.cann.libdevice.finitef instead.
+  @_deprecated(replacement="triton.language.extra.cann.libdevice.finitef")
+INFO 11-02 19:20:53 [__init__.py:272] Platform plugin ascend is activated
+INFO 11-02 19:20:54 [platform.py:74] Breakable CUDAGraph on Ascend is opt-in; using VLLM_USE_BREAKABLE_CUDAGRAPH=0.
+INFO 11-02 19:21:03 [patch_indexer_kv_dtype.py:102] Patched AttentionConfig.indexer_kv_dtype to accept 'int8' (DeepSeek V4 Ascend indexer K cache dtype).
+INFO 11-02 19:21:03 [patch_kv_cache_dtype.py:117] Patched CacheConfig.cache_dtype to accept 'int8' and 'mxfp8' (Ascend KV cache dtypes).
+INFO 11-02 19:21:03 [__init__.py:112] Registered model loader `<class 'vllm_ascend.model_loader.netloader.netloader.ModelNetLoaderElastic'>` with load format `netloader`
+INFO 11-02 19:21:03 [__init__.py:112] Registered model loader `<class 'vllm_ascend.model_loader.rfork.rfork_loader.RForkModelLoader'>` with load format `rfork`
+INFO 11-02 19:21:03 [api_utils.py:286] non-default args: {'tokenizer': '/home/g00594152/vllm/model_analysis_project/log/huggingface/hub/models--Qwen--Qwen3-0.6B/snapshots/c1899de289a04d12100db370d81485cdf75e47ca', 'dtype': 'bfloat16', 'max_model_len': 128, 'eplb_config': EPLBConfig(window_size=1000, step_interval=3000, num_redundant_experts=0, log_balancedness=False, log_balancedness_interval=1, use_async=True, policy='default', communicator=None), 'enable_prefix_caching': False, 'gpu_memory_utilization': 0.15, 'kv_cache_memory_bytes': 67108864, 'max_num_batched_tokens': 32, 'max_num_seqs': 4, 'disable_log_stats': True, 'enforce_eager': True, 'enable_chunked_prefill': True, 'async_scheduling': False, 'model': '/home/g00594152/vllm/model_analysis_project/log/huggingface/hub/models--Qwen--Qwen3-0.6B/snapshots/c1899de289a04d12100db370d81485cdf75e47ca'}
+WARNING 11-02 19:21:03 [indexer_topk.py:29] Failed to import the DeepSelect extension (vllm._deepselect_C): libcudart.so.13: cannot open shared object file: No such file or directory
+WARNING 11-02 19:21:04 [arg_utils.py:1812] The global random seed is set to 0. Since VLLM_ENABLE_V1_MULTIPROCESSING is set to False, this may affect the random state of the Python process that launched vLLM.
+INFO 11-02 19:21:04 [model.py:692] Resolved architecture: Qwen3ForCausalLM
+INFO 11-02 19:21:04 [model.py:2030] Using max model len 128
+INFO 11-02 19:21:04 [scheduler.py:288] Chunked prefill is enabled with max_num_batched_tokens=32.
+WARNING 11-02 19:21:04 [vllm.py:1547] Enforce eager set, disabling torch.compile and CUDAGraphs. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none
+WARNING 11-02 19:21:04 [vllm.py:1570] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+INFO 11-02 19:21:04 [kernel.py:416] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'], gelu_and_mul_sparse=['native'])
+INFO 11-02 19:21:04 [vllm.py:1780] Cudagraph is disabled under eager mode
+INFO 11-02 19:21:04 [utils.py:225] No quantization signature detected from model files for "/home/g00594152/vllm/model_analysis_project/log/huggingface/hub/models--Qwen--Qwen3-0.6B/snapshots/c1899de289a04d12100db370d81485cdf75e47ca". The model will be loaded as float. To force a quantization method, pass "--quantization <method>" explicitly.
+WARNING 11-02 19:21:04 [platform.py:731] GPU-specific parameter is not supported on Ascend. parameter=disable_cascade_attn, value=True, action: resetting to False.
+INFO 11-02 19:21:04 [platform.py:945] The timeout interval of the HCCL operator is 1836s. Timeout in seconds for execute_model RPC calls in multiprocessing must be greater than 1836s, Set VLLM_EXECUTE_MODEL_TIMEOUT_SECONDS=3000
+INFO 11-02 19:21:04 [ascend_config.py:332] Dynamic EPLB is False
+INFO 11-02 19:21:04 [ascend_config.py:333] The number of redundant experts is 0
+INFO 11-02 19:21:04 [ascend_config.py:769] FlashComm1 is disabled. Using flashinfer_all2allv as the all2all backend.
+INFO 11-02 19:21:04 [platform.py:1219] Compilation disabled, using eager mode by default
+INFO 11-02 19:21:04 [utils.py:1538] Block size is set to 128 if prefix cache or chunked prefill is enabled.
+INFO 11-02 19:21:04 [platform.py:1464] Set PYTORCH_NPU_ALLOC_CONF=expandable_segments:True
+INFO 11-02 19:21:04 [compilation.py:336] Enabled custom fusions: norm_quant, act_quant
+INFO 11-02 19:21:08 [core.py:123] Initializing a V1 LLM engine (v0.30.0) with config: model='/home/g00594152/vllm/model_analysis_project/log/huggingface/hub/models--Qwen--Qwen3-0.6B/snapshots/c1899de289a04d12100db370d81485cdf75e47ca', speculative_config=None, tokenizer='/home/g00594152/vllm/model_analysis_project/log/huggingface/hub/models--Qwen--Qwen3-0.6B/snapshots/c1899de289a04d12100db370d81485cdf75e47ca', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=False, dtype=torch.bfloat16, max_seq_len=128, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=True, quantization=None, quantization_config=None, enforce_eager=True, enable_return_routed_experts=False, kv_cache_dtype=auto, device_config=npu, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, per_request_spec_decode_metrics='none', kv_cache_metrics=False, kv_cache_metrics_sample=0.01, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False, jit_monitor_mode='warn', jit_monitor_verbose=False), seed=0, served_model_name=/home/g00594152/vllm/model_analysis_project/log/huggingface/hub/models--Qwen--Qwen3-0.6B/snapshots/c1899de289a04d12100db370d81485cdf75e47ca, enable_prefix_caching=False, enable_chunked_prefill=True, pooler_config=None, compilation_config={'mode': <CompilationMode.NONE: 0>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'vllm_ascend.compilation.compiler_interface.AscendCompiler', 'custom_ops': ['all'], 'ir_enable_torch_wrap': False, 'splitting_ops': [], 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'compile_sizes': [], 'compile_ranges_endpoints': [32], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'size_asserts': False, 'alignment_asserts': False, 'scalar_asserts': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.NONE: 0>, 'cudagraph_num_of_warmups': 1, 'cudagraph_capture_sizes': [], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': True, 'fuse_act_quant': True, 'fuse_attn_quant': False, 'enable_sp': False, 'fuse_gemm_comms': False, 'fuse_allreduce_rms': False, 'enable_qk_norm_rope_fusion': False, 'fuse_rope_kvcache_cat_mla': False, 'fuse_act_padding': False, 'fuse_qk_norm_rope_kvcache': False}, 'max_cudagraph_capture_size': 0, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': True, 'static_all_moe_layers': []}, kernel_config=KernelConfig(ir_op_priority=IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'], gelu_and_mul_sparse=['native']), enable_flashinfer_autotune=True, enable_cutedsl_warmup=True, enable_jit_warmup=True, moe_backend='auto', sparse_indexer_topk_backend='auto', linear_backend='auto', linear_backend_per_quant=None)
+WARNING 11-02 19:21:11 [patch_triton.py:332] NPU Triton causal_conv1d_update is unavailable (cannot import name 'causal_conv1d_update_npu' from 'vllm_ascend.ops.triton.mamba.causal_conv1d' (/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/vllm_ascend/ops/triton/mamba/causal_conv1d.py)); falling back to the PyTorch implementation, which syncs per request and therefore stalls ACL graph capture at decode-FULL.
+INFO 11-02 19:21:13 [parallel_state.py:1827] world_size=1 rank=0 local_rank=0 distributed_init_method=file:///tmp/vllm_dist_c7a68dec1ed94512b98199731db3d94c backend=hccl
+[rank0]:[W1102 19:21:13.795794310 ProcessGroupGloo.cpp:511] Warning: Unable to resolve hostname to a (local) address. Using the loopback address as fallback. Manually set the network interface to bind to with GLOO_SOCKET_IFNAME. (function operator())
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+INFO 11-02 19:21:13 [parallel_state.py:2267] rank 0 in world size 1 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, ETP rank 0, EP rank N/A, EPLB rank N/A
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+WARNING 11-02 19:21:13 [worker.py:511] npu model runner v2 is in developing, some features doesn't work for now.
+INFO 11-02 19:21:13 [utils.py:171] Wrapping torch.cuda with torch.npu.
+[rank0]:[W1102 19:21:13.092292660 NPUCachingAllocator.cpp:204] Warning: The current CANN and HDK(driver) versions require processing for 32 padding size, with memory allocation. (function operator())
+INFO 11-02 19:21:13 [ascend_config.py:332] Dynamic EPLB is False
+INFO 11-02 19:21:13 [ascend_config.py:333] The number of redundant experts is 0
+INFO 11-02 19:21:14 [model_runner.py:396] Loading model from scratch...
+INFO 11-02 19:21:14 [platform.py:1487] FA3 will not be enabled when rl_config.enable_training_consistency is false. Note that Ascend NPU will use its registered plugin backend instead.
+INFO 11-02 19:21:14 [weight_utils.py:895] Filesystem type for checkpoints: EXT4. Checkpoint size: 1.40 GiB. Available RAM: 1884.67 GiB.
+INFO 11-02 19:21:14 [weight_utils.py:918] Auto-prefetch is disabled because the filesystem (EXT4) is not a recognized network FS (NFS/Lustre). If you want to force prefetching, start vLLM with --safetensors-load-strategy=prefetch.
+Loading safetensors checkpoint shards:   0% Completed | 0/1 [00:00<?, ?it/s]
+Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:00<00:00,  5.89it/s]
+Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:00<00:00,  5.88it/s]
+
+INFO 11-02 19:21:14 [default_loader.py:430] Loading weights took 0.20 seconds
+INFO 11-02 19:21:16 [model_runner.py:428] Model loading took 1.14 GiB memory and 2.039972 seconds
+INFO 11-02 19:21:16 [interface.py:635] Setting kv cache block size to 128 for CUSTOM backend.
+INFO 11-02 19:21:16 [utils.py:320] Using LBNHC KV cache layout.
+INFO 11-02 19:21:17 [worker.py:584] Initial free memory 60.58 GiB, reserved 0.06 GiB for KV Cache as specified by kv_cache_memory_bytes, skipping memory profiling. This does not respect the gpu_memory_utilization config. Only use kv_cache_memory_bytes when you want manual control of KV cache memory size. If OOM'ed, check the difference of initial free memory between the current run and the previous run where kv_cache_memory_bytes is suggested and update it correspondingly.
+INFO 11-02 19:21:17 [kv_cache_utils.py:2395] NPU KV cache size: 512 tokens, Maximum concurrency for 128 tokens per request: 4.00x
+INFO 11-02 19:21:17 [model_runner.py:539] Speculative CPU length synchronization bypass enabled: False
+INFO 11-02 19:21:17 [kernel_warmup.py:44] Starting Triton kernel warmup.
+INFO 11-02 19:21:17 [kernel_warmup.py:36] rejection_sampler Triton warmup complete in 0.000s.
+INFO 11-02 19:21:17 [kernel_warmup.py:36] penalties Triton warmup complete in 0.033s.
+INFO 11-02 19:21:17 [kernel_warmup.py:36] rms Triton warmup complete in 0.000s.
+INFO 11-02 19:21:17 [kernel_warmup.py:36] indexer Triton warmup complete in 0.000s.
+INFO 11-02 19:21:17 [kernel_warmup.py:53] Triton kernel warmup finished in 0.034s.
+INFO 11-02 19:21:19 [cpu_binding.py:539] [cpu_bind_mode] mode=topo_affinity rank=0 visible_npus=[0]
+INFO 11-02 19:21:19 [cpu_binding.py:623] The CPU allocation plan is as follows:
+INFO 11-02 19:21:19 [cpu_binding.py:637] NPU0: main=[194 195 196 197 198 199 200 201 202 203 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221]  acl=[222]  release=[[223]]
+INFO 11-02 19:21:19 [cpu_binding.py:648] The 'migratepages' command is not available, skipping memory binding.
+INFO 11-02 19:21:20 [cpu_binding.py:770] NPU0(PCI 0000:c1:00.0): sq_send_trigger_irq IRQ_ID=3379 -> CPU192, cq_update_irq IRQ_ID=3380 -> CPU193
+INFO 11-02 19:21:20 [core.py:379] init engine (profile, create kv cache, warmup model) took 4.54 s
+INFO 11-02 19:21:21 [hf.py:642] Detected the chat template content format to be 'string'. You can set `--chat-template-content-format` to override this.
+{"out": "/home/g00594152/vllm/model_analysis_project/log/book8-source-rewrite/baseline-inproc-traced", "steps": 3, "outputs": {"A": {"type": "vllm.outputs.RequestOutput", "request_id": "A", "prompt": "The capital of France is", "prompt_token_ids": [785, 6722, 315, 9625, 374], "outputs": [{"type": "vllm.outputs.CompletionOutput", "index": 0, "text": " Paris.", "token_ids": [12095, 13], "cumulative_logprob": null, "logprobs": null, "routed_experts": null, "finish_reason": "length", "stop_reason": null, "lora_request": null, "sampling_mask": null, "spec_decode_metrics": null}], "finished": true}, "B": {"type": "vllm.outputs.RequestOutput", "request_id": "B", "prompt": "The largest ocean on Earth is", "prompt_token_ids": [785, 7772, 17951, 389, 9237, 374], "outputs": [{"type": "vllm.outputs.CompletionOutput", "index": 0, "text": " the Pacific Ocean", "token_ids": [279, 16462, 21575], "cumulative_logprob": null, "logprobs": null, "routed_experts": null, "finish_reason": "length", "stop_reason": null, "lora_request": null, "sampling_mask": null, "spec_decode_metrics": null}], "finished": true}}}
+WARNING 11-02 19:21:22 [parallel_state.py:2469] torch.accelerator.empty_host_cache() only available in Pytorch >=2.9

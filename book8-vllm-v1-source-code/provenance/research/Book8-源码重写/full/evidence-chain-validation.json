@@ -1,0 +1,1187 @@
+{
+  "records": 34,
+  "hash_checks": 236,
+  "checks": [
+    {
+      "origin": "async-frontend/manifest.json/probe_sha256",
+      "file": "code/Book8-vLLM源码剖析/observe_async_frontend.py",
+      "sha256": "cc0f89f02eacbbe69764fa9f4c5d283035dbbde19e722a10d91cef79eb9f89db"
+    },
+    {
+      "origin": "async-frontend/manifest.json/methods/generate/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/async_llm.py",
+      "sha256": "52cbf404f1dbc99c6bebf4a50a7eb18ff842a1f53106a45f365523192d816be1"
+    },
+    {
+      "origin": "async-frontend/manifest.json/methods/generate/fixed",
+      "file": "repos/vllm/vllm/v1/engine/async_llm.py",
+      "sha256": "52cbf404f1dbc99c6bebf4a50a7eb18ff842a1f53106a45f365523192d816be1"
+    },
+    {
+      "origin": "async-frontend/manifest.json/methods/abort/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/async_llm.py",
+      "sha256": "52cbf404f1dbc99c6bebf4a50a7eb18ff842a1f53106a45f365523192d816be1"
+    },
+    {
+      "origin": "async-frontend/manifest.json/methods/abort/fixed",
+      "file": "repos/vllm/vllm/v1/engine/async_llm.py",
+      "sha256": "52cbf404f1dbc99c6bebf4a50a7eb18ff842a1f53106a45f365523192d816be1"
+    },
+    {
+      "origin": "async-frontend/projection.json/events",
+      "file": "drafts/Book8-vLLM源码剖析/evidence/async-frontend/events.jsonl",
+      "sha256": "0c728f94e4f6ae3ffd132653e5365ecc9443069403ef2bcadcf85ae5e825e96c"
+    },
+    {
+      "origin": "baseline-inproc-plain/manifest.json/probe_sha256",
+      "file": "code/Book8-vLLM源码剖析/observe_requests.py",
+      "sha256": "c7cba56b7077d517ff8acdecd7e18080cb62b91e3da972514c3e5794857e7c25"
+    },
+    {
+      "origin": "baseline-inproc-plain/manifest.json/effective/core_step/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "baseline-inproc-plain/manifest.json/effective/core_step/fixed",
+      "file": "repos/vllm/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "baseline-inproc-plain/manifest.json/effective/runner_execute/installed",
+      "file": "env/lib/python3.11/site-packages/vllm_ascend/worker/v2/model_runner.py",
+      "sha256": "533986687a50caa40afe7d3610d5fd9fb7d64d0ef167d95fe2c656bf0a3ccec5"
+    },
+    {
+      "origin": "baseline-inproc-plain/manifest.json/effective/runner_execute/fixed",
+      "file": "repos/vllm-ascend/vllm_ascend/worker/v2/model_runner.py",
+      "sha256": "533986687a50caa40afe7d3610d5fd9fb7d64d0ef167d95fe2c656bf0a3ccec5"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/probe_sha256",
+      "file": "code/Book8-vLLM源码剖析/observe_requests.py",
+      "sha256": "c7cba56b7077d517ff8acdecd7e18080cb62b91e3da972514c3e5794857e7c25"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/effective/core_step/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/effective/core_step/fixed",
+      "file": "repos/vllm/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/effective/runner_execute/installed",
+      "file": "env/lib/python3.11/site-packages/vllm_ascend/worker/v2/model_runner.py",
+      "sha256": "533986687a50caa40afe7d3610d5fd9fb7d64d0ef167d95fe2c656bf0a3ccec5"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/effective/runner_execute/fixed",
+      "file": "repos/vllm-ascend/vllm_ascend/worker/v2/model_runner.py",
+      "sha256": "533986687a50caa40afe7d3610d5fd9fb7d64d0ef167d95fe2c656bf0a3ccec5"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm.v1.engine.input_processor.InputProcessor.process_inputs/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/input_processor.py",
+      "sha256": "c8abd8e4e14d99929d45a7ff3b2a74898269c5e2a7fa30b826623ee85e4ce813"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm.v1.engine.input_processor.InputProcessor.process_inputs/fixed",
+      "file": "repos/vllm/vllm/v1/engine/input_processor.py",
+      "sha256": "c8abd8e4e14d99929d45a7ff3b2a74898269c5e2a7fa30b826623ee85e4ce813"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm.v1.engine.input_processor.InputProcessor.assign_request_id/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/input_processor.py",
+      "sha256": "c8abd8e4e14d99929d45a7ff3b2a74898269c5e2a7fa30b826623ee85e4ce813"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm.v1.engine.input_processor.InputProcessor.assign_request_id/fixed",
+      "file": "repos/vllm/vllm/v1/engine/input_processor.py",
+      "sha256": "c8abd8e4e14d99929d45a7ff3b2a74898269c5e2a7fa30b826623ee85e4ce813"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm.v1.engine.output_processor.OutputProcessor.add_request/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/output_processor.py",
+      "sha256": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm.v1.engine.output_processor.OutputProcessor.add_request/fixed",
+      "file": "repos/vllm/vllm/v1/engine/output_processor.py",
+      "sha256": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm.v1.engine.output_processor.OutputProcessor.process_outputs/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/output_processor.py",
+      "sha256": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm.v1.engine.output_processor.OutputProcessor.process_outputs/fixed",
+      "file": "repos/vllm/vllm/v1/engine/output_processor.py",
+      "sha256": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm.v1.engine.core_client.InprocClient.add_request/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/core_client.py",
+      "sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm.v1.engine.core_client.InprocClient.add_request/fixed",
+      "file": "repos/vllm/vllm/v1/engine/core_client.py",
+      "sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm.v1.engine.core_client.InprocClient.get_output/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/core_client.py",
+      "sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm.v1.engine.core_client.InprocClient.get_output/fixed",
+      "file": "repos/vllm/vllm/v1/engine/core_client.py",
+      "sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm.v1.engine.core.EngineCore.preprocess_add_request/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm.v1.engine.core.EngineCore.preprocess_add_request/fixed",
+      "file": "repos/vllm/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm.v1.engine.core.EngineCore.add_request/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm.v1.engine.core.EngineCore.add_request/fixed",
+      "file": "repos/vllm/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm.v1.engine.core.EngineCore.step_fn/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm.v1.engine.core.EngineCore.step_fn/fixed",
+      "file": "repos/vllm/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm_ascend.patch.platform.patch_balance_schedule.BalanceScheduler.schedule/installed",
+      "file": "env/lib/python3.11/site-packages/vllm_ascend/patch/platform/patch_balance_schedule.py",
+      "sha256": "190626c663c03ff98f32a6edab7b279fd64dce4ad81900de614fc291c7dd618e"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm_ascend.patch.platform.patch_balance_schedule.BalanceScheduler.schedule/fixed",
+      "file": "repos/vllm-ascend/vllm_ascend/patch/platform/patch_balance_schedule.py",
+      "sha256": "190626c663c03ff98f32a6edab7b279fd64dce4ad81900de614fc291c7dd618e"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm_ascend.patch.platform.patch_balance_schedule.BalanceScheduler.update_from_output/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/core/sched/scheduler.py",
+      "sha256": "c1db45f3bbad3a875dd8638331b8870c4380ac1ab4734265ba5c863833a82884"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm_ascend.patch.platform.patch_balance_schedule.BalanceScheduler.update_from_output/fixed",
+      "file": "repos/vllm/vllm/v1/core/sched/scheduler.py",
+      "sha256": "c1db45f3bbad3a875dd8638331b8870c4380ac1ab4734265ba5c863833a82884"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm.v1.core.kv_cache_manager.KVCacheManager.allocate_slots/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/core/kv_cache_manager.py",
+      "sha256": "58800535eda854580d84e1025bf32fe01b2a43ce0bba501b4f3d125e4f2c8afa"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm.v1.core.kv_cache_manager.KVCacheManager.allocate_slots/fixed",
+      "file": "repos/vllm/vllm/v1/core/kv_cache_manager.py",
+      "sha256": "58800535eda854580d84e1025bf32fe01b2a43ce0bba501b4f3d125e4f2c8afa"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm.v1.core.kv_cache_manager.KVCacheManager.free/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/core/kv_cache_manager.py",
+      "sha256": "58800535eda854580d84e1025bf32fe01b2a43ce0bba501b4f3d125e4f2c8afa"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm.v1.core.kv_cache_manager.KVCacheManager.free/fixed",
+      "file": "repos/vllm/vllm/v1/core/kv_cache_manager.py",
+      "sha256": "58800535eda854580d84e1025bf32fe01b2a43ce0bba501b4f3d125e4f2c8afa"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm.v1.executor.uniproc_executor.UniProcExecutor.execute_model/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/executor/uniproc_executor.py",
+      "sha256": "3cb039b80fe9b03dc1122f93c1f8a4098ef1355104b317ff6df25358f4349494"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm.v1.executor.uniproc_executor.UniProcExecutor.execute_model/fixed",
+      "file": "repos/vllm/vllm/v1/executor/uniproc_executor.py",
+      "sha256": "3cb039b80fe9b03dc1122f93c1f8a4098ef1355104b317ff6df25358f4349494"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm.v1.executor.uniproc_executor.UniProcExecutor.sample_tokens/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/executor/uniproc_executor.py",
+      "sha256": "3cb039b80fe9b03dc1122f93c1f8a4098ef1355104b317ff6df25358f4349494"
+    },
+    {
+      "origin": "baseline-inproc-traced/manifest.json/methods/vllm.v1.executor.uniproc_executor.UniProcExecutor.sample_tokens/fixed",
+      "file": "repos/vllm/vllm/v1/executor/uniproc_executor.py",
+      "sha256": "3cb039b80fe9b03dc1122f93c1f8a4098ef1355104b317ff6df25358f4349494"
+    },
+    {
+      "origin": "baseline-mp-traced/manifest.json/probe_sha256",
+      "file": "code/Book8-vLLM源码剖析/observe_requests.py",
+      "sha256": "c7cba56b7077d517ff8acdecd7e18080cb62b91e3da972514c3e5794857e7c25"
+    },
+    {
+      "origin": "baseline-mp-traced/manifest.json/methods/vllm.v1.engine.input_processor.InputProcessor.process_inputs/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/input_processor.py",
+      "sha256": "c8abd8e4e14d99929d45a7ff3b2a74898269c5e2a7fa30b826623ee85e4ce813"
+    },
+    {
+      "origin": "baseline-mp-traced/manifest.json/methods/vllm.v1.engine.input_processor.InputProcessor.process_inputs/fixed",
+      "file": "repos/vllm/vllm/v1/engine/input_processor.py",
+      "sha256": "c8abd8e4e14d99929d45a7ff3b2a74898269c5e2a7fa30b826623ee85e4ce813"
+    },
+    {
+      "origin": "baseline-mp-traced/manifest.json/methods/vllm.v1.engine.input_processor.InputProcessor.assign_request_id/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/input_processor.py",
+      "sha256": "c8abd8e4e14d99929d45a7ff3b2a74898269c5e2a7fa30b826623ee85e4ce813"
+    },
+    {
+      "origin": "baseline-mp-traced/manifest.json/methods/vllm.v1.engine.input_processor.InputProcessor.assign_request_id/fixed",
+      "file": "repos/vllm/vllm/v1/engine/input_processor.py",
+      "sha256": "c8abd8e4e14d99929d45a7ff3b2a74898269c5e2a7fa30b826623ee85e4ce813"
+    },
+    {
+      "origin": "baseline-mp-traced/manifest.json/methods/vllm.v1.engine.output_processor.OutputProcessor.add_request/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/output_processor.py",
+      "sha256": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329"
+    },
+    {
+      "origin": "baseline-mp-traced/manifest.json/methods/vllm.v1.engine.output_processor.OutputProcessor.add_request/fixed",
+      "file": "repos/vllm/vllm/v1/engine/output_processor.py",
+      "sha256": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329"
+    },
+    {
+      "origin": "baseline-mp-traced/manifest.json/methods/vllm.v1.engine.output_processor.OutputProcessor.process_outputs/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/output_processor.py",
+      "sha256": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329"
+    },
+    {
+      "origin": "baseline-mp-traced/manifest.json/methods/vllm.v1.engine.output_processor.OutputProcessor.process_outputs/fixed",
+      "file": "repos/vllm/vllm/v1/engine/output_processor.py",
+      "sha256": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329"
+    },
+    {
+      "origin": "baseline-mp-traced/manifest.json/methods/vllm.v1.engine.core_client.SyncMPClient.add_request/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/core_client.py",
+      "sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8"
+    },
+    {
+      "origin": "baseline-mp-traced/manifest.json/methods/vllm.v1.engine.core_client.SyncMPClient.add_request/fixed",
+      "file": "repos/vllm/vllm/v1/engine/core_client.py",
+      "sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8"
+    },
+    {
+      "origin": "baseline-mp-traced/manifest.json/methods/vllm.v1.engine.core_client.SyncMPClient.get_output/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/core_client.py",
+      "sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8"
+    },
+    {
+      "origin": "baseline-mp-traced/manifest.json/methods/vllm.v1.engine.core_client.SyncMPClient.get_output/fixed",
+      "file": "repos/vllm/vllm/v1/engine/core_client.py",
+      "sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/probe_sha256",
+      "file": "code/Book8-vLLM源码剖析/observe_requests.py",
+      "sha256": "c7cba56b7077d517ff8acdecd7e18080cb62b91e3da972514c3e5794857e7c25"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/effective/core_step/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/effective/core_step/fixed",
+      "file": "repos/vllm/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/effective/runner_execute/installed",
+      "file": "env/lib/python3.11/site-packages/vllm_ascend/worker/v2/model_runner.py",
+      "sha256": "533986687a50caa40afe7d3610d5fd9fb7d64d0ef167d95fe2c656bf0a3ccec5"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/effective/runner_execute/fixed",
+      "file": "repos/vllm-ascend/vllm_ascend/worker/v2/model_runner.py",
+      "sha256": "533986687a50caa40afe7d3610d5fd9fb7d64d0ef167d95fe2c656bf0a3ccec5"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm.v1.engine.input_processor.InputProcessor.process_inputs/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/input_processor.py",
+      "sha256": "c8abd8e4e14d99929d45a7ff3b2a74898269c5e2a7fa30b826623ee85e4ce813"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm.v1.engine.input_processor.InputProcessor.process_inputs/fixed",
+      "file": "repos/vllm/vllm/v1/engine/input_processor.py",
+      "sha256": "c8abd8e4e14d99929d45a7ff3b2a74898269c5e2a7fa30b826623ee85e4ce813"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm.v1.engine.input_processor.InputProcessor.assign_request_id/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/input_processor.py",
+      "sha256": "c8abd8e4e14d99929d45a7ff3b2a74898269c5e2a7fa30b826623ee85e4ce813"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm.v1.engine.input_processor.InputProcessor.assign_request_id/fixed",
+      "file": "repos/vllm/vllm/v1/engine/input_processor.py",
+      "sha256": "c8abd8e4e14d99929d45a7ff3b2a74898269c5e2a7fa30b826623ee85e4ce813"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm.v1.engine.output_processor.OutputProcessor.add_request/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/output_processor.py",
+      "sha256": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm.v1.engine.output_processor.OutputProcessor.add_request/fixed",
+      "file": "repos/vllm/vllm/v1/engine/output_processor.py",
+      "sha256": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm.v1.engine.output_processor.OutputProcessor.process_outputs/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/output_processor.py",
+      "sha256": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm.v1.engine.output_processor.OutputProcessor.process_outputs/fixed",
+      "file": "repos/vllm/vllm/v1/engine/output_processor.py",
+      "sha256": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm.v1.engine.core_client.InprocClient.add_request/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/core_client.py",
+      "sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm.v1.engine.core_client.InprocClient.add_request/fixed",
+      "file": "repos/vllm/vllm/v1/engine/core_client.py",
+      "sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm.v1.engine.core_client.InprocClient.get_output/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/core_client.py",
+      "sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm.v1.engine.core_client.InprocClient.get_output/fixed",
+      "file": "repos/vllm/vllm/v1/engine/core_client.py",
+      "sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm.v1.engine.core.EngineCore.preprocess_add_request/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm.v1.engine.core.EngineCore.preprocess_add_request/fixed",
+      "file": "repos/vllm/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm.v1.engine.core.EngineCore.add_request/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm.v1.engine.core.EngineCore.add_request/fixed",
+      "file": "repos/vllm/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm.v1.engine.core.EngineCore.step_fn/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm.v1.engine.core.EngineCore.step_fn/fixed",
+      "file": "repos/vllm/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm_ascend.patch.platform.patch_balance_schedule.BalanceScheduler.schedule/installed",
+      "file": "env/lib/python3.11/site-packages/vllm_ascend/patch/platform/patch_balance_schedule.py",
+      "sha256": "190626c663c03ff98f32a6edab7b279fd64dce4ad81900de614fc291c7dd618e"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm_ascend.patch.platform.patch_balance_schedule.BalanceScheduler.schedule/fixed",
+      "file": "repos/vllm-ascend/vllm_ascend/patch/platform/patch_balance_schedule.py",
+      "sha256": "190626c663c03ff98f32a6edab7b279fd64dce4ad81900de614fc291c7dd618e"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm_ascend.patch.platform.patch_balance_schedule.BalanceScheduler.update_from_output/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/core/sched/scheduler.py",
+      "sha256": "c1db45f3bbad3a875dd8638331b8870c4380ac1ab4734265ba5c863833a82884"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm_ascend.patch.platform.patch_balance_schedule.BalanceScheduler.update_from_output/fixed",
+      "file": "repos/vllm/vllm/v1/core/sched/scheduler.py",
+      "sha256": "c1db45f3bbad3a875dd8638331b8870c4380ac1ab4734265ba5c863833a82884"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm.v1.core.kv_cache_manager.KVCacheManager.allocate_slots/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/core/kv_cache_manager.py",
+      "sha256": "58800535eda854580d84e1025bf32fe01b2a43ce0bba501b4f3d125e4f2c8afa"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm.v1.core.kv_cache_manager.KVCacheManager.allocate_slots/fixed",
+      "file": "repos/vllm/vllm/v1/core/kv_cache_manager.py",
+      "sha256": "58800535eda854580d84e1025bf32fe01b2a43ce0bba501b4f3d125e4f2c8afa"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm.v1.core.kv_cache_manager.KVCacheManager.free/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/core/kv_cache_manager.py",
+      "sha256": "58800535eda854580d84e1025bf32fe01b2a43ce0bba501b4f3d125e4f2c8afa"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm.v1.core.kv_cache_manager.KVCacheManager.free/fixed",
+      "file": "repos/vllm/vllm/v1/core/kv_cache_manager.py",
+      "sha256": "58800535eda854580d84e1025bf32fe01b2a43ce0bba501b4f3d125e4f2c8afa"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm.v1.executor.uniproc_executor.UniProcExecutor.execute_model/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/executor/uniproc_executor.py",
+      "sha256": "3cb039b80fe9b03dc1122f93c1f8a4098ef1355104b317ff6df25358f4349494"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm.v1.executor.uniproc_executor.UniProcExecutor.execute_model/fixed",
+      "file": "repos/vllm/vllm/v1/executor/uniproc_executor.py",
+      "sha256": "3cb039b80fe9b03dc1122f93c1f8a4098ef1355104b317ff6df25358f4349494"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm.v1.executor.uniproc_executor.UniProcExecutor.sample_tokens/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/executor/uniproc_executor.py",
+      "sha256": "3cb039b80fe9b03dc1122f93c1f8a4098ef1355104b317ff6df25358f4349494"
+    },
+    {
+      "origin": "chunked-inproc-traced/manifest.json/methods/vllm.v1.executor.uniproc_executor.UniProcExecutor.sample_tokens/fixed",
+      "file": "repos/vllm/vllm/v1/executor/uniproc_executor.py",
+      "sha256": "3cb039b80fe9b03dc1122f93c1f8a4098ef1355104b317ff6df25358f4349494"
+    },
+    {
+      "origin": "closing/trace.json/probe_sha256",
+      "file": "code/Book8-vLLM源码剖析/prepare_closing_evidence.py",
+      "sha256": "1ec1a1695a3336731a3d6d7b57a0e5b257c6ed22d7084446e3b8e10eaa10748b"
+    },
+    {
+      "origin": "closing/trace.json/input",
+      "file": "drafts/Book8-vLLM源码剖析/evidence/baseline-inproc-traced/events.jsonl",
+      "sha256": "7f539865e51c4417a21cf5a4c5f1e66b897ae0d104bc724f3b593368ef1be192"
+    },
+    {
+      "origin": "closing/trace.json/input",
+      "file": "drafts/Book8-vLLM源码剖析/evidence/baseline-inproc-traced/result.json",
+      "sha256": "c4a45abb4abb7d630fc716ea3d9ea1b58df748c73d37ccec58e1879429b1703b"
+    },
+    {
+      "origin": "connector-cpu/trace.json/probe_sha256",
+      "file": "code/Book8-vLLM源码剖析/observe_connector_roundtrip.py",
+      "sha256": "b68e7f6491707a7acf64c5e9571fad241e723c01af801258fde9cf03b92be764"
+    },
+    {
+      "origin": "connector-cpu/trace.json/source",
+      "file": "repos/vllm/vllm/distributed/kv_transfer/kv_connector/v1/example_connector.py",
+      "sha256": "6226876ef52d10d0d284d29c337ab44698e8bac6abdb2e0ece53b5756c55d068"
+    },
+    {
+      "origin": "connector-cpu/trace.json/source",
+      "file": "repos/vllm/vllm/distributed/kv_transfer/kv_connector/v1/offloading/common.py",
+      "sha256": "9b3f042c6fa1581d10e8f688d2d9bc927bb41b780a9ea01f514d57228e20c978"
+    },
+    {
+      "origin": "dp-contract/trace.json/probe_sha256",
+      "file": "code/Book8-vLLM源码剖析/observe_dp_contract.py",
+      "sha256": "00ab02e6fa75308c50242e9eaf3df1cd8379e4f8b212c30d6b8b179333e56da3"
+    },
+    {
+      "origin": "dp-contract/trace.json/source",
+      "file": "repos/vllm/vllm/v1/engine/core_client.py",
+      "sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8"
+    },
+    {
+      "origin": "expert-map/trace.json/probe_sha256",
+      "file": "code/Book8-vLLM源码剖析/observe_expert_map.py",
+      "sha256": "dcf01cfbe682f5fb4149518ce0fc788a9a2636ed049ba6adb85500419c7e37a0"
+    },
+    {
+      "origin": "expert-map/trace.json/source",
+      "file": "repos/vllm/vllm/model_executor/layers/fused_moe/expert_map_manager.py",
+      "sha256": "308c00f63fcb6f44518ec3a56d8f902c7bba75928c2e3aea30fbe1f3f473973b"
+    },
+    {
+      "origin": "fp8-encoding/trace.json/probe_sha256",
+      "file": "code/Book8-vLLM源码剖析/observe_fp8_encoding.py",
+      "sha256": "5b16a4210f7b248b119c34ec49e9d78e29102eef6459954574a27491c8b11a91"
+    },
+    {
+      "origin": "fp8-encoding/trace.json/source",
+      "file": "repos/vllm/vllm/model_executor/layers/quantization/utils/fp8_utils.py",
+      "sha256": "03c57e3c11e93818f3bb42ab91fee6386b229e57c7506f65fab3b010425d6cea"
+    },
+    {
+      "origin": "grammar-cpu/trace.json/probe_sha256",
+      "file": "code/Book8-vLLM源码剖析/observe_grammar.py",
+      "sha256": "46dbd1a1e5893e4829859016a0a2884bdbe47a4ca992da2b113c5c59572869f0"
+    },
+    {
+      "origin": "grammar-cpu/trace.json/source",
+      "file": "repos/vllm/vllm/v1/structured_output/backend_xgrammar.py",
+      "sha256": "a6041ddf35d7aebb8452697ed16274451af533042acfc46760860725d153f5cb"
+    },
+    {
+      "origin": "grammar-cpu/trace.json/source",
+      "file": "repos/vllm/vllm/v1/structured_output/request.py",
+      "sha256": "6a06212f8f130555eb406ba03c92bf9e26fbfa1d747d83b8f68766ebf967490e"
+    },
+    {
+      "origin": "hybrid-state/trace.json/probe_sha256",
+      "file": "code/Book8-vLLM源码剖析/observe_hybrid_state.py",
+      "sha256": "f7cd7302cd696d62a0dd058d5d8161c36fdd73dd8139b8ac80976cde497ee540"
+    },
+    {
+      "origin": "hybrid-state/trace.json/source",
+      "file": "repos/vllm/vllm/v1/kv_cache_interface.py",
+      "sha256": "1cf202f1a44d5bc5c3832b70b41507687ecceea3784e67a4f003bc0210d6eecb"
+    },
+    {
+      "origin": "hybrid-state/trace.json/source",
+      "file": "repos/vllm/vllm/v1/core/kv_cache_utils.py",
+      "sha256": "2666c9f113584e52e7521058efd2c0d9598544559dc942d3a3da87001a3fedf2"
+    },
+    {
+      "origin": "hybrid-state/trace.json/source",
+      "file": "repos/vllm/vllm/v1/core/block_pool.py",
+      "sha256": "34c2fd67148cecb7763ff49ad694a57073759b0fa67572a4270dc995b4acf8fc"
+    },
+    {
+      "origin": "hybrid-state/trace.json/source",
+      "file": "repos/vllm/vllm/v1/core/single_type_kv_cache_manager.py",
+      "sha256": "0233531d85aeced9e57a38c76d83db970519c92902b7e55484390cb2b64985bf"
+    },
+    {
+      "origin": "kv-metadata/trace.json/probe_sha256",
+      "file": "code/Book8-vLLM源码剖析/observe_kv_metadata.py",
+      "sha256": "4e939132b8ce5ef60d9a194e2a81b9b315d53ca7f7317cb1e6cd4d3387d5c16a"
+    },
+    {
+      "origin": "kv-metadata/trace.json/source",
+      "file": "repos/vllm/vllm/v1/core/kv_cache_manager.py",
+      "sha256": "58800535eda854580d84e1025bf32fe01b2a43ce0bba501b4f3d125e4f2c8afa"
+    },
+    {
+      "origin": "kv-metadata/trace.json/source",
+      "file": "repos/vllm/vllm/v1/core/block_pool.py",
+      "sha256": "34c2fd67148cecb7763ff49ad694a57073759b0fa67572a4270dc995b4acf8fc"
+    },
+    {
+      "origin": "kv-metadata/trace.json/source",
+      "file": "repos/vllm/vllm/v1/core/single_type_kv_cache_manager.py",
+      "sha256": "0233531d85aeced9e57a38c76d83db970519c92902b7e55484390cb2b64985bf"
+    },
+    {
+      "origin": "kv-metadata/trace.json/source",
+      "file": "repos/vllm/vllm/v1/core/kv_cache_coordinator.py",
+      "sha256": "bf342f79f2bc8d6acb69d3becefb334509e84cae888d42bbd421a8dc8ca9eca3"
+    },
+    {
+      "origin": "lora-mapping/trace.json/probe_sha256",
+      "file": "code/Book8-vLLM源码剖析/observe_lora_mapping.py",
+      "sha256": "98e5326a484b0f161a5235831ab363b1554e3a0d02b2a3c8e9859fa72c9e73d3"
+    },
+    {
+      "origin": "lora-mapping/trace.json/source",
+      "file": "repos/vllm/vllm/lora/punica_wrapper/utils.py",
+      "sha256": "1d926bd9cc9118719f64a9706d1c0f433a12f3605cfb10f125e1217231109158"
+    },
+    {
+      "origin": "lora-mapping/trace.json/source",
+      "file": "repos/vllm/vllm/v1/worker/gpu/lora_utils.py",
+      "sha256": "1e90eddd9ddb4ca55e574bb28e87ae3a6f6750175a62d373102426543f4ccd66"
+    },
+    {
+      "origin": "lora-mapping/trace.json/source",
+      "file": "repos/vllm/vllm/lora/request.py",
+      "sha256": "b90138a585a7eec65c2e9339bd8a070593b5bb523755ac410eab32fa34695c84"
+    },
+    {
+      "origin": "metadata-contracts/trace.json/probe_sha256",
+      "file": "code/Book8-vLLM源码剖析/observe_metadata_contracts.py",
+      "sha256": "5eed1523f11d05f4d45ad6a70f7f37ddbf26ffcce89761aa3b8a2ba0e924fb32"
+    },
+    {
+      "origin": "metadata-contracts/trace.json/source",
+      "file": "repos/vllm/vllm/v1/core/sched/async_scheduler.py",
+      "sha256": "e586a0ef3c6778be56a93e7f9bb712d4de9de6e7d7fe7e3e1d51dae83ecfc508"
+    },
+    {
+      "origin": "metadata-contracts/trace.json/source",
+      "file": "repos/vllm/vllm/v1/worker/gpu/cudagraph_utils.py",
+      "sha256": "6e9c042890603535e300a40df8ee159dbed1058a64a83ae50ff0329e332e05ff"
+    },
+    {
+      "origin": "metrics-contract/trace.json/probe_sha256",
+      "file": "code/Book8-vLLM源码剖析/observe_metrics_contract.py",
+      "sha256": "325b339dac69cacdad273efcbb8a1718805ac4786f54582a15063fe0bb09599a"
+    },
+    {
+      "origin": "metrics-contract/trace.json/source",
+      "file": "repos/vllm/vllm/v1/metrics/stats.py",
+      "sha256": "af1983ddc32fa4d3284e72212c6525daf961dd84429023a02d612b68b3112cf3"
+    },
+    {
+      "origin": "metrics-contract/trace.json/source",
+      "file": "repos/vllm/vllm/v1/engine/output_processor.py",
+      "sha256": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329"
+    },
+    {
+      "origin": "metrics-contract/trace.json/source",
+      "file": "repos/vllm/vllm/v1/engine/__init__.py",
+      "sha256": "4e59828787634123026a6b424f48c21d691913dd338b59dd13f25fa260f2284b"
+    },
+    {
+      "origin": "mm-contract/trace.json/probe_sha256",
+      "file": "code/Book8-vLLM源码剖析/observe_mm_contract.py",
+      "sha256": "aeb3f8d2eaa4728e1eb6aa9ca879db0d7b10938ee0ae8bcdbdacaf7945001380"
+    },
+    {
+      "origin": "mm-contract/trace.json/source",
+      "file": "repos/vllm/vllm/multimodal/inputs.py",
+      "sha256": "0231cf17279371f6529a026a41e64b0339d47c4d54c2193286ecd87987f0791a"
+    },
+    {
+      "origin": "mm-contract/trace.json/source",
+      "file": "repos/vllm/vllm/v1/core/encoder_cache_manager.py",
+      "sha256": "45f167e4f5a8ae3448ef61ba8d13c21dbb13a90fc55ab49098b7aacedd52e0d1"
+    },
+    {
+      "origin": "ngram-contract/trace.json/probe_sha256",
+      "file": "code/Book8-vLLM源码剖析/observe_ngram_contract.py",
+      "sha256": "5e3235caf7bb012fc5235788c8cd168a8565f974d994a91a8d825ebedecf69e5"
+    },
+    {
+      "origin": "ngram-contract/trace.json/source",
+      "file": "repos/vllm/vllm/v1/spec_decode/ngram_proposer.py",
+      "sha256": "5051e1bca645fe4befec0a6340f0dfc169fbcbe070ac1da508b72f8ee9c91736"
+    },
+    {
+      "origin": "platform/metadata.json/probe_sha256",
+      "file": "code/Book8-vLLM源码剖析/inspect_platform.py",
+      "sha256": "9a6e144881d216e26b7930bfcd534e65269c0abefbe193fe60e1ecd618280f38"
+    },
+    {
+      "origin": "platform/metadata.json/platform",
+      "file": "repos/vllm-ascend/vllm_ascend/platform.py",
+      "sha256": "1ffa999960bb178a1d9b95bf3240f8a0a9e3bb08558fe6e5233b10c2a676e476"
+    },
+    {
+      "origin": "platform/metadata.json/worker",
+      "file": "repos/vllm-ascend/vllm_ascend/worker/worker.py",
+      "sha256": "9d938de914cb6a8c6366a11ec63b3d3487204bf3d216884e307650e2e2d0c608"
+    },
+    {
+      "origin": "platform/metadata.json/runner",
+      "file": "repos/vllm-ascend/vllm_ascend/worker/v2/model_runner.py",
+      "sha256": "533986687a50caa40afe7d3610d5fd9fb7d64d0ef167d95fe2c656bf0a3ccec5"
+    },
+    {
+      "origin": "platform/metadata.json/attention_backend",
+      "file": "repos/vllm-ascend/vllm_ascend/attention/attention_v1.py",
+      "sha256": "bea4e410f797557e29cedbb495024147606e74b0e056d725194760ca69296eba"
+    },
+    {
+      "origin": "platform/metadata.json/attention_impl",
+      "file": "repos/vllm-ascend/vllm_ascend/attention/attention_v1.py",
+      "sha256": "bea4e410f797557e29cedbb495024147606e74b0e056d725194760ca69296eba"
+    },
+    {
+      "origin": "platform/metadata.json/attention_builder",
+      "file": "repos/vllm-ascend/vllm_ascend/attention/attention_v1.py",
+      "sha256": "bea4e410f797557e29cedbb495024147606e74b0e056d725194760ca69296eba"
+    },
+    {
+      "origin": "pp2/manifest.json/probe_sha256",
+      "file": "code/Book8-vLLM源码剖析/observe_parallel.py",
+      "sha256": "7f353e2bc028eb79163d4f4b9af9bd1dabcdbf44ef2a4f8b99e3faebea5e3e9a"
+    },
+    {
+      "origin": "pp2/manifest.json/model_probe_sha256",
+      "file": "code/Book8-vLLM源码剖析/parallel_probe.py",
+      "sha256": "4c2d3e7d3a369aeaeee627457005eb2d566f166aaba4cd51eed97ef866321b0c"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/probe_sha256",
+      "file": "code/Book8-vLLM源码剖析/observe_requests.py",
+      "sha256": "c7cba56b7077d517ff8acdecd7e18080cb62b91e3da972514c3e5794857e7c25"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/effective/core_step/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/effective/core_step/fixed",
+      "file": "repos/vllm/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/effective/runner_execute/installed",
+      "file": "env/lib/python3.11/site-packages/vllm_ascend/worker/v2/model_runner.py",
+      "sha256": "533986687a50caa40afe7d3610d5fd9fb7d64d0ef167d95fe2c656bf0a3ccec5"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/effective/runner_execute/fixed",
+      "file": "repos/vllm-ascend/vllm_ascend/worker/v2/model_runner.py",
+      "sha256": "533986687a50caa40afe7d3610d5fd9fb7d64d0ef167d95fe2c656bf0a3ccec5"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm.v1.engine.input_processor.InputProcessor.process_inputs/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/input_processor.py",
+      "sha256": "c8abd8e4e14d99929d45a7ff3b2a74898269c5e2a7fa30b826623ee85e4ce813"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm.v1.engine.input_processor.InputProcessor.process_inputs/fixed",
+      "file": "repos/vllm/vllm/v1/engine/input_processor.py",
+      "sha256": "c8abd8e4e14d99929d45a7ff3b2a74898269c5e2a7fa30b826623ee85e4ce813"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm.v1.engine.input_processor.InputProcessor.assign_request_id/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/input_processor.py",
+      "sha256": "c8abd8e4e14d99929d45a7ff3b2a74898269c5e2a7fa30b826623ee85e4ce813"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm.v1.engine.input_processor.InputProcessor.assign_request_id/fixed",
+      "file": "repos/vllm/vllm/v1/engine/input_processor.py",
+      "sha256": "c8abd8e4e14d99929d45a7ff3b2a74898269c5e2a7fa30b826623ee85e4ce813"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm.v1.engine.output_processor.OutputProcessor.add_request/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/output_processor.py",
+      "sha256": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm.v1.engine.output_processor.OutputProcessor.add_request/fixed",
+      "file": "repos/vllm/vllm/v1/engine/output_processor.py",
+      "sha256": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm.v1.engine.output_processor.OutputProcessor.process_outputs/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/output_processor.py",
+      "sha256": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm.v1.engine.output_processor.OutputProcessor.process_outputs/fixed",
+      "file": "repos/vllm/vllm/v1/engine/output_processor.py",
+      "sha256": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm.v1.engine.core_client.InprocClient.add_request/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/core_client.py",
+      "sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm.v1.engine.core_client.InprocClient.add_request/fixed",
+      "file": "repos/vllm/vllm/v1/engine/core_client.py",
+      "sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm.v1.engine.core_client.InprocClient.get_output/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/core_client.py",
+      "sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm.v1.engine.core_client.InprocClient.get_output/fixed",
+      "file": "repos/vllm/vllm/v1/engine/core_client.py",
+      "sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm.v1.engine.core.EngineCore.preprocess_add_request/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm.v1.engine.core.EngineCore.preprocess_add_request/fixed",
+      "file": "repos/vllm/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm.v1.engine.core.EngineCore.add_request/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm.v1.engine.core.EngineCore.add_request/fixed",
+      "file": "repos/vllm/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm.v1.engine.core.EngineCore.step_fn/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm.v1.engine.core.EngineCore.step_fn/fixed",
+      "file": "repos/vllm/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm_ascend.patch.platform.patch_balance_schedule.BalanceScheduler.schedule/installed",
+      "file": "env/lib/python3.11/site-packages/vllm_ascend/patch/platform/patch_balance_schedule.py",
+      "sha256": "190626c663c03ff98f32a6edab7b279fd64dce4ad81900de614fc291c7dd618e"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm_ascend.patch.platform.patch_balance_schedule.BalanceScheduler.schedule/fixed",
+      "file": "repos/vllm-ascend/vllm_ascend/patch/platform/patch_balance_schedule.py",
+      "sha256": "190626c663c03ff98f32a6edab7b279fd64dce4ad81900de614fc291c7dd618e"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm_ascend.patch.platform.patch_balance_schedule.BalanceScheduler.update_from_output/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/core/sched/scheduler.py",
+      "sha256": "c1db45f3bbad3a875dd8638331b8870c4380ac1ab4734265ba5c863833a82884"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm_ascend.patch.platform.patch_balance_schedule.BalanceScheduler.update_from_output/fixed",
+      "file": "repos/vllm/vllm/v1/core/sched/scheduler.py",
+      "sha256": "c1db45f3bbad3a875dd8638331b8870c4380ac1ab4734265ba5c863833a82884"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm.v1.core.kv_cache_manager.KVCacheManager.allocate_slots/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/core/kv_cache_manager.py",
+      "sha256": "58800535eda854580d84e1025bf32fe01b2a43ce0bba501b4f3d125e4f2c8afa"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm.v1.core.kv_cache_manager.KVCacheManager.allocate_slots/fixed",
+      "file": "repos/vllm/vllm/v1/core/kv_cache_manager.py",
+      "sha256": "58800535eda854580d84e1025bf32fe01b2a43ce0bba501b4f3d125e4f2c8afa"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm.v1.core.kv_cache_manager.KVCacheManager.free/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/core/kv_cache_manager.py",
+      "sha256": "58800535eda854580d84e1025bf32fe01b2a43ce0bba501b4f3d125e4f2c8afa"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm.v1.core.kv_cache_manager.KVCacheManager.free/fixed",
+      "file": "repos/vllm/vllm/v1/core/kv_cache_manager.py",
+      "sha256": "58800535eda854580d84e1025bf32fe01b2a43ce0bba501b4f3d125e4f2c8afa"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm.v1.executor.uniproc_executor.UniProcExecutor.execute_model/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/executor/uniproc_executor.py",
+      "sha256": "3cb039b80fe9b03dc1122f93c1f8a4098ef1355104b317ff6df25358f4349494"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm.v1.executor.uniproc_executor.UniProcExecutor.execute_model/fixed",
+      "file": "repos/vllm/vllm/v1/executor/uniproc_executor.py",
+      "sha256": "3cb039b80fe9b03dc1122f93c1f8a4098ef1355104b317ff6df25358f4349494"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm.v1.executor.uniproc_executor.UniProcExecutor.sample_tokens/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/executor/uniproc_executor.py",
+      "sha256": "3cb039b80fe9b03dc1122f93c1f8a4098ef1355104b317ff6df25358f4349494"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm.v1.executor.uniproc_executor.UniProcExecutor.sample_tokens/fixed",
+      "file": "repos/vllm/vllm/v1/executor/uniproc_executor.py",
+      "sha256": "3cb039b80fe9b03dc1122f93c1f8a4098ef1355104b317ff6df25358f4349494"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm_ascend.worker.v2.model_runner.NPUModelRunner.add_requests/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/worker/gpu/model_runner.py",
+      "sha256": "174c93db921c23cf0396eee4764be25b2bd2d4b6a06e9fa41ce3598b884ce8ce"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm_ascend.worker.v2.model_runner.NPUModelRunner.add_requests/fixed",
+      "file": "repos/vllm/vllm/v1/worker/gpu/model_runner.py",
+      "sha256": "174c93db921c23cf0396eee4764be25b2bd2d4b6a06e9fa41ce3598b884ce8ce"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm_ascend.worker.v2.model_runner.NPUModelRunner.prepare_inputs/installed",
+      "file": "env/lib/python3.11/site-packages/vllm_ascend/worker/v2/model_runner.py",
+      "sha256": "533986687a50caa40afe7d3610d5fd9fb7d64d0ef167d95fe2c656bf0a3ccec5"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm_ascend.worker.v2.model_runner.NPUModelRunner.prepare_inputs/fixed",
+      "file": "repos/vllm-ascend/vllm_ascend/worker/v2/model_runner.py",
+      "sha256": "533986687a50caa40afe7d3610d5fd9fb7d64d0ef167d95fe2c656bf0a3ccec5"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm_ascend.worker.v2.model_runner.NPUModelRunner.prepare_attn/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/worker/gpu/model_runner.py",
+      "sha256": "174c93db921c23cf0396eee4764be25b2bd2d4b6a06e9fa41ce3598b884ce8ce"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm_ascend.worker.v2.model_runner.NPUModelRunner.prepare_attn/fixed",
+      "file": "repos/vllm/vllm/v1/worker/gpu/model_runner.py",
+      "sha256": "174c93db921c23cf0396eee4764be25b2bd2d4b6a06e9fa41ce3598b884ce8ce"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm_ascend.worker.v2.model_runner.NPUModelRunner.sample/installed",
+      "file": "env/lib/python3.11/site-packages/vllm_ascend/worker/v2/model_runner.py",
+      "sha256": "533986687a50caa40afe7d3610d5fd9fb7d64d0ef167d95fe2c656bf0a3ccec5"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm_ascend.worker.v2.model_runner.NPUModelRunner.sample/fixed",
+      "file": "repos/vllm-ascend/vllm_ascend/worker/v2/model_runner.py",
+      "sha256": "533986687a50caa40afe7d3610d5fd9fb7d64d0ef167d95fe2c656bf0a3ccec5"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm.model_executor.models.qwen3.Qwen3ForCausalLM.compute_logits/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/model_executor/models/qwen3.py",
+      "sha256": "6ade9b12f4c7a4d670fe2e4dd778049bbe0a94fe2ba61a149d9706587a280e28"
+    },
+    {
+      "origin": "runner-inproc-traced/manifest.json/methods/vllm.model_executor.models.qwen3.Qwen3ForCausalLM.compute_logits/fixed",
+      "file": "repos/vllm/vllm/model_executor/models/qwen3.py",
+      "sha256": "6ade9b12f4c7a4d670fe2e4dd778049bbe0a94fe2ba61a149d9706587a280e28"
+    },
+    {
+      "origin": "runner-inproc-traced/projection.json/events",
+      "file": "drafts/Book8-vLLM源码剖析/evidence/runner-inproc-traced/events.jsonl",
+      "sha256": "503ab5a5ed9aad491085ffded0290a48c29be61d7923d9fbf7c2a0c8cf44a755"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/probe_sha256",
+      "file": "code/Book8-vLLM源码剖析/observe_runner.py",
+      "sha256": "ab894287ee543998d60086fa9732b9bf323932789481ec5ac363cb82b6b55469"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/driver_sha256",
+      "file": "code/Book8-vLLM源码剖析/observe_requests.py",
+      "sha256": "c7cba56b7077d517ff8acdecd7e18080cb62b91e3da972514c3e5794857e7c25"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm.v1.engine.input_processor.InputProcessor.process_inputs/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/input_processor.py",
+      "sha256": "c8abd8e4e14d99929d45a7ff3b2a74898269c5e2a7fa30b826623ee85e4ce813"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm.v1.engine.input_processor.InputProcessor.process_inputs/fixed",
+      "file": "repos/vllm/vllm/v1/engine/input_processor.py",
+      "sha256": "c8abd8e4e14d99929d45a7ff3b2a74898269c5e2a7fa30b826623ee85e4ce813"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm.v1.engine.input_processor.InputProcessor.assign_request_id/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/input_processor.py",
+      "sha256": "c8abd8e4e14d99929d45a7ff3b2a74898269c5e2a7fa30b826623ee85e4ce813"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm.v1.engine.input_processor.InputProcessor.assign_request_id/fixed",
+      "file": "repos/vllm/vllm/v1/engine/input_processor.py",
+      "sha256": "c8abd8e4e14d99929d45a7ff3b2a74898269c5e2a7fa30b826623ee85e4ce813"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm.v1.engine.output_processor.OutputProcessor.add_request/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/output_processor.py",
+      "sha256": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm.v1.engine.output_processor.OutputProcessor.add_request/fixed",
+      "file": "repos/vllm/vllm/v1/engine/output_processor.py",
+      "sha256": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm.v1.engine.output_processor.OutputProcessor.process_outputs/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/output_processor.py",
+      "sha256": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm.v1.engine.output_processor.OutputProcessor.process_outputs/fixed",
+      "file": "repos/vllm/vllm/v1/engine/output_processor.py",
+      "sha256": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm.v1.engine.core_client.InprocClient.add_request/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/core_client.py",
+      "sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm.v1.engine.core_client.InprocClient.add_request/fixed",
+      "file": "repos/vllm/vllm/v1/engine/core_client.py",
+      "sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm.v1.engine.core_client.InprocClient.get_output/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/core_client.py",
+      "sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm.v1.engine.core_client.InprocClient.get_output/fixed",
+      "file": "repos/vllm/vllm/v1/engine/core_client.py",
+      "sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm.v1.engine.core.EngineCore.preprocess_add_request/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm.v1.engine.core.EngineCore.preprocess_add_request/fixed",
+      "file": "repos/vllm/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm.v1.engine.core.EngineCore.add_request/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm.v1.engine.core.EngineCore.add_request/fixed",
+      "file": "repos/vllm/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm.v1.engine.core.EngineCore.step_fn/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm.v1.engine.core.EngineCore.step_fn/fixed",
+      "file": "repos/vllm/vllm/v1/engine/core.py",
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm_ascend.patch.platform.patch_balance_schedule.BalanceScheduler.schedule/installed",
+      "file": "env/lib/python3.11/site-packages/vllm_ascend/patch/platform/patch_balance_schedule.py",
+      "sha256": "190626c663c03ff98f32a6edab7b279fd64dce4ad81900de614fc291c7dd618e"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm_ascend.patch.platform.patch_balance_schedule.BalanceScheduler.schedule/fixed",
+      "file": "repos/vllm-ascend/vllm_ascend/patch/platform/patch_balance_schedule.py",
+      "sha256": "190626c663c03ff98f32a6edab7b279fd64dce4ad81900de614fc291c7dd618e"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm_ascend.patch.platform.patch_balance_schedule.BalanceScheduler.update_from_output/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/core/sched/scheduler.py",
+      "sha256": "c1db45f3bbad3a875dd8638331b8870c4380ac1ab4734265ba5c863833a82884"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm_ascend.patch.platform.patch_balance_schedule.BalanceScheduler.update_from_output/fixed",
+      "file": "repos/vllm/vllm/v1/core/sched/scheduler.py",
+      "sha256": "c1db45f3bbad3a875dd8638331b8870c4380ac1ab4734265ba5c863833a82884"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm.v1.core.kv_cache_manager.KVCacheManager.allocate_slots/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/core/kv_cache_manager.py",
+      "sha256": "58800535eda854580d84e1025bf32fe01b2a43ce0bba501b4f3d125e4f2c8afa"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm.v1.core.kv_cache_manager.KVCacheManager.allocate_slots/fixed",
+      "file": "repos/vllm/vllm/v1/core/kv_cache_manager.py",
+      "sha256": "58800535eda854580d84e1025bf32fe01b2a43ce0bba501b4f3d125e4f2c8afa"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm.v1.core.kv_cache_manager.KVCacheManager.free/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/core/kv_cache_manager.py",
+      "sha256": "58800535eda854580d84e1025bf32fe01b2a43ce0bba501b4f3d125e4f2c8afa"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm.v1.core.kv_cache_manager.KVCacheManager.free/fixed",
+      "file": "repos/vllm/vllm/v1/core/kv_cache_manager.py",
+      "sha256": "58800535eda854580d84e1025bf32fe01b2a43ce0bba501b4f3d125e4f2c8afa"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm.v1.executor.uniproc_executor.UniProcExecutor.execute_model/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/executor/uniproc_executor.py",
+      "sha256": "3cb039b80fe9b03dc1122f93c1f8a4098ef1355104b317ff6df25358f4349494"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm.v1.executor.uniproc_executor.UniProcExecutor.execute_model/fixed",
+      "file": "repos/vllm/vllm/v1/executor/uniproc_executor.py",
+      "sha256": "3cb039b80fe9b03dc1122f93c1f8a4098ef1355104b317ff6df25358f4349494"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm.v1.executor.uniproc_executor.UniProcExecutor.sample_tokens/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/executor/uniproc_executor.py",
+      "sha256": "3cb039b80fe9b03dc1122f93c1f8a4098ef1355104b317ff6df25358f4349494"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm.v1.executor.uniproc_executor.UniProcExecutor.sample_tokens/fixed",
+      "file": "repos/vllm/vllm/v1/executor/uniproc_executor.py",
+      "sha256": "3cb039b80fe9b03dc1122f93c1f8a4098ef1355104b317ff6df25358f4349494"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm_ascend.worker.v2.model_runner.NPUModelRunner.add_requests/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/worker/gpu/model_runner.py",
+      "sha256": "174c93db921c23cf0396eee4764be25b2bd2d4b6a06e9fa41ce3598b884ce8ce"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm_ascend.worker.v2.model_runner.NPUModelRunner.add_requests/fixed",
+      "file": "repos/vllm/vllm/v1/worker/gpu/model_runner.py",
+      "sha256": "174c93db921c23cf0396eee4764be25b2bd2d4b6a06e9fa41ce3598b884ce8ce"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm_ascend.worker.v2.model_runner.NPUModelRunner.prepare_inputs/installed",
+      "file": "env/lib/python3.11/site-packages/vllm_ascend/worker/v2/model_runner.py",
+      "sha256": "533986687a50caa40afe7d3610d5fd9fb7d64d0ef167d95fe2c656bf0a3ccec5"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm_ascend.worker.v2.model_runner.NPUModelRunner.prepare_inputs/fixed",
+      "file": "repos/vllm-ascend/vllm_ascend/worker/v2/model_runner.py",
+      "sha256": "533986687a50caa40afe7d3610d5fd9fb7d64d0ef167d95fe2c656bf0a3ccec5"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm_ascend.worker.v2.model_runner.NPUModelRunner.prepare_attn/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/v1/worker/gpu/model_runner.py",
+      "sha256": "174c93db921c23cf0396eee4764be25b2bd2d4b6a06e9fa41ce3598b884ce8ce"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm_ascend.worker.v2.model_runner.NPUModelRunner.prepare_attn/fixed",
+      "file": "repos/vllm/vllm/v1/worker/gpu/model_runner.py",
+      "sha256": "174c93db921c23cf0396eee4764be25b2bd2d4b6a06e9fa41ce3598b884ce8ce"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm_ascend.worker.v2.model_runner.NPUModelRunner.sample/installed",
+      "file": "env/lib/python3.11/site-packages/vllm_ascend/worker/v2/model_runner.py",
+      "sha256": "533986687a50caa40afe7d3610d5fd9fb7d64d0ef167d95fe2c656bf0a3ccec5"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm_ascend.worker.v2.model_runner.NPUModelRunner.sample/fixed",
+      "file": "repos/vllm-ascend/vllm_ascend/worker/v2/model_runner.py",
+      "sha256": "533986687a50caa40afe7d3610d5fd9fb7d64d0ef167d95fe2c656bf0a3ccec5"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm.model_executor.models.qwen3.Qwen3ForCausalLM.compute_logits/installed",
+      "file": "env/lib/python3.11/site-packages/vllm/model_executor/models/qwen3.py",
+      "sha256": "6ade9b12f4c7a4d670fe2e4dd778049bbe0a94fe2ba61a149d9706587a280e28"
+    },
+    {
+      "origin": "runner-inproc-traced/runner-provenance.json/methods/vllm.model_executor.models.qwen3.Qwen3ForCausalLM.compute_logits/fixed",
+      "file": "repos/vllm/vllm/model_executor/models/qwen3.py",
+      "sha256": "6ade9b12f4c7a4d670fe2e4dd778049bbe0a94fe2ba61a149d9706587a280e28"
+    },
+    {
+      "origin": "tp2-final/manifest.json/probe_sha256",
+      "file": "code/Book8-vLLM源码剖析/observe_parallel.py",
+      "sha256": "7f353e2bc028eb79163d4f4b9af9bd1dabcdbf44ef2a4f8b99e3faebea5e3e9a"
+    },
+    {
+      "origin": "tp2-final/manifest.json/model_probe_sha256",
+      "file": "code/Book8-vLLM源码剖析/parallel_probe.py",
+      "sha256": "4c2d3e7d3a369aeaeee627457005eb2d566f166aaba4cd51eed97ef866321b0c"
+    },
+    {
+      "origin": "model-assets/config",
+      "file": "log/huggingface/hub/models--Qwen--Qwen3-0.6B/snapshots/c1899de289a04d12100db370d81485cdf75e47ca/config.json",
+      "sha256": "660db3b73d788119c04535e48cf9be5f55bc3100841a718637ae695b442f27dd"
+    },
+    {
+      "origin": "protected-original-probe",
+      "file": "code/Book8-vLLM源码剖析/observe_requests.py",
+      "sha256": "c7cba56b7077d517ff8acdecd7e18080cb62b91e3da972514c3e5794857e7c25"
+    }
+  ],
+  "boundary": "文件完整性与来源链检查；不代替图文语义审校或硬件复测"
+}

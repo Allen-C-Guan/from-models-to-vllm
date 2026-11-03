@@ -1,0 +1,186 @@
+{
+  "case": "baseline",
+  "deployment": "inproc",
+  "instrumented": true,
+  "packages": {
+    "vllm": "0.30.0",
+    "vllm-ascend": "0.30.0",
+    "torch": "2.10.0",
+    "torch-npu": "2.10.0.post7"
+  },
+  "requested_settings": {
+    "model": "/home/g00594152/vllm/model_analysis_project/log/huggingface/hub/models--Qwen--Qwen3-0.6B/snapshots/c1899de289a04d12100db370d81485cdf75e47ca",
+    "tokenizer": "/home/g00594152/vllm/model_analysis_project/log/huggingface/hub/models--Qwen--Qwen3-0.6B/snapshots/c1899de289a04d12100db370d81485cdf75e47ca",
+    "dtype": "bfloat16",
+    "max_model_len": 128,
+    "max_num_seqs": 4,
+    "max_num_batched_tokens": 32,
+    "enforce_eager": true,
+    "async_scheduling": false,
+    "enable_prefix_caching": false,
+    "enable_chunked_prefill": true,
+    "gpu_memory_utilization": 0.15,
+    "kv_cache_memory_bytes": 67108864,
+    "seed": 0,
+    "disable_log_stats": true
+  },
+  "effective": {
+    "async_scheduling": false,
+    "max_num_batched_tokens": 32,
+    "max_num_seqs": 4,
+    "use_v2_model_runner": true,
+    "block_size": 128,
+    "num_gpu_blocks": 4,
+    "client": "vllm.v1.engine.core_client.InprocClient",
+    "scheduler": "vllm_ascend.patch.platform.patch_balance_schedule.BalanceScheduler",
+    "executor": "vllm.v1.executor.uniproc_executor.UniProcExecutor",
+    "worker": "vllm_ascend.worker.worker.NPUWorker",
+    "runner": "vllm_ascend.worker.v2.model_runner.NPUModelRunner",
+    "balance_enabled": false,
+    "scheduler_mro": [
+      "vllm_ascend.patch.platform.patch_balance_schedule.BalanceScheduler",
+      "vllm.v1.core.sched.scheduler.Scheduler",
+      "vllm.v1.core.sched.interface.SchedulerInterface",
+      "abc.ABC",
+      "builtins.object"
+    ],
+    "core_step": {
+      "symbol": "vllm.v1.engine.core.EngineCore.step",
+      "file": "/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/vllm/v1/engine/core.py",
+      "line": 589,
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    "runner_execute": {
+      "symbol": "vllm_ascend.worker.v2.model_runner.NPUModelRunner.execute_model",
+      "file": "/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/vllm_ascend/worker/v2/model_runner.py",
+      "line": 599,
+      "sha256": "533986687a50caa40afe7d3610d5fd9fb7d64d0ef167d95fe2c656bf0a3ccec5"
+    }
+  },
+  "model_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+  "methods": {
+    "vllm.v1.engine.input_processor.InputProcessor.process_inputs": {
+      "symbol": "vllm.v1.engine.input_processor.InputProcessor.process_inputs",
+      "file": "/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/vllm/v1/engine/input_processor.py",
+      "line": 281,
+      "sha256": "c8abd8e4e14d99929d45a7ff3b2a74898269c5e2a7fa30b826623ee85e4ce813"
+    },
+    "vllm.v1.engine.input_processor.InputProcessor.assign_request_id": {
+      "symbol": "vllm.v1.engine.input_processor.InputProcessor.assign_request_id",
+      "file": "/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/vllm/v1/engine/input_processor.py",
+      "line": 261,
+      "sha256": "c8abd8e4e14d99929d45a7ff3b2a74898269c5e2a7fa30b826623ee85e4ce813"
+    },
+    "vllm.v1.engine.output_processor.OutputProcessor.add_request": {
+      "symbol": "vllm.v1.engine.output_processor.OutputProcessor.add_request",
+      "file": "/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/vllm/v1/engine/output_processor.py",
+      "line": 564,
+      "sha256": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329"
+    },
+    "vllm.v1.engine.output_processor.OutputProcessor.process_outputs": {
+      "symbol": "vllm.v1.engine.output_processor.OutputProcessor.process_outputs",
+      "file": "/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/vllm/v1/engine/output_processor.py",
+      "line": 629,
+      "sha256": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329"
+    },
+    "vllm.v1.engine.core_client.InprocClient.add_request": {
+      "symbol": "vllm.v1.engine.core_client.InprocClient.add_request",
+      "file": "/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/vllm/v1/engine/core_client.py",
+      "line": 369,
+      "sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8"
+    },
+    "vllm.v1.engine.core_client.InprocClient.get_output": {
+      "symbol": "vllm.v1.engine.core_client.InprocClient.get_output",
+      "file": "/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/vllm/v1/engine/core_client.py",
+      "line": 361,
+      "sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8"
+    },
+    "vllm.v1.engine.core.EngineCore.preprocess_add_request": {
+      "symbol": "vllm.v1.engine.core.EngineCore.preprocess_add_request",
+      "file": "/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/vllm/v1/engine/core.py",
+      "line": 980,
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    "vllm.v1.engine.core.EngineCore.add_request": {
+      "symbol": "vllm.v1.engine.core.EngineCore.add_request",
+      "file": "/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/vllm/v1/engine/core.py",
+      "line": 444,
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    "vllm.v1.engine.core.EngineCore.step_fn": {
+      "symbol": "vllm.v1.engine.core.EngineCore.step",
+      "file": "/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/vllm/v1/engine/core.py",
+      "line": 589,
+      "sha256": "268bf40534a853812867ae8e80040f190983cb364b41182b55969aace20c93f5"
+    },
+    "vllm_ascend.patch.platform.patch_balance_schedule.BalanceScheduler.schedule": {
+      "symbol": "vllm_ascend.patch.platform.patch_balance_schedule.BalanceScheduler.schedule",
+      "file": "/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/vllm_ascend/patch/platform/patch_balance_schedule.py",
+      "line": 163,
+      "sha256": "190626c663c03ff98f32a6edab7b279fd64dce4ad81900de614fc291c7dd618e"
+    },
+    "vllm_ascend.patch.platform.patch_balance_schedule.BalanceScheduler.update_from_output": {
+      "symbol": "vllm.v1.core.sched.scheduler.Scheduler.update_from_output",
+      "file": "/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/vllm/v1/core/sched/scheduler.py",
+      "line": 1874,
+      "sha256": "c1db45f3bbad3a875dd8638331b8870c4380ac1ab4734265ba5c863833a82884"
+    },
+    "vllm.v1.core.kv_cache_manager.KVCacheManager.allocate_slots": {
+      "symbol": "vllm.v1.core.kv_cache_manager.KVCacheManager.allocate_slots",
+      "file": "/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/vllm/v1/core/kv_cache_manager.py",
+      "line": 370,
+      "sha256": "58800535eda854580d84e1025bf32fe01b2a43ce0bba501b4f3d125e4f2c8afa"
+    },
+    "vllm.v1.core.kv_cache_manager.KVCacheManager.free": {
+      "symbol": "vllm.v1.core.kv_cache_manager.KVCacheManager.free",
+      "file": "/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/vllm/v1/core/kv_cache_manager.py",
+      "line": 603,
+      "sha256": "58800535eda854580d84e1025bf32fe01b2a43ce0bba501b4f3d125e4f2c8afa"
+    },
+    "vllm.v1.executor.uniproc_executor.UniProcExecutor.execute_model": {
+      "symbol": "vllm.v1.executor.uniproc_executor.UniProcExecutor.execute_model",
+      "file": "/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/vllm/v1/executor/uniproc_executor.py",
+      "line": 119,
+      "sha256": "3cb039b80fe9b03dc1122f93c1f8a4098ef1355104b317ff6df25358f4349494"
+    },
+    "vllm.v1.executor.uniproc_executor.UniProcExecutor.sample_tokens": {
+      "symbol": "vllm.v1.executor.uniproc_executor.UniProcExecutor.sample_tokens",
+      "file": "/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/vllm/v1/executor/uniproc_executor.py",
+      "line": 134,
+      "sha256": "3cb039b80fe9b03dc1122f93c1f8a4098ef1355104b317ff6df25358f4349494"
+    },
+    "vllm_ascend.worker.v2.model_runner.NPUModelRunner.add_requests": {
+      "symbol": "vllm.v1.worker.gpu.model_runner.GPUModelRunner.add_requests",
+      "file": "/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/vllm/v1/worker/gpu/model_runner.py",
+      "line": 1120,
+      "sha256": "174c93db921c23cf0396eee4764be25b2bd2d4b6a06e9fa41ce3598b884ce8ce"
+    },
+    "vllm_ascend.worker.v2.model_runner.NPUModelRunner.prepare_inputs": {
+      "symbol": "vllm_ascend.worker.v2.model_runner.NPUModelRunner.prepare_inputs",
+      "file": "/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/vllm_ascend/worker/v2/model_runner.py",
+      "line": 789,
+      "sha256": "533986687a50caa40afe7d3610d5fd9fb7d64d0ef167d95fe2c656bf0a3ccec5"
+    },
+    "vllm_ascend.worker.v2.model_runner.NPUModelRunner.prepare_attn": {
+      "symbol": "vllm.v1.worker.gpu.model_runner.GPUModelRunner.prepare_attn",
+      "file": "/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/vllm/v1/worker/gpu/model_runner.py",
+      "line": 1472,
+      "sha256": "174c93db921c23cf0396eee4764be25b2bd2d4b6a06e9fa41ce3598b884ce8ce"
+    },
+    "vllm_ascend.worker.v2.model_runner.NPUModelRunner.sample": {
+      "symbol": "vllm_ascend.worker.v2.model_runner.NPUModelRunner.sample",
+      "file": "/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/vllm_ascend/worker/v2/model_runner.py",
+      "line": 1068,
+      "sha256": "533986687a50caa40afe7d3610d5fd9fb7d64d0ef167d95fe2c656bf0a3ccec5"
+    },
+    "vllm.model_executor.models.qwen3.Qwen3ForCausalLM.compute_logits": {
+      "symbol": "vllm.model_executor.models.qwen3.Qwen3ForCausalLM.compute_logits",
+      "file": "/home/g00594152/vllm/model_analysis_project/env/lib/python3.11/site-packages/vllm/model_executor/models/qwen3.py",
+      "line": 330,
+      "sha256": "6ade9b12f4c7a4d670fe2e4dd778049bbe0a94fe2ba61a149d9706587a280e28"
+    }
+  },
+  "pid": 2211813,
+  "visible_devices": "0",
+  "probe_sha256": "c7cba56b7077d517ff8acdecd7e18080cb62b91e3da972514c3e5794857e7c25"
+}

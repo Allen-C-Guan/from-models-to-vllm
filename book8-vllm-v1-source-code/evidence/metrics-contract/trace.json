@@ -1,0 +1,69 @@
+{
+  "kind": "CPU actual statistics and collector methods with synthetic timestamps/events/error; not latency benchmark",
+  "probe_sha256": "325b339dac69cacdad273efcbb8a1718805ac4786f54582a15063fe0bb09599a",
+  "source_sha256": {
+    "repos/vllm/vllm/v1/metrics/stats.py": "af1983ddc32fa4d3284e72212c6525daf961dd84429023a02d612b68b3112cf3",
+    "repos/vllm/vllm/v1/engine/output_processor.py": "e47b86cd69ce1c1e3f53dac655eaa75c32a4057d10f4a1db16bb83a397f2a329",
+    "repos/vllm/vllm/v1/engine/__init__.py": "4e59828787634123026a6b424f48c21d691913dd338b59dd13f25fa260f2284b"
+  },
+  "updates": [
+    {
+      "frontend_time": 100.5,
+      "core_time": 10.4,
+      "ttft_samples": [
+        0.5
+      ],
+      "itl_samples": [],
+      "scheduled_ts": 10.1,
+      "preemptions": 0
+    },
+    {
+      "frontend_time": 100.65,
+      "core_time": 10.55,
+      "ttft_samples": [],
+      "itl_samples": [
+        0.15000000000000036
+      ],
+      "scheduled_ts": 10.1,
+      "preemptions": 1
+    },
+    {
+      "frontend_time": 100.8,
+      "core_time": 10.7,
+      "ttft_samples": [],
+      "itl_samples": [
+        0.14999999999999858
+      ],
+      "scheduled_ts": 10.1,
+      "preemptions": 1
+    }
+  ],
+  "finished": {
+    "finish_reason": 1,
+    "request_id": "B-metrics",
+    "e2e_latency": 0.7999999999999972,
+    "num_prompt_tokens": 6,
+    "num_preemptions": 1,
+    "num_generation_tokens": 3,
+    "max_tokens_param": 3,
+    "queued_time": 0.09999999999999964,
+    "prefill_time": 0.3000000000000007,
+    "inference_time": 0.5999999999999996,
+    "decode_time": 0.29999999999999893,
+    "mean_time_per_output_token": 0.14999999999999947,
+    "is_corrupted": false,
+    "num_cached_tokens": 0
+  },
+  "error_delivery": {
+    "A": {
+      "type": "RuntimeError",
+      "message": "synthetic core failure",
+      "ready_after_get": false
+    },
+    "B": {
+      "type": "RuntimeError",
+      "message": "synthetic core failure",
+      "ready_after_get": false
+    }
+  }
+}

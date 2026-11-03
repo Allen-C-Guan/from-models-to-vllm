@@ -1,0 +1,43 @@
+{
+  "chapters": [
+    "ch01-从架构地图进入源码.md",
+    "ch02-引擎的装配与就绪.md",
+    "ch03-请求的身份与登记.md",
+    "ch04-引擎如何推进一轮.md",
+    "ch05-调度器如何形成计划.md",
+    "ch06-KV块的所有权与分配.md",
+    "ch07-前缀复用与抢占恢复.md",
+    "ch08-执行器与Worker的边界.md",
+    "ch09-Runner的状态与计算批次.md",
+    "ch10-模型装配权重与前向.md",
+    "ch11-Attention与KV访问契约.md",
+    "ch12-采样停止与结果交付.md",
+    "ch13-异步推进与状态一致性.md",
+    "ch14-编译图执行与动态批次.md",
+    "ch15-在线服务流式交付与取消.md",
+    "ch16-一份模型如何跨设备执行.md",
+    "ch17-多个核心的路由与协调.md",
+    "ch18-专家路由分发与合并.md",
+    "ch19-平台插件与Ascend实现边界.md",
+    "ch20-投机解码的候选验证与状态修正.md",
+    "ch21-结构化输出的语法状态与采样约束.md",
+    "ch22-多模态特征的位置调度与缓存.md",
+    "ch23-LoRA的身份槽位与批次映射.md",
+    "ch24-量化层的参数生命周期与内核契约.md",
+    "ch25-混合模型的状态类型与恢复边界.md",
+    "ch26-Connector与跨引擎状态交接.md",
+    "ch27-从事件指标与异常定位责任边界.md",
+    "ch28-重走完整请求与源码阅读方法.md"
+  ],
+  "appendices": [
+    "appendix-a-术语与源码地图.md",
+    "appendix-b-全册实验与复现.md",
+    "appendix-c-版本与验证边界.md",
+    "appendix-d-非主线功能的阅读入口.md"
+  ],
+  "new_evidence_blocks": 170,
+  "images": 87,
+  "local_links": 194,
+  "reader": "source hashes, embedded images and anchors passed",
+  "scope": "结构与证据自动检查；教学、关系语义及视觉检查另记逐章审校"
+}

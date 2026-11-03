@@ -1,0 +1,79 @@
+{
+  "kind": "CPU actual LoraState and fixed-source convert_mapping AST; transfer helper replaced by CPU torch.tensor; no weights or kernels",
+  "probe_sha256": "98e5326a484b0f161a5235831ab363b1554e3a0d02b2a3c8e9859fa72c9e73d3",
+  "source_sha256": {
+    "repos/vllm/vllm/lora/punica_wrapper/utils.py": "1d926bd9cc9118719f64a9706d1c0f433a12f3605cfb10f125e1217231109158",
+    "repos/vllm/vllm/v1/worker/gpu/lora_utils.py": "1e90eddd9ddb4ca55e574bb28e87ae3a6f6750175a62d373102426543f4ccd66",
+    "repos/vllm/vllm/lora/request.py": "b90138a585a7eec65c2e9339bd8a070593b5bb523755ac410eab32fa34695c84"
+  },
+  "batch": {
+    "req_ids": [
+      "B",
+      "A",
+      "C"
+    ],
+    "persistent_rows": [
+      2,
+      3,
+      1
+    ],
+    "num_scheduled_tokens": [
+      1,
+      2,
+      1
+    ],
+    "request_adapter_ids": [
+      0,
+      11,
+      22
+    ],
+    "token_adapter_ids": [
+      0,
+      11,
+      11,
+      22
+    ],
+    "active_adapter_ids": [
+      11,
+      22
+    ]
+  },
+  "layouts": [
+    {
+      "slot_to_adapter": [
+        22,
+        11,
+        null
+      ],
+      "token_slots": [
+        -1,
+        1,
+        1,
+        0
+      ],
+      "request_slots": [
+        -1,
+        1,
+        0
+      ]
+    },
+    {
+      "slot_to_adapter": [
+        11,
+        22,
+        null
+      ],
+      "token_slots": [
+        -1,
+        0,
+        0,
+        1
+      ],
+      "request_slots": [
+        -1,
+        0,
+        1
+      ]
+    }
+  ]
+}

@@ -1,0 +1,405 @@
+{
+  "kind": "CPU metadata-only execution; no model forward or KV tensors",
+  "source_sha256": {
+    "vllm/v1/core/kv_cache_manager.py": "58800535eda854580d84e1025bf32fe01b2a43ce0bba501b4f3d125e4f2c8afa",
+    "vllm/v1/core/block_pool.py": "34c2fd67148cecb7763ff49ad694a57073759b0fa67572a4270dc995b4acf8fc",
+    "vllm/v1/core/single_type_kv_cache_manager.py": "0233531d85aeced9e57a38c76d83db970519c92902b7e55484390cb2b64985bf",
+    "vllm/v1/core/kv_cache_coordinator.py": "bf342f79f2bc8d6acb69d3becefb334509e84cae888d42bbd421a8dc8ca9eca3"
+  },
+  "probe_sha256": "4e939132b8ce5ef60d9a194e2a81b9b315d53ca7f7317cb1e6cd4d3387d5c16a",
+  "allocation": {
+    "initial": {
+      "stop": "initial",
+      "num_free_blocks": 3,
+      "free_order": [
+        1,
+        2,
+        3
+      ],
+      "blocks": [
+        {
+          "block_id": 0,
+          "ref_cnt": 0,
+          "is_null": true,
+          "has_hash": false
+        },
+        {
+          "block_id": 1,
+          "ref_cnt": 0,
+          "is_null": false,
+          "has_hash": false
+        },
+        {
+          "block_id": 2,
+          "ref_cnt": 0,
+          "is_null": false,
+          "has_hash": false
+        },
+        {
+          "block_id": 3,
+          "ref_cnt": 0,
+          "is_null": false,
+          "has_hash": false
+        }
+      ],
+      "req_to_blocks": [
+        {}
+      ]
+    },
+    "allocate_A": {
+      "stop": "allocate_A",
+      "returned_block_ids": [
+        [
+          1
+        ]
+      ],
+      "num_free_blocks": 2,
+      "free_order": [
+        2,
+        3
+      ],
+      "blocks": [
+        {
+          "block_id": 0,
+          "ref_cnt": 0,
+          "is_null": true,
+          "has_hash": false
+        },
+        {
+          "block_id": 1,
+          "ref_cnt": 1,
+          "is_null": false,
+          "has_hash": false
+        },
+        {
+          "block_id": 2,
+          "ref_cnt": 0,
+          "is_null": false,
+          "has_hash": false
+        },
+        {
+          "block_id": 3,
+          "ref_cnt": 0,
+          "is_null": false,
+          "has_hash": false
+        }
+      ],
+      "req_to_blocks": [
+        {
+          "A": [
+            1
+          ]
+        }
+      ]
+    },
+    "allocate_B": {
+      "stop": "allocate_B",
+      "returned_block_ids": [
+        [
+          2
+        ]
+      ],
+      "num_free_blocks": 1,
+      "free_order": [
+        3
+      ],
+      "blocks": [
+        {
+          "block_id": 0,
+          "ref_cnt": 0,
+          "is_null": true,
+          "has_hash": false
+        },
+        {
+          "block_id": 1,
+          "ref_cnt": 1,
+          "is_null": false,
+          "has_hash": false
+        },
+        {
+          "block_id": 2,
+          "ref_cnt": 1,
+          "is_null": false,
+          "has_hash": false
+        },
+        {
+          "block_id": 3,
+          "ref_cnt": 0,
+          "is_null": false,
+          "has_hash": false
+        }
+      ],
+      "req_to_blocks": [
+        {
+          "A": [
+            1
+          ],
+          "B": [
+            2
+          ]
+        }
+      ]
+    },
+    "free_A": {
+      "stop": "free_A",
+      "num_free_blocks": 2,
+      "free_order": [
+        1,
+        3
+      ],
+      "blocks": [
+        {
+          "block_id": 0,
+          "ref_cnt": 0,
+          "is_null": true,
+          "has_hash": false
+        },
+        {
+          "block_id": 1,
+          "ref_cnt": 0,
+          "is_null": false,
+          "has_hash": false
+        },
+        {
+          "block_id": 2,
+          "ref_cnt": 1,
+          "is_null": false,
+          "has_hash": false
+        },
+        {
+          "block_id": 3,
+          "ref_cnt": 0,
+          "is_null": false,
+          "has_hash": false
+        }
+      ],
+      "req_to_blocks": [
+        {
+          "B": [
+            2
+          ]
+        }
+      ]
+    },
+    "allocate_C": {
+      "stop": "allocate_C",
+      "returned_block_ids": [
+        [
+          1
+        ]
+      ],
+      "num_free_blocks": 1,
+      "free_order": [
+        3
+      ],
+      "blocks": [
+        {
+          "block_id": 0,
+          "ref_cnt": 0,
+          "is_null": true,
+          "has_hash": false
+        },
+        {
+          "block_id": 1,
+          "ref_cnt": 1,
+          "is_null": false,
+          "has_hash": false
+        },
+        {
+          "block_id": 2,
+          "ref_cnt": 1,
+          "is_null": false,
+          "has_hash": false
+        },
+        {
+          "block_id": 3,
+          "ref_cnt": 0,
+          "is_null": false,
+          "has_hash": false
+        }
+      ],
+      "req_to_blocks": [
+        {
+          "B": [
+            2
+          ],
+          "C": [
+            1
+          ]
+        }
+      ]
+    }
+  },
+  "prefix": {
+    "A_registered_5_slots": {
+      "stop": "A_registered_5_slots",
+      "num_free_blocks": 1,
+      "free_order": [
+        3
+      ],
+      "blocks": [
+        {
+          "block_id": 0,
+          "ref_cnt": 0,
+          "is_null": true,
+          "has_hash": false
+        },
+        {
+          "block_id": 1,
+          "ref_cnt": 1,
+          "is_null": false,
+          "has_hash": true
+        },
+        {
+          "block_id": 2,
+          "ref_cnt": 1,
+          "is_null": false,
+          "has_hash": false
+        },
+        {
+          "block_id": 3,
+          "ref_cnt": 0,
+          "is_null": false,
+          "has_hash": false
+        }
+      ],
+      "req_to_blocks": [
+        {
+          "A-prefix": [
+            1,
+            2
+          ]
+        }
+      ]
+    },
+    "A_released": {
+      "stop": "A_released",
+      "num_free_blocks": 3,
+      "free_order": [
+        2,
+        3,
+        1
+      ],
+      "blocks": [
+        {
+          "block_id": 0,
+          "ref_cnt": 0,
+          "is_null": true,
+          "has_hash": false
+        },
+        {
+          "block_id": 1,
+          "ref_cnt": 0,
+          "is_null": false,
+          "has_hash": true
+        },
+        {
+          "block_id": 2,
+          "ref_cnt": 0,
+          "is_null": false,
+          "has_hash": false
+        },
+        {
+          "block_id": 3,
+          "ref_cnt": 0,
+          "is_null": false,
+          "has_hash": false
+        }
+      ],
+      "req_to_blocks": [
+        {}
+      ]
+    },
+    "lookup_A_again": {
+      "stop": "lookup_A_again",
+      "hit_block_ids": [
+        [
+          1
+        ]
+      ],
+      "num_hit_tokens": 4,
+      "shared_prefix_boundary": 0,
+      "num_free_blocks": 3,
+      "free_order": [
+        2,
+        3,
+        1
+      ],
+      "blocks": [
+        {
+          "block_id": 0,
+          "ref_cnt": 0,
+          "is_null": true,
+          "has_hash": false
+        },
+        {
+          "block_id": 1,
+          "ref_cnt": 0,
+          "is_null": false,
+          "has_hash": true
+        },
+        {
+          "block_id": 2,
+          "ref_cnt": 0,
+          "is_null": false,
+          "has_hash": false
+        },
+        {
+          "block_id": 3,
+          "ref_cnt": 0,
+          "is_null": false,
+          "has_hash": false
+        }
+      ],
+      "req_to_blocks": [
+        {}
+      ]
+    },
+    "attach_hit_and_allocate_tail": {
+      "stop": "attach_hit_and_allocate_tail",
+      "returned_block_ids": [
+        [
+          2
+        ]
+      ],
+      "num_free_blocks": 1,
+      "free_order": [
+        3
+      ],
+      "blocks": [
+        {
+          "block_id": 0,
+          "ref_cnt": 0,
+          "is_null": true,
+          "has_hash": false
+        },
+        {
+          "block_id": 1,
+          "ref_cnt": 1,
+          "is_null": false,
+          "has_hash": true
+        },
+        {
+          "block_id": 2,
+          "ref_cnt": 1,
+          "is_null": false,
+          "has_hash": false
+        },
+        {
+          "block_id": 3,
+          "ref_cnt": 0,
+          "is_null": false,
+          "has_hash": false
+        }
+      ],
+      "req_to_blocks": [
+        {
+          "A-again": [
+            1,
+            2
+          ]
+        }
+      ]
+    }
+  }
+}

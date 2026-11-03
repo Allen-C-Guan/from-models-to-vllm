@@ -1,0 +1,72 @@
+{
+  "final": {
+    "A": {
+      "type": "vllm.outputs.RequestOutput",
+      "request_id": "A",
+      "prompt": "The capital of France is",
+      "prompt_token_ids": [
+        785,
+        6722,
+        315,
+        9625,
+        374
+      ],
+      "outputs": [
+        {
+          "type": "vllm.outputs.CompletionOutput",
+          "index": 0,
+          "text": " Paris.",
+          "token_ids": [
+            12095,
+            13
+          ],
+          "cumulative_logprob": null,
+          "logprobs": null,
+          "routed_experts": null,
+          "finish_reason": "length",
+          "stop_reason": null,
+          "lora_request": null,
+          "sampling_mask": null,
+          "spec_decode_metrics": null
+        }
+      ],
+      "finished": true
+    },
+    "B": {
+      "type": "vllm.outputs.RequestOutput",
+      "request_id": "B",
+      "prompt": "The largest ocean on Earth is",
+      "prompt_token_ids": [
+        785,
+        7772,
+        17951,
+        389,
+        9237,
+        374
+      ],
+      "outputs": [
+        {
+          "type": "vllm.outputs.CompletionOutput",
+          "index": 0,
+          "text": " the Pacific Ocean",
+          "token_ids": [
+            279,
+            16462,
+            21575
+          ],
+          "cumulative_logprob": null,
+          "logprobs": null,
+          "routed_experts": null,
+          "finish_reason": "length",
+          "stop_reason": null,
+          "lora_request": null,
+          "sampling_mask": null,
+          "spec_decode_metrics": null
+        }
+      ],
+      "finished": true
+    }
+  },
+  "steps": 3,
+  "wall_seconds_including_startup": 19.761554269935004
+}

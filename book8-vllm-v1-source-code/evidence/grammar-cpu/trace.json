@@ -1,0 +1,92 @@
+{
+  "kind": "CPU actual XGrammar and vLLM grammar wrapper; synthetic vocabulary; no model/GPU mask kernel",
+  "xgrammar_version": "0.2.8",
+  "probe_sha256": "46dbd1a1e5893e4829859016a0a2884bdbe47a4ca992da2b113c5c59572869f0",
+  "source_sha256": {
+    "vllm/v1/structured_output/backend_xgrammar.py": "a6041ddf35d7aebb8452697ed16274451af533042acfc46760860725d153f5cb",
+    "vllm/v1/structured_output/request.py": "6a06212f8f130555eb406ba03c92bf9e26fbfa1d747d83b8f68766ebf967490e"
+  },
+  "vocab": [
+    "P",
+    "a",
+    "r",
+    "i",
+    "s",
+    "T",
+    "o",
+    "k",
+    "y",
+    "<eos>"
+  ],
+  "states": {
+    "before": {
+      "mask_int32": [
+        33
+      ],
+      "allowed_ids": [
+        0,
+        5
+      ],
+      "processed": 0,
+      "terminated": false
+    },
+    "validated_prefix": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "after_validate": {
+      "mask_int32": [
+        33
+      ],
+      "allowed_ids": [
+        0,
+        5
+      ],
+      "processed": 0,
+      "terminated": false
+    },
+    "after_P": {
+      "mask_int32": [
+        2
+      ],
+      "allowed_ids": [
+        1
+      ],
+      "processed": 1,
+      "terminated": false
+    },
+    "after_Paris": {
+      "mask_int32": [
+        512
+      ],
+      "allowed_ids": [
+        9
+      ],
+      "processed": 5,
+      "terminated": false
+    },
+    "after_eos": {
+      "mask_int32": null,
+      "allowed_ids": null,
+      "processed": 6,
+      "terminated": true
+    }
+  },
+  "future": {
+    "pending": {
+      "ready": false,
+      "grammar_is_none": true
+    },
+    "ready": {
+      "ready": true,
+      "same_object": true
+    },
+    "failed": {
+      "ready": true,
+      "error_type": "ValueError"
+    }
+  }
+}

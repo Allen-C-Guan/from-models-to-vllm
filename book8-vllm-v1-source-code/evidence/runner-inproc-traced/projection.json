@@ -1,0 +1,1130 @@
+{
+  "events_sha256": "503ab5a5ed9aad491085ffded0290a48c29be61d7923d9fbf7c2a0c8cf44a755",
+  "steps": {
+    "1": {
+      "registered": {
+        "seq": 23,
+        "pid": 2211813,
+        "monotonic_ns": 535995369712610,
+        "front_step": 1,
+        "event": "runner.registered",
+        "req_id_to_index": {
+          "A-9fe0112d": 3,
+          "B-b550db9e": 2
+        }
+      },
+      "inputs": {
+        "seq": 24,
+        "pid": 2211813,
+        "monotonic_ns": 535995398151110,
+        "front_step": 1,
+        "event": "runner.inputs",
+        "batch": {
+          "type": "vllm_ascend.worker.v2.input_batch.AscendInputBatch",
+          "req_ids": [
+            "A-9fe0112d",
+            "B-b550db9e"
+          ],
+          "num_reqs": 2,
+          "num_tokens": 11,
+          "num_tokens_after_padding": 11,
+          "idx_mapping": {
+            "type": "torch.Tensor",
+            "shape": [
+              2
+            ],
+            "dtype": "torch.int64",
+            "device": "npu:0",
+            "values": [
+              3,
+              2
+            ]
+          },
+          "idx_mapping_np": {
+            "type": "numpy.ndarray",
+            "shape": [
+              2
+            ],
+            "dtype": "int64",
+            "device": "cpu",
+            "values": [
+              3,
+              2
+            ]
+          },
+          "num_scheduled_tokens": {
+            "type": "numpy.ndarray",
+            "shape": [
+              2
+            ],
+            "dtype": "int32",
+            "device": "cpu",
+            "values": [
+              5,
+              6
+            ]
+          },
+          "input_ids": {
+            "type": "torch.Tensor",
+            "shape": [
+              11
+            ],
+            "dtype": "torch.int32",
+            "device": "npu:0",
+            "values": [
+              785,
+              6722,
+              315,
+              9625,
+              374,
+              785,
+              7772,
+              17951,
+              389,
+              9237,
+              374
+            ]
+          },
+          "positions": {
+            "type": "torch.Tensor",
+            "shape": [
+              11
+            ],
+            "dtype": "torch.int64",
+            "device": "npu:0",
+            "values": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              0,
+              1,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          "query_start_loc": {
+            "type": "torch.Tensor",
+            "shape": [
+              3
+            ],
+            "dtype": "torch.int32",
+            "device": "npu:0",
+            "values": [
+              0,
+              5,
+              11
+            ]
+          },
+          "seq_lens": {
+            "type": "torch.Tensor",
+            "shape": [
+              2
+            ],
+            "dtype": "torch.int32",
+            "device": "npu:0",
+            "values": [
+              5,
+              6
+            ]
+          },
+          "logits_indices": {
+            "type": "torch.Tensor",
+            "shape": [
+              2
+            ],
+            "dtype": "torch.int64",
+            "device": "npu:0",
+            "values": [
+              4,
+              10
+            ]
+          },
+          "num_computed_tokens_np": {
+            "type": "numpy.ndarray",
+            "shape": [
+              2
+            ],
+            "dtype": "int32",
+            "device": "cpu",
+            "values": [
+              0,
+              0
+            ]
+          },
+          "prefill_len_np": {
+            "type": "numpy.ndarray",
+            "shape": [
+              2
+            ],
+            "dtype": "int32",
+            "device": "cpu",
+            "values": [
+              5,
+              6
+            ]
+          }
+        }
+      },
+      "attn": {
+        "seq": 25,
+        "pid": 2211813,
+        "monotonic_ns": 535995416245780,
+        "front_step": 1,
+        "event": "runner.attn",
+        "block_tables": [
+          {
+            "type": "torch.Tensor",
+            "shape": [
+              2,
+              1
+            ],
+            "dtype": "torch.int32",
+            "device": "npu:0",
+            "values": [
+              [
+                1
+              ],
+              [
+                2
+              ]
+            ]
+          }
+        ],
+        "slot_mappings": {
+          "type": "torch.Tensor",
+          "shape": [
+            1,
+            11
+          ],
+          "dtype": "torch.int32",
+          "device": "npu:0",
+          "values": [
+            [
+              128,
+              129,
+              130,
+              131,
+              132,
+              256,
+              257,
+              258,
+              259,
+              260,
+              261
+            ]
+          ]
+        }
+      },
+      "hidden": {
+        "seq": 28,
+        "pid": 2211813,
+        "monotonic_ns": 535995620415300,
+        "front_step": 1,
+        "event": "runner.hidden",
+        "hidden": {
+          "type": "torch.Tensor",
+          "shape": [
+            11,
+            1024
+          ],
+          "dtype": "torch.bfloat16",
+          "device": "npu:0"
+        }
+      },
+      "logits": {
+        "seq": 29,
+        "pid": 2211813,
+        "monotonic_ns": 535995621479550,
+        "front_step": 1,
+        "event": "model.logits",
+        "logits": {
+          "type": "torch.Tensor",
+          "shape": [
+            2,
+            151936
+          ],
+          "dtype": "torch.bfloat16",
+          "device": "npu:0"
+        }
+      },
+      "execute": {
+        "seq": 22,
+        "pid": 2211813,
+        "monotonic_ns": 535995347779040,
+        "front_step": 1,
+        "event": "execute.call",
+        "non_block": true,
+        "plan": {
+          "type": "vllm.v1.core.sched.output.SchedulerOutput",
+          "scheduled_new_reqs": [
+            {
+              "type": "vllm.v1.core.sched.output.NewRequestData",
+              "req_id": "A-9fe0112d",
+              "prompt_token_ids": [
+                785,
+                6722,
+                315,
+                9625,
+                374
+              ],
+              "mm_features": [],
+              "sampling_params": {
+                "type": "vllm.sampling_params.SamplingParams",
+                "n": 1,
+                "presence_penalty": 0.0,
+                "frequency_penalty": 0.0,
+                "repetition_penalty": 1.0,
+                "temperature": 0,
+                "watermarking": true,
+                "top_p": 1.0,
+                "top_k": 0,
+                "min_p": 0.0,
+                "seed": 0,
+                "stop": [],
+                "stop_token_ids": [],
+                "ignore_eos": true,
+                "max_tokens": 2,
+                "min_tokens": 0,
+                "logprobs": null,
+                "prompt_logprobs": null,
+                "logprob_token_ids": null,
+                "flat_logprobs": false,
+                "detokenize": true,
+                "skip_special_tokens": true,
+                "spaces_between_special_tokens": true,
+                "include_stop_str_in_output": false,
+                "output_kind": "CUMULATIVE",
+                "stream_interval": null,
+                "skip_clone": false,
+                "output_text_buffer_length": 0,
+                "_eos_token_id": null,
+                "_all_stop_token_ids": [
+                  151643,
+                  151645
+                ],
+                "structured_outputs": null,
+                "logit_bias": null,
+                "allowed_token_ids": null,
+                "extra_args": null,
+                "bad_words": [],
+                "_bad_words_token_ids": null,
+                "skip_reading_prefix_cache": false,
+                "thinking_token_budget": null,
+                "repetition_detection": null,
+                "routed_experts_prompt_start": 0,
+                "trace_decode_token_ids": null
+              },
+              "pooling_params": null,
+              "block_ids": [
+                [
+                  1
+                ]
+              ],
+              "num_computed_tokens": 0,
+              "lora_request": null,
+              "prompt_embeds": null,
+              "prompt_is_token_ids": null,
+              "prefill_token_ids": [
+                785,
+                6722,
+                315,
+                9625,
+                374
+              ]
+            },
+            {
+              "type": "vllm.v1.core.sched.output.NewRequestData",
+              "req_id": "B-b550db9e",
+              "prompt_token_ids": [
+                785,
+                7772,
+                17951,
+                389,
+                9237,
+                374
+              ],
+              "mm_features": [],
+              "sampling_params": {
+                "type": "vllm.sampling_params.SamplingParams",
+                "n": 1,
+                "presence_penalty": 0.0,
+                "frequency_penalty": 0.0,
+                "repetition_penalty": 1.0,
+                "temperature": 0,
+                "watermarking": true,
+                "top_p": 1.0,
+                "top_k": 0,
+                "min_p": 0.0,
+                "seed": 0,
+                "stop": [],
+                "stop_token_ids": [],
+                "ignore_eos": true,
+                "max_tokens": 3,
+                "min_tokens": 0,
+                "logprobs": null,
+                "prompt_logprobs": null,
+                "logprob_token_ids": null,
+                "flat_logprobs": false,
+                "detokenize": true,
+                "skip_special_tokens": true,
+                "spaces_between_special_tokens": true,
+                "include_stop_str_in_output": false,
+                "output_kind": "CUMULATIVE",
+                "stream_interval": null,
+                "skip_clone": false,
+                "output_text_buffer_length": 0,
+                "_eos_token_id": null,
+                "_all_stop_token_ids": [
+                  151643,
+                  151645
+                ],
+                "structured_outputs": null,
+                "logit_bias": null,
+                "allowed_token_ids": null,
+                "extra_args": null,
+                "bad_words": [],
+                "_bad_words_token_ids": null,
+                "skip_reading_prefix_cache": false,
+                "thinking_token_budget": null,
+                "repetition_detection": null,
+                "routed_experts_prompt_start": 0,
+                "trace_decode_token_ids": null
+              },
+              "pooling_params": null,
+              "block_ids": [
+                [
+                  2
+                ]
+              ],
+              "num_computed_tokens": 0,
+              "lora_request": null,
+              "prompt_embeds": null,
+              "prompt_is_token_ids": null,
+              "prefill_token_ids": [
+                785,
+                7772,
+                17951,
+                389,
+                9237,
+                374
+              ]
+            }
+          ],
+          "scheduled_cached_reqs": {
+            "type": "vllm.v1.core.sched.output.CachedRequestData",
+            "req_ids": [],
+            "resumed_req_ids": [],
+            "new_token_ids": [],
+            "all_token_ids": {},
+            "new_block_ids": [],
+            "num_computed_tokens": [],
+            "num_output_tokens": []
+          },
+          "num_scheduled_tokens": {
+            "A-9fe0112d": 5,
+            "B-b550db9e": 6
+          },
+          "total_num_scheduled_tokens": 11,
+          "scheduled_spec_decode_tokens": {},
+          "scheduled_encoder_inputs": {},
+          "num_common_prefix_blocks": [
+            0
+          ],
+          "finished_req_ids": [],
+          "free_encoder_mm_hashes": [],
+          "scheduled_encoder_input_stats": null,
+          "preempted_req_ids": [],
+          "has_structured_output_requests": false,
+          "pending_structured_output_tokens": false,
+          "num_invalid_spec_tokens": null,
+          "kv_connector_metadata": null,
+          "has_sync_kv_loads": false,
+          "ec_connector_metadata": null,
+          "ec_manager_metadata": null,
+          "new_block_ids_to_zero": null,
+          "kv_cache_block_copies": null,
+          "block_table_updates": null,
+          "kv_connector_block_state": null,
+          "num_spec_tokens_to_schedule": 0
+        }
+      },
+      "returned": {
+        "seq": 26,
+        "pid": 2211813,
+        "monotonic_ns": 535995619867020,
+        "front_step": 1,
+        "event": "execute.return",
+        "returned_type": "concurrent.futures._base.Future"
+      },
+      "sample": {
+        "seq": 30,
+        "pid": 2211813,
+        "monotonic_ns": 535995634112900,
+        "front_step": 1,
+        "event": "sample.return",
+        "output": {
+          "type": "vllm.v1.outputs.ModelRunnerOutput",
+          "req_ids": [
+            "A-9fe0112d",
+            "B-b550db9e"
+          ],
+          "req_id_to_index": {
+            "A-9fe0112d": 0,
+            "B-b550db9e": 1
+          },
+          "sampled_token_ids": [
+            [
+              12095
+            ],
+            [
+              279
+            ]
+          ],
+          "logprobs": null,
+          "prompt_logprobs_dict": {},
+          "pooler_output": null,
+          "kv_connector_output": null,
+          "ec_connector_output": null,
+          "num_nans_in_logits": null,
+          "cudagraph_stats": null,
+          "routed_experts": null,
+          "sampling_masks": null
+        }
+      }
+    },
+    "2": {
+      "registered": {
+        "seq": 44,
+        "pid": 2211813,
+        "monotonic_ns": 535995641399040,
+        "front_step": 2,
+        "event": "runner.registered",
+        "req_id_to_index": {
+          "A-9fe0112d": 3,
+          "B-b550db9e": 2
+        }
+      },
+      "inputs": {
+        "seq": 45,
+        "pid": 2211813,
+        "monotonic_ns": 535995644039070,
+        "front_step": 2,
+        "event": "runner.inputs",
+        "batch": {
+          "type": "vllm_ascend.worker.v2.input_batch.AscendInputBatch",
+          "req_ids": [
+            "A-9fe0112d",
+            "B-b550db9e"
+          ],
+          "num_reqs": 2,
+          "num_tokens": 2,
+          "num_tokens_after_padding": 2,
+          "idx_mapping": {
+            "type": "torch.Tensor",
+            "shape": [
+              2
+            ],
+            "dtype": "torch.int64",
+            "device": "npu:0",
+            "values": [
+              3,
+              2
+            ]
+          },
+          "idx_mapping_np": {
+            "type": "numpy.ndarray",
+            "shape": [
+              2
+            ],
+            "dtype": "int64",
+            "device": "cpu",
+            "values": [
+              3,
+              2
+            ]
+          },
+          "num_scheduled_tokens": {
+            "type": "numpy.ndarray",
+            "shape": [
+              2
+            ],
+            "dtype": "int32",
+            "device": "cpu",
+            "values": [
+              1,
+              1
+            ]
+          },
+          "input_ids": {
+            "type": "torch.Tensor",
+            "shape": [
+              2
+            ],
+            "dtype": "torch.int32",
+            "device": "npu:0",
+            "values": [
+              12095,
+              279
+            ]
+          },
+          "positions": {
+            "type": "torch.Tensor",
+            "shape": [
+              2
+            ],
+            "dtype": "torch.int64",
+            "device": "npu:0",
+            "values": [
+              5,
+              6
+            ]
+          },
+          "query_start_loc": {
+            "type": "torch.Tensor",
+            "shape": [
+              3
+            ],
+            "dtype": "torch.int32",
+            "device": "npu:0",
+            "values": [
+              0,
+              1,
+              2
+            ]
+          },
+          "seq_lens": {
+            "type": "torch.Tensor",
+            "shape": [
+              2
+            ],
+            "dtype": "torch.int32",
+            "device": "npu:0",
+            "values": [
+              6,
+              7
+            ]
+          },
+          "logits_indices": {
+            "type": "torch.Tensor",
+            "shape": [
+              2
+            ],
+            "dtype": "torch.int64",
+            "device": "npu:0",
+            "values": [
+              0,
+              1
+            ]
+          },
+          "num_computed_tokens_np": {
+            "type": "numpy.ndarray",
+            "shape": [
+              2
+            ],
+            "dtype": "int32",
+            "device": "cpu",
+            "values": [
+              5,
+              6
+            ]
+          },
+          "prefill_len_np": {
+            "type": "numpy.ndarray",
+            "shape": [
+              2
+            ],
+            "dtype": "int32",
+            "device": "cpu",
+            "values": [
+              5,
+              6
+            ]
+          }
+        }
+      },
+      "attn": {
+        "seq": 46,
+        "pid": 2211813,
+        "monotonic_ns": 535995644592010,
+        "front_step": 2,
+        "event": "runner.attn",
+        "block_tables": [
+          {
+            "type": "torch.Tensor",
+            "shape": [
+              2,
+              1
+            ],
+            "dtype": "torch.int32",
+            "device": "npu:0",
+            "values": [
+              [
+                1
+              ],
+              [
+                2
+              ]
+            ]
+          }
+        ],
+        "slot_mappings": {
+          "type": "torch.Tensor",
+          "shape": [
+            1,
+            2
+          ],
+          "dtype": "torch.int32",
+          "device": "npu:0",
+          "values": [
+            [
+              133,
+              262
+            ]
+          ]
+        }
+      },
+      "hidden": {
+        "seq": 49,
+        "pid": 2211813,
+        "monotonic_ns": 535995696848830,
+        "front_step": 2,
+        "event": "runner.hidden",
+        "hidden": {
+          "type": "torch.Tensor",
+          "shape": [
+            2,
+            1024
+          ],
+          "dtype": "torch.bfloat16",
+          "device": "npu:0"
+        }
+      },
+      "logits": {
+        "seq": 50,
+        "pid": 2211813,
+        "monotonic_ns": 535995697248840,
+        "front_step": 2,
+        "event": "model.logits",
+        "logits": {
+          "type": "torch.Tensor",
+          "shape": [
+            2,
+            151936
+          ],
+          "dtype": "torch.bfloat16",
+          "device": "npu:0"
+        }
+      },
+      "execute": {
+        "seq": 43,
+        "pid": 2211813,
+        "monotonic_ns": 535995640055960,
+        "front_step": 2,
+        "event": "execute.call",
+        "non_block": true,
+        "plan": {
+          "type": "vllm.v1.core.sched.output.SchedulerOutput",
+          "scheduled_new_reqs": [],
+          "scheduled_cached_reqs": {
+            "type": "vllm.v1.core.sched.output.CachedRequestData",
+            "req_ids": [
+              "A-9fe0112d",
+              "B-b550db9e"
+            ],
+            "resumed_req_ids": [],
+            "new_token_ids": [],
+            "all_token_ids": {},
+            "new_block_ids": [
+              null,
+              null
+            ],
+            "num_computed_tokens": [
+              5,
+              6
+            ],
+            "num_output_tokens": [
+              1,
+              1
+            ]
+          },
+          "num_scheduled_tokens": {
+            "A-9fe0112d": 1,
+            "B-b550db9e": 1
+          },
+          "total_num_scheduled_tokens": 2,
+          "scheduled_spec_decode_tokens": {},
+          "scheduled_encoder_inputs": {},
+          "num_common_prefix_blocks": [
+            0
+          ],
+          "finished_req_ids": [],
+          "free_encoder_mm_hashes": [],
+          "scheduled_encoder_input_stats": null,
+          "preempted_req_ids": [],
+          "has_structured_output_requests": false,
+          "pending_structured_output_tokens": false,
+          "num_invalid_spec_tokens": null,
+          "kv_connector_metadata": null,
+          "has_sync_kv_loads": false,
+          "ec_connector_metadata": null,
+          "ec_manager_metadata": null,
+          "new_block_ids_to_zero": null,
+          "kv_cache_block_copies": null,
+          "block_table_updates": null,
+          "kv_connector_block_state": null,
+          "num_spec_tokens_to_schedule": 0
+        }
+      },
+      "returned": {
+        "seq": 47,
+        "pid": 2211813,
+        "monotonic_ns": 535995696565720,
+        "front_step": 2,
+        "event": "execute.return",
+        "returned_type": "concurrent.futures._base.Future"
+      },
+      "sample": {
+        "seq": 51,
+        "pid": 2211813,
+        "monotonic_ns": 535995698768950,
+        "front_step": 2,
+        "event": "sample.return",
+        "output": {
+          "type": "vllm.v1.outputs.ModelRunnerOutput",
+          "req_ids": [
+            "A-9fe0112d",
+            "B-b550db9e"
+          ],
+          "req_id_to_index": {
+            "A-9fe0112d": 0,
+            "B-b550db9e": 1
+          },
+          "sampled_token_ids": [
+            [
+              13
+            ],
+            [
+              16462
+            ]
+          ],
+          "logprobs": null,
+          "prompt_logprobs_dict": {},
+          "pooler_output": null,
+          "kv_connector_output": null,
+          "ec_connector_output": null,
+          "num_nans_in_logits": null,
+          "cudagraph_stats": null,
+          "routed_experts": null,
+          "sampling_masks": null
+        }
+      }
+    },
+    "3": {
+      "registered": {
+        "seq": 65,
+        "pid": 2211813,
+        "monotonic_ns": 535995702720280,
+        "front_step": 3,
+        "event": "runner.registered",
+        "req_id_to_index": {
+          "B-b550db9e": 2
+        }
+      },
+      "inputs": {
+        "seq": 66,
+        "pid": 2211813,
+        "monotonic_ns": 535995704881150,
+        "front_step": 3,
+        "event": "runner.inputs",
+        "batch": {
+          "type": "vllm_ascend.worker.v2.input_batch.AscendInputBatch",
+          "req_ids": [
+            "B-b550db9e"
+          ],
+          "num_reqs": 1,
+          "num_tokens": 1,
+          "num_tokens_after_padding": 1,
+          "idx_mapping": {
+            "type": "torch.Tensor",
+            "shape": [
+              1
+            ],
+            "dtype": "torch.int64",
+            "device": "npu:0",
+            "values": [
+              2
+            ]
+          },
+          "idx_mapping_np": {
+            "type": "numpy.ndarray",
+            "shape": [
+              1
+            ],
+            "dtype": "int64",
+            "device": "cpu",
+            "values": [
+              2
+            ]
+          },
+          "num_scheduled_tokens": {
+            "type": "numpy.ndarray",
+            "shape": [
+              1
+            ],
+            "dtype": "int32",
+            "device": "cpu",
+            "values": [
+              1
+            ]
+          },
+          "input_ids": {
+            "type": "torch.Tensor",
+            "shape": [
+              1
+            ],
+            "dtype": "torch.int32",
+            "device": "npu:0",
+            "values": [
+              16462
+            ]
+          },
+          "positions": {
+            "type": "torch.Tensor",
+            "shape": [
+              1
+            ],
+            "dtype": "torch.int64",
+            "device": "npu:0",
+            "values": [
+              7
+            ]
+          },
+          "query_start_loc": {
+            "type": "torch.Tensor",
+            "shape": [
+              2
+            ],
+            "dtype": "torch.int32",
+            "device": "npu:0",
+            "values": [
+              0,
+              1
+            ]
+          },
+          "seq_lens": {
+            "type": "torch.Tensor",
+            "shape": [
+              1
+            ],
+            "dtype": "torch.int32",
+            "device": "npu:0",
+            "values": [
+              8
+            ]
+          },
+          "logits_indices": {
+            "type": "torch.Tensor",
+            "shape": [
+              1
+            ],
+            "dtype": "torch.int64",
+            "device": "npu:0",
+            "values": [
+              0
+            ]
+          },
+          "num_computed_tokens_np": {
+            "type": "numpy.ndarray",
+            "shape": [
+              1
+            ],
+            "dtype": "int32",
+            "device": "cpu",
+            "values": [
+              7
+            ]
+          },
+          "prefill_len_np": {
+            "type": "numpy.ndarray",
+            "shape": [
+              1
+            ],
+            "dtype": "int32",
+            "device": "cpu",
+            "values": [
+              6
+            ]
+          }
+        }
+      },
+      "attn": {
+        "seq": 67,
+        "pid": 2211813,
+        "monotonic_ns": 535995705393230,
+        "front_step": 3,
+        "event": "runner.attn",
+        "block_tables": [
+          {
+            "type": "torch.Tensor",
+            "shape": [
+              1,
+              1
+            ],
+            "dtype": "torch.int32",
+            "device": "npu:0",
+            "values": [
+              [
+                2
+              ]
+            ]
+          }
+        ],
+        "slot_mappings": {
+          "type": "torch.Tensor",
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "torch.int32",
+          "device": "npu:0",
+          "values": [
+            [
+              263
+            ]
+          ]
+        }
+      },
+      "hidden": {
+        "seq": 70,
+        "pid": 2211813,
+        "monotonic_ns": 535995761031140,
+        "front_step": 3,
+        "event": "runner.hidden",
+        "hidden": {
+          "type": "torch.Tensor",
+          "shape": [
+            1,
+            1024
+          ],
+          "dtype": "torch.bfloat16",
+          "device": "npu:0"
+        }
+      },
+      "logits": {
+        "seq": 71,
+        "pid": 2211813,
+        "monotonic_ns": 535995761534640,
+        "front_step": 3,
+        "event": "model.logits",
+        "logits": {
+          "type": "torch.Tensor",
+          "shape": [
+            1,
+            151936
+          ],
+          "dtype": "torch.bfloat16",
+          "device": "npu:0"
+        }
+      },
+      "execute": {
+        "seq": 64,
+        "pid": 2211813,
+        "monotonic_ns": 535995701571050,
+        "front_step": 3,
+        "event": "execute.call",
+        "non_block": true,
+        "plan": {
+          "type": "vllm.v1.core.sched.output.SchedulerOutput",
+          "scheduled_new_reqs": [],
+          "scheduled_cached_reqs": {
+            "type": "vllm.v1.core.sched.output.CachedRequestData",
+            "req_ids": [
+              "B-b550db9e"
+            ],
+            "resumed_req_ids": [],
+            "new_token_ids": [],
+            "all_token_ids": {},
+            "new_block_ids": [
+              null
+            ],
+            "num_computed_tokens": [
+              7
+            ],
+            "num_output_tokens": [
+              2
+            ]
+          },
+          "num_scheduled_tokens": {
+            "B-b550db9e": 1
+          },
+          "total_num_scheduled_tokens": 1,
+          "scheduled_spec_decode_tokens": {},
+          "scheduled_encoder_inputs": {},
+          "num_common_prefix_blocks": [
+            0
+          ],
+          "finished_req_ids": [
+            "A-9fe0112d"
+          ],
+          "free_encoder_mm_hashes": [],
+          "scheduled_encoder_input_stats": null,
+          "preempted_req_ids": [],
+          "has_structured_output_requests": false,
+          "pending_structured_output_tokens": false,
+          "num_invalid_spec_tokens": null,
+          "kv_connector_metadata": null,
+          "has_sync_kv_loads": false,
+          "ec_connector_metadata": null,
+          "ec_manager_metadata": null,
+          "new_block_ids_to_zero": null,
+          "kv_cache_block_copies": null,
+          "block_table_updates": null,
+          "kv_connector_block_state": null,
+          "num_spec_tokens_to_schedule": 0
+        }
+      },
+      "returned": {
+        "seq": 68,
+        "pid": 2211813,
+        "monotonic_ns": 535995760745260,
+        "front_step": 3,
+        "event": "execute.return",
+        "returned_type": "concurrent.futures._base.Future"
+      },
+      "sample": {
+        "seq": 72,
+        "pid": 2211813,
+        "monotonic_ns": 535995763021310,
+        "front_step": 3,
+        "event": "sample.return",
+        "output": {
+          "type": "vllm.v1.outputs.ModelRunnerOutput",
+          "req_ids": [
+            "B-b550db9e"
+          ],
+          "req_id_to_index": {
+            "B-b550db9e": 0
+          },
+          "sampled_token_ids": [
+            [
+              21575
+            ]
+          ],
+          "logprobs": null,
+          "prompt_logprobs_dict": {},
+          "pooler_output": null,
+          "kv_connector_output": null,
+          "ec_connector_output": null,
+          "num_nans_in_logits": null,
+          "cudagraph_stats": null,
+          "routed_experts": null,
+          "sampling_masks": null
+        }
+      }
+    }
+  }
+}

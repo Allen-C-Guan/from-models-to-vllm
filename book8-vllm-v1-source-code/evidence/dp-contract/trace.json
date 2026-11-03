@@ -1,0 +1,156 @@
+{
+  "kind": "CPU real methods, synthetic state; send replaced by recorder; no engine execution",
+  "source_sha256": "fd6ca0cb7499b3086eef2fc57674b7ace56ef1c648f09e92e144b255b79018f8",
+  "probe_sha256": "00ab02e6fa75308c50242e9eaf3df1cd8379e4f8b212c30d6b8b179333e56da3",
+  "burst": [
+    {
+      "request": "A",
+      "chosen": "E0",
+      "after": {
+        "counts": [
+          [
+            1,
+            0,
+            0.0
+          ],
+          [
+            0,
+            0,
+            0.0
+          ]
+        ],
+        "inflight": {
+          "E0": 1
+        },
+        "owners": {
+          "A": "E0"
+        },
+        "scan_start": 1
+      }
+    },
+    {
+      "request": "B",
+      "chosen": "E1",
+      "after": {
+        "counts": [
+          [
+            1,
+            0,
+            0.0
+          ],
+          [
+            1,
+            0,
+            0.0
+          ]
+        ],
+        "inflight": {
+          "E0": 1,
+          "E1": 1
+        },
+        "owners": {
+          "A": "E0",
+          "B": "E1"
+        },
+        "scan_start": 0
+      }
+    },
+    {
+      "request": "C",
+      "chosen": "E0",
+      "after": {
+        "counts": [
+          [
+            1,
+            0,
+            0.0
+          ],
+          [
+            0,
+            0,
+            0.0
+          ]
+        ],
+        "inflight": {
+          "E0": 2,
+          "E1": 1
+        },
+        "owners": {
+          "A": "E0",
+          "B": "E1",
+          "C": "E0"
+        },
+        "scan_start": 1
+      }
+    }
+  ],
+  "cancel_messages": [
+    {
+      "kind": "ABORT",
+      "ids": [
+        "A",
+        "C"
+      ],
+      "engine": "E0"
+    },
+    {
+      "kind": "ABORT",
+      "ids": [
+        "B"
+      ],
+      "engine": "E1"
+    }
+  ],
+  "pressure": {
+    "request": "C-pressure",
+    "chosen": "E1",
+    "after": {
+      "counts": [
+        [
+          1,
+          0,
+          0.95
+        ],
+        [
+          2,
+          0,
+          0.1
+        ]
+      ],
+      "inflight": {
+        "E1": 1
+      },
+      "owners": {
+        "C-pressure": "E1"
+      },
+      "scan_start": 1
+    }
+  },
+  "explicit_rank": {
+    "request": "C-forced",
+    "chosen": "E0",
+    "after": {
+      "counts": [
+        [
+          1,
+          0,
+          0.95
+        ],
+        [
+          2,
+          0,
+          0.1
+        ]
+      ],
+      "inflight": {
+        "E1": 1,
+        "E0": 1
+      },
+      "owners": {
+        "C-pressure": "E1",
+        "C-forced": "E0"
+      },
+      "scan_start": 1
+    }
+  }
+}

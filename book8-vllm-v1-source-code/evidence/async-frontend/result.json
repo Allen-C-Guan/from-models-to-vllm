@@ -1,0 +1,79 @@
+{
+  "assembled": {
+    "A-online": {
+      "text": " Paris.",
+      "token_ids": [
+        12095,
+        13
+      ],
+      "chunks": 2,
+      "last_finished": true
+    },
+    "B-online": {
+      "text": " the Pacific Ocean",
+      "token_ids": [
+        279,
+        16462,
+        21575
+      ],
+      "chunks": 3,
+      "last_finished": true
+    }
+  },
+  "cancel_first": {
+    "type": "vllm.outputs.RequestOutput",
+    "request_id": "C-cancel",
+    "prompt": "The capital of Japan is",
+    "prompt_token_ids": [
+      785,
+      6722,
+      315,
+      6323,
+      374
+    ],
+    "outputs": [
+      {
+        "type": "vllm.outputs.CompletionOutput",
+        "index": 0,
+        "text": " Tokyo",
+        "token_ids": [
+          26194
+        ],
+        "cumulative_logprob": null,
+        "logprobs": null,
+        "routed_experts": null,
+        "finish_reason": null,
+        "stop_reason": null,
+        "lora_request": null,
+        "sampling_mask": null,
+        "spec_decode_metrics": null
+      }
+    ],
+    "finished": false
+  },
+  "aborts": [
+    {
+      "seq": 7,
+      "event": "abort.call",
+      "pid": 2236083,
+      "monotonic_ns": 538141222924360,
+      "request_id": "C-cancel-92ba6f2a",
+      "internal": true,
+      "unfinished_before": 1
+    },
+    {
+      "seq": 8,
+      "event": "abort.return",
+      "pid": 2236083,
+      "monotonic_ns": 538141223112890,
+      "unfinished_after": 0
+    }
+  ],
+  "idle": {
+    "seq": 9,
+    "event": "core.wait_idle_returned",
+    "pid": 2236083,
+    "monotonic_ns": 538141295178830,
+    "frontend_unfinished": 0
+  }
+}

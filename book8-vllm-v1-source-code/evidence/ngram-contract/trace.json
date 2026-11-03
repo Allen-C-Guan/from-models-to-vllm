@@ -1,0 +1,52 @@
+{
+  "kind": "CPU fixed-source function body via AST, decorator removed; synthetic IDs; MRV1 branch, no model execution",
+  "source_sha256": "5051e1bca645fe4befec0a6340f0dfc169fbcbe070ac1da508b72f8ee9c91736",
+  "probe_sha256": "5e3235caf7bb012fc5235788c8cd168a8565f974d994a91a8d825ebedecf69e5",
+  "cases": [
+    {
+      "history": [
+        10,
+        20,
+        30,
+        40,
+        10,
+        20
+      ],
+      "max_model_len": 32,
+      "min_ngram": 2,
+      "max_ngram": 2,
+      "k": 2,
+      "draft": [
+        30,
+        40
+      ]
+    },
+    {
+      "history": [
+        10,
+        20,
+        30
+      ],
+      "max_model_len": 32,
+      "min_ngram": 2,
+      "max_ngram": 2,
+      "k": 2,
+      "draft": []
+    },
+    {
+      "history": [
+        10,
+        20,
+        30,
+        40,
+        10,
+        20
+      ],
+      "max_model_len": 6,
+      "min_ngram": 2,
+      "max_ngram": 2,
+      "k": 2,
+      "draft": []
+    }
+  ]
+}

@@ -1,0 +1,144 @@
+{
+  "ranks": [
+    {
+      "pid": 2262008,
+      "tp": {
+        "rank": 0,
+        "ranks": [
+          0
+        ],
+        "size": 1
+      },
+      "pp": {
+        "rank": 0,
+        "ranks": [
+          0,
+          1
+        ],
+        "size": 2
+      },
+      "layer_range": [
+        0,
+        14
+      ],
+      "layer_class": "Qwen3DecoderLayer",
+      "model_class": "Qwen3ForCausalLM",
+      "qkv_weight": [
+        4096,
+        1024
+      ],
+      "o_weight": [
+        1024,
+        2048
+      ],
+      "num_heads": 16,
+      "num_kv_heads": 8,
+      "embedding_class": "AscendVocabParallelEmbedding",
+      "lm_head_class": "PPMissingLayer"
+    },
+    {
+      "pid": 2262009,
+      "tp": {
+        "rank": 0,
+        "ranks": [
+          1
+        ],
+        "size": 1
+      },
+      "pp": {
+        "rank": 1,
+        "ranks": [
+          0,
+          1
+        ],
+        "size": 2
+      },
+      "layer_range": [
+        14,
+        28
+      ],
+      "layer_class": "Qwen3DecoderLayer",
+      "model_class": "Qwen3ForCausalLM",
+      "qkv_weight": [
+        4096,
+        1024
+      ],
+      "o_weight": [
+        1024,
+        2048
+      ],
+      "num_heads": 16,
+      "num_kv_heads": 8,
+      "embedding_class": "PPMissingLayer",
+      "lm_head_class": "AscendParallelLMHead"
+    }
+  ],
+  "outputs": [
+    {
+      "type": "vllm.outputs.RequestOutput",
+      "request_id": "0",
+      "prompt": "The capital of France is",
+      "prompt_token_ids": [
+        785,
+        6722,
+        315,
+        9625,
+        374
+      ],
+      "outputs": [
+        {
+          "type": "vllm.outputs.CompletionOutput",
+          "index": 0,
+          "text": " Paris.",
+          "token_ids": [
+            12095,
+            13
+          ],
+          "cumulative_logprob": null,
+          "logprobs": null,
+          "routed_experts": null,
+          "finish_reason": "length",
+          "stop_reason": null,
+          "lora_request": null,
+          "sampling_mask": null,
+          "spec_decode_metrics": null
+        }
+      ],
+      "finished": true
+    },
+    {
+      "type": "vllm.outputs.RequestOutput",
+      "request_id": "1",
+      "prompt": "The largest ocean on Earth is",
+      "prompt_token_ids": [
+        785,
+        7772,
+        17951,
+        389,
+        9237,
+        374
+      ],
+      "outputs": [
+        {
+          "type": "vllm.outputs.CompletionOutput",
+          "index": 0,
+          "text": " the Pacific Ocean",
+          "token_ids": [
+            279,
+            16462,
+            21575
+          ],
+          "cumulative_logprob": null,
+          "logprobs": null,
+          "routed_experts": null,
+          "finish_reason": "length",
+          "stop_reason": null,
+          "lora_request": null,
+          "sampling_mask": null,
+          "spec_decode_metrics": null
+        }
+      ],
+      "finished": true
+    }
+  ]
+}

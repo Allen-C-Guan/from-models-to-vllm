@@ -1,0 +1,51 @@
+{
+  "kind": "CPU execution of fixed-source function via AST; layouts synthetic; no full placement selection or model run",
+  "source_sha256": "308c00f63fcb6f44518ec3a56d8f902c7bba75928c2e3aea30fbe1f3f473973b",
+  "probe_sha256": "dcf01cfbe682f5fb4149518ce0fc788a9a2636ed049ba6adb85500419c7e37a0",
+  "layouts": {
+    "linear": [
+      {
+        "rank": 0,
+        "local_num_experts": 2,
+        "expert_map": [
+          0,
+          1,
+          -1,
+          -1
+        ]
+      },
+      {
+        "rank": 1,
+        "local_num_experts": 2,
+        "expert_map": [
+          -1,
+          -1,
+          0,
+          1
+        ]
+      }
+    ],
+    "round_robin": [
+      {
+        "rank": 0,
+        "local_num_experts": 2,
+        "expert_map": [
+          0,
+          -1,
+          1,
+          -1
+        ]
+      },
+      {
+        "rank": 1,
+        "local_num_experts": 2,
+        "expert_map": [
+          -1,
+          0,
+          -1,
+          1
+        ]
+      }
+    ]
+  }
+}
