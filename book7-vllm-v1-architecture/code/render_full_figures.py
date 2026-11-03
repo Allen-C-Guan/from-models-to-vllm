@@ -321,30 +321,9 @@ def ch9():
 
 
 def ch10():
-    fig,ax=page(10,1,"两张设备的两种组织","一个副本跨两卡，与两个单卡副本，改变不同边界",(0,1,2,3))
-    group(ax,30,210,535,540,"一个 TP 副本",ORANGE)
-    group(ax,635,210,535,540,"两个稠密模型副本",BLUE)
-    node(ax,155,280,"一个核心","一份请求计划",ORANGE,w=285)
-    for x,t in [(65,"设备 0：模型分片"),(325,"设备 1：模型分片")]:
-        node(ax,x,570,t,"协同计算同一批请求",PURPLE,w=215,h=100)
-        line(ax,[(297,380),(297,480),(x+107,480),(x+107,570)],color=PURPLE)
-    node(ax,780,275,"请求路由","A → 副本 0；B → 副本 1",BLUE,w=280)
-    for x,t in [(665,"核心 0／KV 0"),(925,"核心 1／KV 1")]:
-        node(ax,x,445,t,"各自调度",ORANGE,w=215,h=90)
-        node(ax,x,620,"单设备模型副本",color=PURPLE,w=215,h=70)
-        line(ax,[(920,375),(920,405),(x+107,405),(x+107,445)],color=BLUE)
-        line(ax,[(x+107,535),(x+107,620)],color=PURPLE)
-    save(fig,"fig-10-1-topology")
-    fig,ax=page(10,2,"控制消息与设备通信是两条路径","TP 例：同一计划分发给多个 Worker，层内张量通过通信组协作",(1,3))
-    node(ax,420,215,"Executor","组织同一副本的执行",ORANGE,w=360)
-    for x,t in [(105,"Worker／rank 0"),(785,"Worker／rank 1")]:
-        node(ax,x,425,t,"CPU 控制代码",PURPLE,w=310)
-        node(ax,x,655,"对应设备","计算本 rank 负责的分片",PURPLE,w=310)
-        line(ax,[(600,315),(600,365),(x+155,365),(x+155,425)],"计划",(x+155,360),ORANGE)
-        line(ax,[(x+155,525),(x+155,655)],"提交",color=PURPLE)
-    line(ax,[(415,685),(785,685)],"层内张量通信",(600,655),GREEN)
-    line(ax,[(785,730),(415,730)],"集体协作／同步",(600,765),GREEN)
-    save(fig,"fig-10-2-communication")
+    # 独立维护第十章的五张差异教学图，避免全册重绘时恢复旧拓扑。
+    from render_ch10 import main as render_ch10
+    render_ch10()
 
 
 def ch11():
@@ -359,24 +338,8 @@ def ch11():
         if y<450:line(ax,[(x+140,y+100),(x+140,450)],color=c,dashed=True)
         else:line(ax,[(x+140,y),(x+140,550)],color=c,dashed=True)
     save(fig,"fig-11-1-extensions")
-    flow(11,2,"fig-11-2-speculation","投机从候选走向已确认进度","候选 x、y、z 不等于用户已经确认收到的输出",[
-        ("提出候选","例如 x、y、z",PURPLE),
-        ("安排验证工作","预算／KV 预留／输入",ORANGE),
-        ("目标模型验证","判断可接受前缀",PURPLE),
-        ("确定实际结果","例如接受 x、y\n拒绝 z 并纠正",PURPLE),
-        ("修正进度与状态","实际接受量 → 后续安排",GREEN),
-        ("交付已确认输出","不提前展示被拒绝候选",BLUE)],(1,2,3,4),"逻辑示意；具体候选、接受方法和回传时机依 proposer 与执行模式而变。")
-    fig,ax=page(11,3,"请求控制与远端 KV 的两条交接路径","PD 分离：同一请求跨实例，状态就绪是接续计算的前提",(0,1,2,3))
-    for x,title in [(40,"预填充实例"),(690,"解码实例")]:
-        group(ax,x,215,470,525,title,ORANGE)
-        node(ax,x+45,295,"调度侧连接器","身份／位置／传输安排",ORANGE,w=380)
-        node(ax,x+45,570,"执行侧连接器","设备 KV 与实际传输",GREEN,w=380)
-        line(ax,[(x+145,395),(x+145,570)],"安排",(x+105,480),GREEN)
-        line(ax,[(x+325,570),(x+325,395)],"完成",(x+365,480),GREEN)
-    line(ax,[(510,345),(690,345)],"控制／就绪",(600,315),ORANGE)
-    line(ax,[(510,620),(690,620)],"KV 数据",(600,590),GREEN)
-    note(ax,775,"传输尚未完成时，接收端不能把 KV 当成已可读，发送端也不能提前覆盖仍在使用的块。")
-    save(fig,"fig-11-3-pd")
+    from render_ch11 import main as draw_ch11_details
+    draw_ch11_details()
 
 
 def ch12():

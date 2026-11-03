@@ -6,7 +6,7 @@
 #   ③ KimiDeltaAttention(cfg) 层模块：K3 化三件——per-channel 门（Eq.5 下界衰减
 #      g = g_min·Sigmoid(e^{A^h}·z)，g_min=−5）、低秩遗忘门投影（z = W↑W↓x + b，rank=d_k）、
 #      满秩输出门（Eq.6：y = W_o[Sigmoid(W_g x) ⊙ RMSNorm(õ)]——玩具 512×512=d 同构缩微，
-#      真机 7168×7168，两口径勿混）；
+#      真机投影为7168→12288，两口径勿混）；
 #   ④ 对拍内置：自研双形态 vs transformers 5.18.0 kimi_linear 的 torch 参考 kernel
 #      （chunk_kimi_delta_attention / recurrent_kimi_delta_attention——「KDA essentially the same
 #      as GDN but decay is per-channel」官方差分句的实现正身）；双形态互拍；
@@ -19,14 +19,14 @@
 #   D2 衰减参数化：Kimi Linear −e^{A}Softplus(z) 无下界；K3 g_min·Sigmoid(e^{A}z) 下界 −5
 #      （α > e^{−5}≈6.7e−3 → 16-token 块累积 log 衰减 ∈ (−80,0) → 倒数重标 < e^{80} 在 BF16
 #      动态域内——机制改动直接改变 kernel 形态：对角块并入 Tensor Core 稠密乘，K3 报告 Fig.3b）。
-#   D3 输出门：GDN 低秩 z 门（in_proj 出）；KDA 满秩 Sigmoid(W_g x)（d×d——K3 改动二）。
+#   D3 输出门：GDN 的 z 输出门（由投影产生，不笼统称低秩）；KDA 满秩 Sigmoid(W_g x)（输出宽h·d_v，非必须d×d）。
 #   D4 共同基座：delta rule 递归（先忘后写 + 写残差）、短卷积+Swish、q/k L2Norm——同族不变。
 # 【实现口径（正文 6.8 素材）】
 #   - 本件 chunkwise 用「逐对衰减」D[i,j,c]=exp(c_i[c]−c_j[c]) 直接计算（i≥j 时 ∈(0,1]，
 #     永不溢出——数学上的安全形态）；K3 的 g_min=−5 是为「因式分解形态」（k̃=k⊙e^{−c} 重标，
 #     e^{−c} 可爆）买回 BF16 动态域——同一数学的两种工程立场，正文对照教学点。
 #   - chunk 默认 16：与 K3 报告的 16-token 数字链对齐（若走因式分解形态，16 是 g_min=−5 下
-#     不溢出的块长；本件逐对形态任意 chunk 都安全，16 取报告口径）。
+#     不溢出的块长；本件逐对形态避免衰减指数上溢；其他数值误差仍需检查，16 取报告口径）。
 # 运行方式：cd 工作区根目录 && source env.sh && python "code/ch06/kda.py" [--out-name run1]
 #   对拍 CPU fp32；预计 <1 分钟（秒级）。
 # 产物：log/book5-ch06/kda_{out}.json（不入库）
@@ -169,8 +169,8 @@ class KimiDeltaAttention(nn.Module):
       A_log:         (h,) 每头 log-scale（Eq.5 的 e^{A^h}；初始化 0——A_log=0）
       b_proj:        d → h（β 写强度，sigmoid）
       o_norm:        head-wise RMSNorm（weight (d_v,) 头间共享——KimiLinearRMSNormGated 去门版）
-      g_proj(W_g):   d → d 满秩输出门（Eq.6 Sigmoid(W_g x)；玩具 d=h·d_v 时维度自洽——
-                     真机 7168×7168 与 h·d_v=12288 的广播口径报告未明，notes/07 登记）
+      g_proj(W_g):   d → h·d_v 直接投影输出门（Eq.6 Sigmoid(W_g x)；玩具 d=h·d_v 时维度自洽——
+                     真机投影为7168→12288 作用于输出投影前的12288维头空间）
       o_proj:        h·d_v → d
     gate_mode="per_token"：z 沿 d_k 取均值后广播（GDN 粒度——每头每步一个标量）。
     forward(x, cos, sin, path) 兼容 SlotDecoderLayer 插槽签名（线性层 NoPE，忽略 cos/sin）。
@@ -180,8 +180,7 @@ class KimiDeltaAttention(nn.Module):
                  g_min=-5.0, rank=None):
         super().__init__()
         assert gate_mode in ("per_channel", "per_token")
-        assert h * d_v == d, ("满秩输出门维度自洽条件：h·d_v == d（玩具口径 d=512=h·d_v——"
-                              "真机 7168 vs 12288 的广播口径报告未明，见 notes/07 登记项）")
+        assert d_k == d_v, "本教学层的联合QKV卷积要求d_k=d_v；核心递推函数支持不同维度。"
         self.h, self.d_k, self.d_v = h, d_k, d_v
         self.chunk, self.gate_mode, self.g_min = chunk, gate_mode, g_min
         self.qkv_dim = h * d_k
@@ -198,7 +197,7 @@ class KimiDeltaAttention(nn.Module):
         self.A_log = nn.Parameter(torch.zeros(h))                                 # e^{A^h} 初始 1（K3 口径）
         self.b_proj = nn.Linear(d, h, bias=False)
         self.o_norm_w = nn.Parameter(torch.ones(d_v))                             # head-wise RMSNorm 权重
-        self.g_proj = nn.Linear(d, d, bias=False)                                 # 满秩输出门 W_g
+        self.g_proj = nn.Linear(d, h * d_v, bias=False)                                 # 满秩输出门 W_g
         self.o_proj = nn.Linear(h * d_v, d, bias=False)
         for m in self.modules():
             if isinstance(m, nn.Linear):

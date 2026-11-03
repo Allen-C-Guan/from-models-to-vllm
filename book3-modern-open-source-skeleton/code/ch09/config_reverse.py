@@ -78,7 +78,7 @@ def infer_rows(t):
          "专家层布局：Scout 全层 / Maverick 奇数层（偶数层稠密）"),
         ("intermediate_size / _mlp", f"{t.intermediate_size} / {t.intermediate_size_mlp}",
          "专家宽 f / 稠密层宽 f_mlp（Scout 的稠密宽闲置）"),
-        ("no_rope_layers", f"{sum(t.no_rope_layers)} NoPE + {len(t.no_rope_layers) - sum(t.no_rope_layers)} RoPE",
+        ("no_rope_layers", f"{sum(t.no_rope_layers)} RoPE + {len(t.no_rope_layers) - sum(t.no_rope_layers)} NoPE",
          "位置编码插槽 3:1 交错：每 4 层仅第 4 层旋转；NoPE 层=chunked_attention"),
         ("attention_chunk_size", str(t.attention_chunk_size), "NoPE 层的分块注意力窗（块内注意、块间不看）"),
         ("rope_theta / rope_scaling",
@@ -88,7 +88,7 @@ def infer_rows(t):
          "θ 继承 Llama3；llama3 型分段缩放（快针不动、慢针压 1/factor）——Scout 有 / Maverick 无"),
         ("max_position_embeddings", f"{t.max_position_embeddings:,}", "声明上下文（Scout 10M / Maverick 1M）"),
         ("vocab_size / tie", f"{t.vocab_size:,} / {t.tie_word_embeddings}", "出入口：嵌入与 lm_head 各一份（untied 沿用）"),
-        ("use_qk_norm", str(t.use_qk_norm), "RoPE 层 Q/K 过一道无参数 L2 归一化（源码级，不入参数账）"),
+        ("use_qk_norm", str(t.use_qk_norm), "RoPE 层 Q/K 过一道无参数 RMS 归一化（类名L2Norm）（源码级，不入参数账）"),
         ("attn_temperature_tuning / floor_scale / attn_scale",
          f"{t.attn_temperature_tuning} / {t.floor_scale} / {t.attn_scale}",
          "推理期注意力温度缩放的 config 事实（与第 7 章温度配方同族旋钮——只登记不展开机制）"),
@@ -151,7 +151,7 @@ def draw_fig9_1(t, acct, meta, path):
 
     fig, ax = plt.subplots(figsize=(8.6, 5.0), dpi=300)
     ax.set_xlim(0, 17); ax.set_ylim(0, 10.6); ax.axis("off")
-    ax.text(8.5, 10.25, "Llama 4 Scout: structure inferred from config.json (no paper shipped)",
+    ax.text(8.5, 10.25, "Llama 4 Scout: structure inferred from config.json (config and reference implementation)",
             ha="center", fontsize=9.5, fontweight="bold")
 
     # ---- 主列：文本整机（config 逆向，实线）；视觉通路在左侧汇入输入侧 ----
@@ -160,8 +160,8 @@ def draw_fig9_1(t, acct, meta, path):
     ax.text(4.85, 8.32, "x 48 blocks", fontsize=7.4, fontweight="bold", color=DARK)
     ax.text(4.85, 7.15, "RMSNorm -> Attention: 40 Q heads / 8 KV heads, head_dim 128\n"
                         "     q:(B,40,n,128)  k,v:(B,8,n,128)  ->  o:(B,n,5120)\n"
-                        "     every 4th layer: RoPE (theta=5e5, llama3-type x16) + L2 qk-norm (no params)\n"
-                        "     other 3 of 4: no positional rotation, chunked attention, chunk=8192\n"
+                        "     first 3 of 4: RoPE (theta=5e5, llama3-type x16) + RMS qk-norm (no params)\n"
+                        "     every 4th layer: NoPE + full attention; other layers chunked, chunk=8192\n"
                         "RMSNorm -> FFN slot = router (16 -> 1) + shared expert + 16 experts, f=8192\n"
                         "     (B,n,5120) -> gate/up (B,n,8192) x 2 -> * -> down (B,n,5120)",
             fontsize=6.5, color=DARK, va="center")

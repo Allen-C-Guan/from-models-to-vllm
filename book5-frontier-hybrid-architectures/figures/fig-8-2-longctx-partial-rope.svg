@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="1008pt" height="432pt" viewBox="0 0 1008 432" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-11-03T22:23:31.264734</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 432 
+L 1008 432 
+L 1008 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 126 184.896 
+L 321.3 184.896 
+Q 322.215469 184.896 322.215469 159.948 
+L 322.215469 101.736 
+Q 322.215469 76.788 321.3 76.788 
+L 126 76.788 
+Q 125.084531 76.788 125.084531 101.736 
+L 125.084531 159.948 
+Q 125.084531 184.896 126 184.896 
+z
+" clip-path="url(#p52af58ed52)" style="fill: #e3f3ed; stroke: #579686; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 321.3 184.896 
+L 907.2 184.896 
+Q 908.115469 184.896 908.115469 159.948 
+L 908.115469 101.736 
+Q 908.115469 76.788 907.2 76.788 
+L 321.3 76.788 
+Q 320.384531 76.788 320.384531 101.736 
+L 320.384531 159.948 
+Q 320.384531 184.896 321.3 184.896 
+z
+" clip-path="url(#p52af58ed52)" style="fill: #e7eff9; stroke: #7894a5; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_1">
+    <text style="font-size: 13px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'" transform="translate(196.935 129.282)">旋转64维</text>
+    <text style="font-size: 13px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'" transform="translate(190.435 142.282)">32个频率对</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 13px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'" transform="translate(564.4275 129.282)">192维不直接旋转</text>
+    <text style="font-size: 13px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'" transform="translate(549.25 142.282)">隐表示仍可能包含顺序</text>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 17px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: middle" x="516.6" y="218.16" transform="rotate(-0 516.6 218.16)">Qwen3-Next：频率分母用64，不是先用256再截断</text>
+   </g>
+   <g id="text_4">
+    <!-- $q_r^T R(n-m)k_r + q_p^T k_p$ -->
+    <g transform="translate(404.36 276.372)">
+     <text>
+      <tspan x="0" y="-0.765062" style="font-style: oblique; font-size: 23px; font-family: 'DejaVu Sans'">q</tspan>
+      <tspan x="26.131813" y="-0.765062" style="font-style: oblique; font-size: 23px; font-family: 'DejaVu Sans'">R</tspan>
+      <tspan x="51.085915" y="-0.765062" style="font-style: oblique; font-size: 23px; font-family: 'DejaVu Sans'">n</tspan>
+      <tspan x="93.896462" y="-0.765062" style="font-style: oblique; font-size: 23px; font-family: 'DejaVu Sans'">m</tspan>
+      <tspan x="125.274391" y="-0.765062" style="font-style: oblique; font-size: 23px; font-family: 'DejaVu Sans'">k</tspan>
+      <tspan x="174.07527" y="-0.765062" style="font-style: oblique; font-size: 23px; font-family: 'DejaVu Sans'">q</tspan>
+      <tspan x="200.207083" y="-0.765062" style="font-style: oblique; font-size: 23px; font-family: 'DejaVu Sans'">k</tspan>
+      <tspan x="14.599609" y="6.341938" style="font-style: oblique; font-size: 16.1px; font-family: 'DejaVu Sans'">r</tspan>
+      <tspan x="15.668385" y="-10.264063" style="font-style: oblique; font-size: 16.1px; font-family: 'DejaVu Sans'">T</tspan>
+      <tspan x="138.593727" y="2.684926" style="font-style: oblique; font-size: 16.1px; font-family: 'DejaVu Sans'">r</tspan>
+      <tspan x="188.67488" y="6.341938" style="font-style: oblique; font-size: 16.1px; font-family: 'DejaVu Sans'">p</tspan>
+      <tspan x="189.743656" y="-10.264063" style="font-style: oblique; font-size: 16.1px; font-family: 'DejaVu Sans'">T</tspan>
+      <tspan x="213.526419" y="2.684926" style="font-style: oblique; font-size: 16.1px; font-family: 'DejaVu Sans'">p</tspan>
+      <tspan x="42.11277" y="-0.765062" style="font-size: 23px; font-family: 'DejaVu Sans'">(</tspan>
+      <tspan x="70.14402" y="-0.765062" style="font-size: 23px; font-family: 'DejaVu Sans'">−</tspan>
+      <tspan x="116.301247" y="-0.765062" style="font-size: 23px; font-family: 'DejaVu Sans'">)</tspan>
+      <tspan x="150.322829" y="-0.765062" style="font-size: 23px; font-family: 'DejaVu Sans'">+</tspan>
+     </text>
+    </g>
+   </g>
+   <g id="text_5">
+    <text style="font-size: 16px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: middle" x="516.6" y="338.742" transform="rotate(-0 516.6 338.742)">左项随相对位置变化；右项提供不直接旋转的匹配路径</text>
+   </g>
+  </g>
+  <g id="text_6">
+   <text style="font-size: 21px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: middle" x="504" y="27.12" transform="rotate(-0 504 27.12)">8.2 Partial RoPE：维度划分与频率定义都要核对</text>
+  </g>
+  <g id="text_7">
+   <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: start" x="70.56" y="421.2" transform="rotate(-0 70.56 421.2)">依据Transformers v5.14.1 Qwen3-Next；几何记号采用列向量。</text>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p52af58ed52">
+   <rect x="126" y="51.84" width="781.2" height="332.64"/>
+  </clipPath>
+ </defs>
+</svg>

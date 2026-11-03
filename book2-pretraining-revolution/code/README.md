@@ -5,8 +5,8 @@
 在既有环境中，从本书目录运行：
 
 ```bash
-python code/verification/verify_full_math.py
-python code/verification/verify_math.py --chapter all
+python code/math-examples/verify_full_math.py
+python code/math-examples/verify_math.py --chapter all
 ```
 
 前两项运行CPU数学练习，输出在 `log/book2-polish-verification/`，不需要训练或下载权重。

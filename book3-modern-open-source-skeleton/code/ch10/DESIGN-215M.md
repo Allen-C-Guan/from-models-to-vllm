@@ -41,12 +41,12 @@
 | `num_hidden_layers` L | 12 | 与 GPT-2 124M 同层数（本丛书单轨底座），宽度 768→1024 放大 | 本书设计决策 |
 | `num_attention_heads` h | 16 | d/64=16，head_dim=64 与 LLaMA1 小档一致 | config 逆向（LLaMA1-7B） |
 | `num_key_value_heads` h_kv | 8 | GQA-2（组内 2 查询头）：KV 账本 24 KiB/token；8 组与 LLaMA2-34B/70B 及 Llama 3 全系同数（注意 LLaMA2-7B/13B 是 MHA）。组数扫描：8→4→1 付 0.109/0.158 nat 质量税、KV 字节 8:4:1——小档欠训练时砍狠了真疼，故不取 4 或 1 | 官方论文 2305.13245 + 本书实验（2026-10） |
-| `max_position_embeddings` | 8192 | 训练窗设定（RoPE 无查表上限，越窗行为另议——外推工程不在本项目范围） | 本书设计决策 |
-| `rope_theta` θ | 10000 | LLaMA1/2 出厂值；8192 窗内够用（Llama 3 的 5e5 属更长窗出厂设定） | config 逆向 |
+| `max_position_embeddings` | 8192 | 配置上限；历史训练实际n=1024。RoPE没有查表长度上限，不保证外推能力 | 本书设计决策 |
+| `rope_theta` θ | 10000 | LLaMA1/2 出厂值；是否适用于8192需任务验证（Llama 3 的 5e5 属更长窗出厂设定） | config 逆向 |
 | `rms_norm_eps` | 1e-5 | LLaMA 65B/LLaMA2/3 全系出厂口径（HF 默认 1e-6 是隐形开关，从 config 读） | config 逆向 |
 | tie_word_embeddings | false（untied） | 对齐 LLaMA 出厂口径；代价 = 词表账翻倍至 65,536,000（占全机 31.6%）；收益 = 出口几何独立 + HF 键位 `lm_head.weight` 独立存在（结构对拍前提）。三篇 LLaMA 论文对 untying 均无论证（grep 负结论）——按出厂口径执行 | config 逆向 + 负结论登记 |
 | bias（全部） | 无 | LLaMA 出厂选择（RMSNorm 论文本有 bias，LLaMA 实现砍掉） | config 逆向 + 官方代码 |
-| 初始化 | $N(0, 0.02^2)$ | 初始 logit 方差 $\sigma^2=ds^2=0.4096$，初始 loss $=\ln V+\sigma^2/2=10.578$（实测 10.558，untied 无自泄漏、$E[z_t]\approx0$ 实测归零）；$s$ 变大初始 loss 失控（Book2 复演过 $s{=}1$ 时 loss≈480 的「复读机」反例） | 本书实验（2026-10） |
+| 初始化 | $N(0, 0.02^2)$ | 初始 logit 方差 $\sigma^2=ds^2=0.4096$，初始 loss $\approx\ln V+\sigma^2/2=10.578$（实测 10.558，untied解除输入/输出权重共享，但不消除方差修正；目标logit均值接近0是统计近似）；$s$ 变大初始 loss 失控（Book2 复演过 $s{=}1$ 时 loss≈480 的「复读机」反例） | 本书实验（2026-10） |
 
 **参数逐项账**（assert 锁死，`llama215.py` 自测逐位验证）：
 
@@ -109,7 +109,7 @@
 
 1. **参数逐位**：`python llama215.py` 自测——手算=实测=207,119,360。
 2. **结构对拍**：`python llama215.py --parity`——同 config 随机权重 strict 直搬 HF `LlamaForCausalLM`（transformers 5.18.0），CPU fp32：max|Δlogits|<1e-4 且 argmax/top-5 一致率 100% 且未搬运对照组显著不同（实测 6.9e-06 / 100% / 100% / 4.86）。
-3. **冒烟健康**：`python train_215.py --task smoke`——初始 loss ∈ ln 32000 + [0, 0.5]（精确预言 ln V+ds²/2=10.578，实测 10.558；untied 无自泄漏，E[z_t]≈0）；全程有限；20 步有限下降（实测 →8.27）。
+3. **冒烟健康**：`python train_215.py --task smoke`——初始 loss ∈ ln 32000 + [0, 0.5]（二阶近似 ln V+ds²/2=10.578，实测 10.558；独立初始化下目标logit均值近似0，非所有有限样本恒等）；全程有限；20 步有限下降（实测 →8.27）。
 4. **整合短训**：`python train_215.py --task integrated`——1000 步（8.2M token）eval 曲线下降（实测 →5.84，单调；本口径=管道验收，非效果训练）。
 5. **（重启后）全量训练曲线**：`python train_215.py --task full --out-name f1`——默认 524,902 步＝Chinchilla 4.3B token（`--steps` 可覆盖；旗舰口径按 §5 加大批量后重定步数）。前置：按 §4 重切 ≥4.3B token 语料（当前 56M 池会被训练池断言拒跑）。判据：训练至 token 预算，eval 收敛、无发散；与本章短训曲线接续（同 eval 协议）。
 6. **（条件性）实权重对拍**：`python llama215.py --tinyllama`——TinyLlama_v1.1（Apache-2.0）真权重 strict 装机 + logits 对拍（实测 4.9e-05 / 100%）。meta-llama 为 gated 仓库，不碰。

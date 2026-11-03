@@ -14,7 +14,7 @@
 
 1. 整合模型代码（三刀整机 import 组装，参数逐项账 assert，总参/激活参双口径 + 分类型 KV/状态账）；
 2. 训练 CLI（冒烟 / 整合短训两档，断点续跑，运行元数据 JSON）；
-3. 一次 ≤30 分钟的整合短训（三刀协同无冲突的真凭据；大纲预算 600-900 步经实测降档为 100 步，留痕见 §2/§6）；
+3. 一次 ≤30 分钟的整合短训（该设置下整合训练可运行的真凭据；大纲预算 600-900 步经实测降档为 100 步，留痕见 §2/§6）；
 4. 本设计文档 / 重启手册。
 
 另附（同章交付、独立于整机）：`hybrid_recall.py` 混合比例等参三臂消融（全全局 vs 3:1 vs 全线性，§7 验收⑥）与 `qwen35_consume.py` 真权重消费点（Qwen3.5-4B 加载对账，属第 9 章正文实验、非本机项目验收件）。
@@ -35,7 +35,7 @@
 
 > 本大项目暂缓形态：单轨选做「注意力换 3:1 混合」整机按四件套交付（整合代码+冒烟+≤30min 短训+DESIGN 重启手册），全量长训 pending。（2026-10-05）
 
-量化依据（本机实测，2026-10-08）：训练档 B=8、T=1024（8,192 token/步）下，三刀机 MPS bf16 实测稳态 11.715 s/步（smoke）/12.824 s/步（integrated 窗，步内漂移 10.1→15.3 热节流）——**大纲推算「2-3 s/step→600-900 步/窗」作废**：归因实测（`log/book5-ch09/chunk_bench_s1.json`）单 GDN 层 fwd+bwd 0.677 s（chunk=64 块循环、MPS 无融合 kernel——ch5 已实录 GDN 教学实现慢 ~25×；chunk 加宽 128/256 收益 <20%，排程等价性 max|Δ|=5.4e-06，正身件默认 chunk=64 不动），9 层共 6.1 s + MoE/MLA/嵌入头/优化器本体 ~5.6 s。按 Chinchilla 配方（约 20 token/参数 ≈ 8.18B token）需 998,537 步 ≈ **148 天连续运算**（12.824 s/步口径）；超出单机可维护性，全量长训不在本机执行。一窗 30 min 降档定版 **100 步**（§7 验收③）作为「三刀协同无冲突」的管道验收凭据；超窗 ckpt 断点续跑补齐、判据不降。
+量化依据（历史实测，2026-10-08）：训练档 B=8、T=1024（8,192 token/步）下，三刀机 MPS bf16 实测稳态 11.715 s/步（smoke）/12.824 s/步（integrated 窗，步内漂移 10.1→15.3 运行步时漂移，原因未实测确认）——**大纲推算「2-3 s/step→600-900 步/窗」作废**：归因实测（`log/book5-ch09/chunk_bench_s1.json`）单 GDN 层 fwd+bwd 0.677 s（chunk=64 块循环、MPS 无融合 kernel——ch5 已实录 GDN 教学实现较慢，不能由这一实现推断理论速度；chunk 加宽 128/256 收益 <20%，排程等价性 max|Δ|=5.4e-06，正身件默认 chunk=64 不动），9 层共 6.1 s + MoE/MLA/嵌入头/优化器本体 ~5.6 s。按 Chinchilla 配方（约 20 token/参数 ≈ 8.18B token）需 998,537 步 ≈ **148 天连续运算**（12.824 s/步口径）；超出单机可维护性，全量长训不在本机执行。一窗 30 min 降档定版 **100 步**（§7 验收③）作为「该设置下整合训练可运行」的管道验收凭据；超窗 ckpt 断点续跑补齐、判据不降。
 
 ## 3. 架构与 config 逐字段依据
 
@@ -158,7 +158,7 @@
 - 3:1 证据链：DeltaNet 并行化 arXiv:2406.06484 v6（hybrid abstract 句）；Mamba-2-Hybrid arXiv:2406.07887（6:1 净胜）；Based arXiv:2402.18668 v2（状态×召回权衡）；Repeat After Me arXiv:2402.01032 v2（固定状态定理——保留全局层的根据）。
 - 真机锚：Kimi K3 官方技术报告 arXiv:2607.24653（本地 PDF）；Qwen3.5 config（Apache-2.0，snapshot 851bf6e8）；GLM-5 arXiv:2602.15763 v2（§2.1.2 变体消融——选择性对照并排标注）。
 - 对照实现：HF transformers 5.18.0 `models/qwen3_next/`（GDN 对拍正身）、`models/qwen3_5/`（真权重消费点）。
-- 本机实测底数：`log/book5-ch09/`（hybrid409_selftest / trainhyb_{smoke,integrated} / chunk_bench / recall3_* / qwen35_consume 全套 JSON，随行种子与设备口径）。
+- 历史实测底数：`log/book5-ch09/`（hybrid409_selftest / trainhyb_{smoke,integrated} / chunk_bench / recall3_* / qwen35_consume 全套 JSON，随行种子与设备口径）。
 
 ---
 

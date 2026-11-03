@@ -1,0 +1,413 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="1008pt" height="684pt" viewBox="0 0 1008 684" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 684
+L 1008 684
+L 1008 0
+L 0 0
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 48.96 133.2
+L 224.64 133.2
+Q 230.4 133.2 230.4 138.96
+L 230.4 206.64
+Q 230.4 212.4 224.64 212.4
+L 48.96 212.4
+Q 43.2 212.4 43.2 206.64
+L 43.2 138.96
+Q 43.2 133.2 48.96 133.2
+z
+" clip-path="url(#pd4a2505738)" style="fill: #edf5fc; stroke: #245f96; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 293.76 133.2
+L 469.44 133.2
+Q 475.2 133.2 475.2 138.96
+L 475.2 206.64
+Q 475.2 212.4 469.44 212.4
+L 293.76 212.4
+Q 288 212.4 288 206.64
+L 288 138.96
+Q 288 133.2 293.76 133.2
+z
+" clip-path="url(#pd4a2505738)" style="fill: #edf5fc; stroke: #245f96; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 538.56 133.2
+L 714.24 133.2
+Q 720 133.2 720 138.96
+L 720 206.64
+Q 720 212.4 714.24 212.4
+L 538.56 212.4
+Q 532.8 212.4 532.8 206.64
+L 532.8 138.96
+Q 532.8 133.2 538.56 133.2
+z
+" clip-path="url(#pd4a2505738)" style="fill: #edf5fc; stroke: #245f96; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 783.36 133.2
+L 959.04 133.2
+Q 964.8 133.2 964.8 138.96
+L 964.8 206.64
+Q 964.8 212.4 959.04 212.4
+L 783.36 212.4
+Q 777.6 212.4 777.6 206.64
+L 777.6 138.96
+Q 777.6 133.2 783.36 133.2
+z
+" clip-path="url(#pd4a2505738)" style="fill: #fff2e6; stroke: #b25c1e; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 48.96 280.8
+L 224.64 280.8
+Q 230.4 280.8 230.4 286.56
+L 230.4 347.04
+Q 230.4 352.8 224.64 352.8
+L 48.96 352.8
+Q 43.2 352.8 43.2 347.04
+L 43.2 286.56
+Q 43.2 280.8 48.96 280.8
+z
+" clip-path="url(#pd4a2505738)" style="fill: #f1f4f7; stroke: #536476; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 293.76 280.8
+L 469.44 280.8
+Q 475.2 280.8 475.2 286.56
+L 475.2 347.04
+Q 475.2 352.8 469.44 352.8
+L 293.76 352.8
+Q 288 352.8 288 347.04
+L 288 286.56
+Q 288 280.8 293.76 280.8
+z
+" clip-path="url(#pd4a2505738)" style="fill: #fff2e6; stroke: #b25c1e; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 538.56 280.8
+L 714.24 280.8
+Q 720 280.8 720 286.56
+L 720 347.04
+Q 720 352.8 714.24 352.8
+L 538.56 352.8
+Q 532.8 352.8 532.8 347.04
+L 532.8 286.56
+Q 532.8 280.8 538.56 280.8
+z
+" clip-path="url(#pd4a2505738)" style="fill: #f1f4f7; stroke: #536476; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 783.36 280.8
+L 959.04 280.8
+Q 964.8 280.8 964.8 286.56
+L 964.8 347.04
+Q 964.8 352.8 959.04 352.8
+L 783.36 352.8
+Q 777.6 352.8 777.6 347.04
+L 777.6 286.56
+Q 777.6 280.8 783.36 280.8
+z
+" clip-path="url(#pd4a2505738)" style="fill: #f1f4f7; stroke: #536476; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 48.96 428.4
+L 224.64 428.4
+Q 230.4 428.4 230.4 434.16
+L 230.4 494.64
+Q 230.4 500.4 224.64 500.4
+L 48.96 500.4
+Q 43.2 500.4 43.2 494.64
+L 43.2 434.16
+Q 43.2 428.4 48.96 428.4
+z
+" clip-path="url(#pd4a2505738)" style="fill: #edf7f1; stroke: #23795f; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 293.76 428.4
+L 469.44 428.4
+Q 475.2 428.4 475.2 434.16
+L 475.2 494.64
+Q 475.2 500.4 469.44 500.4
+L 293.76 500.4
+Q 288 500.4 288 494.64
+L 288 434.16
+Q 288 428.4 293.76 428.4
+z
+" clip-path="url(#pd4a2505738)" style="fill: #edf7f1; stroke: #23795f; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_12">
+    <path d="M 538.56 428.4
+L 714.24 428.4
+Q 720 428.4 720 434.16
+L 720 494.64
+Q 720 500.4 714.24 500.4
+L 538.56 500.4
+Q 532.8 500.4 532.8 494.64
+L 532.8 434.16
+Q 532.8 428.4 538.56 428.4
+z
+" clip-path="url(#pd4a2505738)" style="fill: #edf7f1; stroke: #23795f; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_13">
+    <path d="M 783.36 428.4
+L 959.04 428.4
+Q 964.8 428.4 964.8 434.16
+L 964.8 494.64
+Q 964.8 500.4 959.04 500.4
+L 783.36 500.4
+Q 777.6 500.4 777.6 494.64
+L 777.6 434.16
+Q 777.6 428.4 783.36 428.4
+z
+" clip-path="url(#pd4a2505738)" style="fill: #edf7f1; stroke: #23795f; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_14">
+    <path d="M 232.400391 172.8
+Q 259.2008 172.8 284.324159 172.8
+" clip-path="url(#pd4a2505738)" style="fill: none; stroke: #536476; stroke-width: 1.5; stroke-linecap: round"/>
+    <path d="M 278.324159 169.8
+L 284.324159 172.8
+L 278.324159 175.8
+z
+" clip-path="url(#pd4a2505738)" style="fill: #536476; stroke: #536476; stroke-width: 1.5; stroke-linecap: round"/>
+   </g>
+   <g id="patch_15">
+    <path d="M 477.200391 172.8
+Q 504.0008 172.8 529.124159 172.8
+" clip-path="url(#pd4a2505738)" style="fill: none; stroke: #536476; stroke-width: 1.5; stroke-linecap: round"/>
+    <path d="M 523.124159 169.8
+L 529.124159 172.8
+L 523.124159 175.8
+z
+" clip-path="url(#pd4a2505738)" style="fill: #536476; stroke: #536476; stroke-width: 1.5; stroke-linecap: round"/>
+   </g>
+   <g id="patch_16">
+    <path d="M 722.000391 172.8
+Q 748.8008 172.8 773.924159 172.8
+" clip-path="url(#pd4a2505738)" style="fill: none; stroke: #536476; stroke-width: 1.5; stroke-linecap: round"/>
+    <path d="M 767.924159 169.8
+L 773.924159 172.8
+L 767.924159 175.8
+z
+" clip-path="url(#pd4a2505738)" style="fill: #536476; stroke: #536476; stroke-width: 1.5; stroke-linecap: round"/>
+   </g>
+   <g id="patch_17">
+    <path d="M 232.400391 316.8
+Q 259.2008 316.8 284.324159 316.8
+" clip-path="url(#pd4a2505738)" style="fill: none; stroke: #536476; stroke-width: 1.5; stroke-linecap: round"/>
+    <path d="M 278.324159 313.8
+L 284.324159 316.8
+L 278.324159 319.8
+z
+" clip-path="url(#pd4a2505738)" style="fill: #536476; stroke: #536476; stroke-width: 1.5; stroke-linecap: round"/>
+   </g>
+   <g id="patch_18">
+    <path d="M 477.200391 316.8
+Q 504.0008 316.8 529.124159 316.8
+" clip-path="url(#pd4a2505738)" style="fill: none; stroke: #536476; stroke-width: 1.5; stroke-linecap: round"/>
+    <path d="M 523.124159 313.8
+L 529.124159 316.8
+L 523.124159 319.8
+z
+" clip-path="url(#pd4a2505738)" style="fill: #536476; stroke: #536476; stroke-width: 1.5; stroke-linecap: round"/>
+   </g>
+   <g id="patch_19">
+    <path d="M 722.000391 316.8
+Q 748.8008 316.8 773.924159 316.8
+" clip-path="url(#pd4a2505738)" style="fill: none; stroke: #536476; stroke-width: 1.5; stroke-linecap: round"/>
+    <path d="M 767.924159 313.8
+L 773.924159 316.8
+L 767.924159 319.8
+z
+" clip-path="url(#pd4a2505738)" style="fill: #536476; stroke: #536476; stroke-width: 1.5; stroke-linecap: round"/>
+   </g>
+   <g id="patch_20">
+    <path d="M 232.400391 464.4
+Q 259.2008 464.4 284.324159 464.4
+" clip-path="url(#pd4a2505738)" style="fill: none; stroke: #536476; stroke-width: 1.5; stroke-linecap: round"/>
+    <path d="M 278.324159 461.4
+L 284.324159 464.4
+L 278.324159 467.4
+z
+" clip-path="url(#pd4a2505738)" style="fill: #536476; stroke: #536476; stroke-width: 1.5; stroke-linecap: round"/>
+   </g>
+   <g id="patch_21">
+    <path d="M 477.200391 464.4
+Q 504.0008 464.4 529.124159 464.4
+" clip-path="url(#pd4a2505738)" style="fill: none; stroke: #536476; stroke-width: 1.5; stroke-linecap: round"/>
+    <path d="M 523.124159 461.4
+L 529.124159 464.4
+L 523.124159 467.4
+z
+" clip-path="url(#pd4a2505738)" style="fill: #536476; stroke: #536476; stroke-width: 1.5; stroke-linecap: round"/>
+   </g>
+   <g id="patch_22">
+    <path d="M 722.000391 464.4
+Q 748.8008 464.4 773.924159 464.4
+" clip-path="url(#pd4a2505738)" style="fill: none; stroke: #536476; stroke-width: 1.5; stroke-linecap: round"/>
+    <path d="M 767.924159 461.4
+L 773.924159 464.4
+L 767.924159 467.4
+z
+" clip-path="url(#pd4a2505738)" style="fill: #536476; stroke: #536476; stroke-width: 1.5; stroke-linecap: round"/>
+   </g>
+   <g id="text_1">
+    <text style="font-size: 23px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: start; fill: #25364a" x="32.4" y="35.799922" transform="rotate(-0 32.4 35.799922)">图 G.1　模型遇到什么问题，就改造哪一部分</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 14px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: start; fill: #536476" x="32.4" y="62.794219" transform="rotate(-0 32.4 62.794219)">先改变记忆怎样保存与更新，再为同一规则组织适合批量处理的计算。</text>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 12px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: start; fill: #536476" x="32.4" y="668.292188" transform="rotate(-0 32.4 668.292188)">本书原创教学图 · 核心推导以单头展开；完整层形状见正文 · 数值为教学构造</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 16px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: start; fill: #25364a" x="43.2" y="106.92875" transform="rotate(-0 43.2 106.92875)">问题推动的设计变化</text>
+   </g>
+   <g id="text_5">
+    <text style="font-size: 17px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: middle; fill: #245f96" x="136.8" y="163.4625" transform="rotate(-0 136.8 163.4625)">保存每个历史位置</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 14px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: middle; fill: #25364a" x="136.8" y="193.785" transform="rotate(-0 136.8 193.785)">代价：历史越长，存取越多</text>
+   </g>
+   <g id="text_7">
+    <g id="patch_23">
+     <path d="M 233.16 170.88
+L 285.24 170.88
+L 285.24 148.8
+L 233.16 148.8
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-size: 12px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: middle; fill: #536476" x="259.2" y="164.352188" transform="rotate(-0 259.2 164.352188)">历史成本</text>
+   </g>
+   <g id="text_8">
+    <text style="font-size: 17px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: middle; fill: #245f96" x="381.6" y="163.386797" transform="rotate(-0 381.6 163.386797)">汇总为关联状态</text>
+   </g>
+   <g id="text_9">
+    <text style="font-size: 14px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: middle; fill: #25364a" x="381.6" y="193.931562" transform="rotate(-0 381.6 193.931562)">核分解：先累计、后查询</text>
+   </g>
+   <g id="text_10">
+    <g id="patch_24">
+     <path d="M 477.96 170.88
+L 530.04 170.88
+L 530.04 148.8
+L 477.96 148.8
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-size: 12px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: middle; fill: #536476" x="504" y="164.357813" transform="rotate(-0 504 164.357813)">关联冲突</text>
+   </g>
+   <g id="text_11">
+    <text style="font-size: 17px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: middle; fill: #245f96" x="626.4" y="163.402734" transform="rotate(-0 626.4 163.402734)">增加按键修正</text>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 14px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: middle; fill: #25364a" x="626.4" y="193.939219" transform="rotate(-0 626.4 193.939219)">Delta：先读预测、写差额</text>
+   </g>
+   <g id="text_13">
+    <g id="patch_25">
+     <path d="M 722.76 170.88
+L 774.84 170.88
+L 774.84 148.8
+L 722.76 148.8
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-size: 12px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: middle; fill: #536476" x="748.8" y="164.4" transform="rotate(-0 748.8 164.4)">过时背景</text>
+   </g>
+   <g id="text_14">
+    <text style="font-size: 17px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: middle; fill: #b25c1e" x="871.2" y="163.412031" transform="rotate(-0 871.2 163.412031)">增加整体遗忘</text>
+   </g>
+   <g id="text_15">
+    <text style="font-size: 14px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: middle; fill: #25364a" x="871.2" y="193.931562" transform="rotate(-0 871.2 193.931562)">GDN：先衰减、再修正</text>
+   </g>
+   <g id="text_16">
+    <text style="font-size: 16px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: start; fill: #25364a" x="43.2" y="258.0725" transform="rotate(-0 43.2 258.0725)">模型位置</text>
+   </g>
+   <g id="text_17">
+    <text style="font-size: 17px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: middle; fill: #536476" x="136.8" y="308.885234" transform="rotate(-0 136.8 308.885234)">输入表示</text>
+   </g>
+   <g id="text_18">
+    <text style="font-size: 14px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: middle; fill: #25364a" x="136.8" y="335.554219" transform="rotate(-0 136.8 335.554219)">(N,d)</text>
+   </g>
+   <g id="text_19">
+    <text style="font-size: 17px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: middle; fill: #b25c1e" x="381.6" y="309.055234" transform="rotate(-0 381.6 309.055234)">token mixer</text>
+   </g>
+   <g id="text_20">
+    <text style="font-size: 14px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: middle; fill: #25364a" x="381.6" y="336.491562" transform="rotate(-0 381.6 336.491562)">本章展开GDN</text>
+   </g>
+   <g id="text_21">
+    <text style="font-size: 17px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: middle; fill: #536476" x="626.4" y="308.935703" transform="rotate(-0 626.4 308.935703)">残差与FFN</text>
+   </g>
+   <g id="text_22">
+    <text style="font-size: 14px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: middle; fill: #25364a" x="626.4" y="335.554219" transform="rotate(-0 626.4 335.554219)">(N,d)</text>
+   </g>
+   <g id="text_23">
+    <text style="font-size: 17px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: middle; fill: #536476" x="871.2" y="308.885234" transform="rotate(-0 871.2 308.885234)">输出表示</text>
+   </g>
+   <g id="text_24">
+    <text style="font-size: 14px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: middle; fill: #25364a" x="871.2" y="335.554219" transform="rotate(-0 871.2 335.554219)">(N,d)</text>
+   </g>
+   <g id="text_25">
+    <text style="font-size: 16px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: start; fill: #25364a" x="43.2" y="405.69625" transform="rotate(-0 43.2 405.69625)">数学如何服务架构</text>
+   </g>
+   <g id="text_26">
+    <text style="font-size: 17px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: middle; fill: #23795f" x="136.8" y="456.434766" transform="rotate(-0 136.8 456.434766)">控制历史状态成本</text>
+   </g>
+   <g id="text_27">
+    <text style="font-size: 14px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: middle; fill: #25364a" x="136.8" y="484.134219" transform="rotate(-0 136.8 484.134219)">核与累计 · 第2–3节</text>
+   </g>
+   <g id="text_28">
+    <text style="font-size: 17px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: middle; fill: #23795f" x="381.6" y="456.46" transform="rotate(-0 381.6 456.46)">控制记忆的改写</text>
+   </g>
+   <g id="text_29">
+    <text style="font-size: 14px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: middle; fill: #25364a" x="381.6" y="484.140781" transform="rotate(-0 381.6 484.140781)">局部梯度与门 · 第4–5节</text>
+   </g>
+   <g id="text_30">
+    <text style="font-size: 17px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: middle; fill: #23795f" x="626.4" y="456.485234" transform="rotate(-0 626.4 456.485234)">组织同一规则的计算</text>
+   </g>
+   <g id="text_31">
+    <text style="font-size: 14px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: middle; fill: #25364a" x="626.4" y="484.12" transform="rotate(-0 626.4 484.12)">三角求解与交接 · 第6–10节</text>
+   </g>
+   <g id="text_32">
+    <text style="font-size: 17px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: middle; fill: #23795f" x="871.2" y="456.425469" transform="rotate(-0 871.2 456.425469)">装回完整模型</text>
+   </g>
+   <g id="text_33">
+    <text style="font-size: 14px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: middle; fill: #25364a" x="871.2" y="484.148437" transform="rotate(-0 871.2 484.148437)">投影、门与混合 · 第11–12节</text>
+   </g>
+   <g id="text_34">
+    <text style="font-size: 17px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: middle; fill: #25364a" x="504" y="553.499297" transform="rotate(-0 504 553.499297)">模型行为：历史汇总 → 定向修正 → 可控遗忘；压缩与干扰的代价仍在。</text>
+   </g>
+   <g id="text_35">
+    <text style="font-size: 17px; font-family: 'Noto Sans CJK JP', 'DejaVu Sans'; text-anchor: middle; fill: #25364a" x="504" y="596.707266" transform="rotate(-0 504 596.707266)">计算组织：逐token递推 ↔ 分块等价计算；分块本身不新增模型能力。</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pd4a2505738">
+   <rect x="0" y="0" width="1008" height="684"/>
+  </clipPath>
+ </defs>
+</svg>

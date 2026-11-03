@@ -63,7 +63,7 @@ def block_sparse_attention(q, k, v, block, n_selected, return_shapes=False):
     """块级 top-k 选择注意力（NSA 选择分支教学骨架）。
 
     输入：q (B,h,n,d_k) / k,v (B,h,n,d_k)（已展开到 h 头、已过 rope）；
-    选择分 = 查询块 × 块均值键 的点积和；因果资格：查询块 i 只可选键块 j ≤ i；
+    选择分只用查询块首query与严格过去块的均值键；当前块固定保留；
     选中块 gather 全精度 K/V，块内做带因果位的注意力。返回 (B,h,n,d_k)。"""
     B, h, n, d_k = q.shape
     nb = n // block
@@ -75,14 +75,20 @@ def block_sparse_attention(q, k, v, block, n_selected, return_shapes=False):
     vb = v.view(B, h, nb, block, d_k)                                            # (B,h,nb,b,d_k) 值块
     k_mean = kb.mean(dim=3)                                                      # (B,h,nb,d_k) 块压缩键（NSA 压缩分支近似）
 
-    # 块选择分：查询块内 token 与压缩键的点积求和（相对序不变，不另除 b；einsum 字母不重用：
-    # z=B,h=头,q=查询块,k=键块,w=块内位,d=d_k——探针踩坑账①）
-    blk_scores = torch.einsum("zhqwd,zhkd->zhqk", qb, k_mean) * scale            # (B,h,nb,nb) 选择矩阵
-    elig = torch.ones(nb, nb, dtype=torch.bool, device=q.device).tril()          # (nb,nb) 因果资格：j ≤ i
-    blk_scores = blk_scores.masked_fill(~elig, float("-inf"))                   # 未来块不可选
-
-    k_sel = min(n_selected, nb)
-    _, sel_idx = torch.topk(blk_scores, k_sel, dim=-1)                           # (B,h,nb,k_sel) 选中块号
+    # 当前块固定保留，选择只由块首query和严格过去的完整键块决定。
+    # 因而改变块首之后的query/key不会改变较早位置的参与集合。
+    blk_scores = torch.einsum("zhqd,zhkd->zhqk", qb[:, :, :, 0], k_mean) * scale
+    k_sel = max(1, min(n_selected, nb))
+    choices = []
+    for i in range(nb):
+        cur = torch.full((B, h, 1), i, dtype=torch.long, device=q.device)
+        count = min(k_sel - 1, i)
+        past = blk_scores[:, :, i, :i].topk(count, dim=-1).indices if count else cur[..., :0]
+        # 早期不足预算时以未来块占位；最终逐位置mask完全排除这些占位。
+        pad = torch.arange(i + 1, i + 1 + k_sel - 1 - count, device=q.device)
+        pad = pad.view(1, 1, -1).expand(B, h, -1)
+        choices.append(torch.cat([cur, past, pad], dim=-1))
+    sel_idx = torch.stack(choices, dim=2)  # (B,h,nb,k_sel)，每行索引不重复
 
     # gather 键/值块：torch.gather 不能增维——按选中槽位逐个 gather（k_sel ≤ nb，小循环清晰）
     def gather_blocks(xb):
@@ -128,7 +134,7 @@ class NSAConfig:
     n_kv_head: int = 4
     d_k: int = 64
     block: int = 64            # 块宽 b
-    n_selected: int = 8        # 每查询块选 k_sel 个键块
+    n_selected: int = 8        # 每查询块最多k_sel个键块（包含固定当前块）
     use_rope: bool = True
 
 
