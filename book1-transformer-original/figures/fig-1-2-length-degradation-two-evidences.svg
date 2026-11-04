@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="642.6pt" height="306.22pt" viewBox="0 0 642.6 306.22" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-11-04T10:23:16.659651</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 306.22 
+L 642.6 306.22 
+L 642.6 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 34.86 213.511 
+L 295.725 213.511 
+Q 297.771 213.511 297.771 212.125 
+L 297.771 83.92 
+Q 297.771 82.534 295.725 82.534 
+L 34.86 82.534 
+Q 32.814 82.534 32.814 83.92 
+L 32.814 212.125 
+Q 32.814 213.511 34.86 213.511 
+z
+" clip-path="url(#pc6c0915a22)" style="fill: #2367ad; fill-opacity: 0.07451; stroke: #2367ad; stroke-width: 1.3; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 346.875 213.511 
+L 607.74 213.511 
+Q 609.786 213.511 609.786 212.125 
+L 609.786 83.92 
+Q 609.786 82.534 607.74 82.534 
+L 346.875 82.534 
+Q 344.829 82.534 344.829 83.92 
+L 344.829 212.125 
+Q 344.829 213.511 346.875 213.511 
+z
+" clip-path="url(#pc6c0915a22)" style="fill: #16857a; fill-opacity: 0.07451; stroke: #16857a; stroke-width: 1.3; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_1">
+    <text style="font-size: 16px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: middle" x="321.3" y="28.48" transform="rotate(-0 321.3 28.48)">两份历史证据回答不同问题</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #172536" transform="translate(126.621484 135.7025)">Sutskever 2014</text>
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #172536" transform="translate(111.776641 146.7025)">深层 LSTM + 源句逆转</text>
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #172536" transform="translate(93.7925 157.7025)">原图：在其长度范围内较稳定</text>
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #172536" transform="translate(77.2925 168.7025)">不能据此证明任意长度都可保持质量</text>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #172536" transform="translate(437.520156 135.7025)">Bahdanau 2015</text>
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #172536" transform="translate(384.933281 146.7025)">固定向量 RNNenc 与 RNNsearch 对照</text>
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #172536" transform="translate(405.8075 157.7025)">原图：前者随长度下降更明显</text>
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #172536" transform="translate(411.3075 168.7025)">注意力允许逐步读取源位置</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 10px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: middle" x="321.3" y="253.705" transform="rotate(-0 321.3 253.705)">模型、数据处理和评测条件不同：这是两项研究的并置，不是同一实验的两条曲线。</text>
+   </g>
+   <g id="text_5">
+    <text style="font-size: 9px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: middle" x="321.3" y="279.6925" transform="rotate(-0 321.3 279.6925)">来源：Sutskever Fig.3（左）；Bahdanau Fig.2。此图仅整理结论，不绘造数值曲线。</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pc6c0915a22">
+   <rect x="14.4" y="14.62" width="613.8" height="277.2"/>
+  </clipPath>
+ </defs>
+</svg>

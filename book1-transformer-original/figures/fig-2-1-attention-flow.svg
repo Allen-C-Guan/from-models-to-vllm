@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="698.4pt" height="250.56pt" viewBox="0 0 698.4 250.56" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-11-04T10:23:16.835635</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 250.56 
+L 698.4 250.56 
+L 698.4 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 25.56 154.1088 
+L 165.06 154.1088 
+Q 167.292 154.1088 167.292 153 
+L 167.292 97.56 
+Q 167.292 96.4512 165.06 96.4512 
+L 25.56 96.4512 
+Q 23.328 96.4512 23.328 97.56 
+L 23.328 153 
+Q 23.328 154.1088 25.56 154.1088 
+z
+" clip-path="url(#pdff9a86bcb)" style="fill: #16857a; fill-opacity: 0.07451; stroke: #16857a; stroke-width: 1.3; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 192.96 154.1088 
+L 332.46 154.1088 
+Q 334.692 154.1088 334.692 153 
+L 334.692 97.56 
+Q 334.692 96.4512 332.46 96.4512 
+L 192.96 96.4512 
+Q 190.728 96.4512 190.728 97.56 
+L 190.728 153 
+Q 190.728 154.1088 192.96 154.1088 
+z
+" clip-path="url(#pdff9a86bcb)" style="fill: #2367ad; fill-opacity: 0.07451; stroke: #2367ad; stroke-width: 1.3; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 360.36 154.1088 
+L 499.86 154.1088 
+Q 502.092 154.1088 502.092 153 
+L 502.092 97.56 
+Q 502.092 96.4512 499.86 96.4512 
+L 360.36 96.4512 
+Q 358.128 96.4512 358.128 97.56 
+L 358.128 153 
+Q 358.128 154.1088 360.36 154.1088 
+z
+" clip-path="url(#pdff9a86bcb)" style="fill: #2367ad; fill-opacity: 0.07451; stroke: #2367ad; stroke-width: 1.3; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 527.76 154.1088 
+L 667.26 154.1088 
+Q 669.492 154.1088 669.492 153 
+L 669.492 97.56 
+Q 669.492 96.4512 667.26 96.4512 
+L 527.76 96.4512 
+Q 525.528 96.4512 525.528 97.56 
+L 525.528 153 
+Q 525.528 154.1088 527.76 154.1088 
+z
+" clip-path="url(#pdff9a86bcb)" style="fill: #c86b27; fill-opacity: 0.07451; stroke: #c86b27; stroke-width: 1.3; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 167.059182 125.28 
+Q 179.008906 125.28 189.505186 125.28 
+" clip-path="url(#pdff9a86bcb)" style="fill: none; stroke: #5d6875; stroke-width: 1.3; stroke-linecap: round"/>
+    <path d="M 184.305186 122.68 
+L 189.505186 125.28 
+L 184.305186 127.88 
+z
+" clip-path="url(#pdff9a86bcb)" style="fill: #5d6875; stroke: #5d6875; stroke-width: 1.3; stroke-linecap: round"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 334.459182 125.28 
+Q 346.408906 125.28 356.905186 125.28 
+" clip-path="url(#pdff9a86bcb)" style="fill: none; stroke: #5d6875; stroke-width: 1.3; stroke-linecap: round"/>
+    <path d="M 351.705186 122.68 
+L 356.905186 125.28 
+L 351.705186 127.88 
+z
+" clip-path="url(#pdff9a86bcb)" style="fill: #5d6875; stroke: #5d6875; stroke-width: 1.3; stroke-linecap: round"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 501.859182 125.28 
+Q 513.808906 125.28 524.305186 125.28 
+" clip-path="url(#pdff9a86bcb)" style="fill: none; stroke: #5d6875; stroke-width: 1.3; stroke-linecap: round"/>
+    <path d="M 519.105186 122.68 
+L 524.305186 125.28 
+L 519.105186 127.88 
+z
+" clip-path="url(#pdff9a86bcb)" style="fill: #5d6875; stroke: #5d6875; stroke-width: 1.3; stroke-linecap: round"/>
+   </g>
+   <g id="text_1">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #172536" transform="translate(82.176172 123.607656)">Q、K</text>
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #172536" transform="translate(73.31 135.312344)">查询与键</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #172536" transform="translate(230.756719 123.19)">S = QKᵀ/√dₖ</text>
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #172536" transform="translate(249.015859 134.894688)">(n,m)</text>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #172536" transform="translate(385.902031 123.542344)">P = softmax(S+M)</text>
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #172536" transform="translate(402.61 135.377656)">逐行归一化</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #172536" transform="translate(581.267812 123.542344)">O = PV</text>
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #172536" transform="translate(583.276172 134.542344)">(n,dᵥ)</text>
+   </g>
+   <g id="text_5">
+    <text style="font-size: 16px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: middle" x="349.2" y="50.436" transform="rotate(-0 349.2 50.436)">注意力：先决定读取比例，再组合值向量</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: middle" x="349.2" y="194.58" transform="rotate(-0 349.2 194.58)">V：(m,dᵥ) 进入最后一步；遮罩 M 决定哪些源位置允许参与。</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pdff9a86bcb">
+   <rect x="14.4" y="14.4" width="669.6" height="221.76"/>
+  </clipPath>
+ </defs>
+</svg>

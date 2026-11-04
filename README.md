@@ -22,7 +22,7 @@ seq2seq  Transformer  预训练范式    现代骨架(组件化)   规模与效�
 3. **V1/MRV2 心智**：市面资料仍停留在 V0/nanovllm，本丛书以 V1 不变量为纲，并把 Model Runner V2（MRV2）重架构纳入正文；
 4. **统一叙事 + 单轨代码**：每项技术按「问题→方案→落地→实证」的层次推进——隐式缝合于行文，不作标签；代码主线 GPT-2 → LLaMA 式 → MoE/MLA → 3:1 混合（选做）步步演化，Book3 终态的稠密小模型由 mini 引擎默认服务，单轨自训模型再经 Book8 选读实践注册进 vLLM，读者全程只维护一套心智模型。
 
-硬件口径：Book1–2 新版使用 CPU float64 数学核验与 CPU float32 小实验，旧 Mac/MPS 资产按历史口径保留；Book3–5 尚未重写，其实验读数保持原历史口径；Book6 起实验主线切换为昇腾 NPU（原有实验为 Atlas 910B3，2026-10-30 新增、现保留为 Book6 第19章的并行专题使用8张910B2；torch-npu / vllm-ascend / CANN 9.1.0）。新版 Book8 的观测环境为 910B2、CANN 9.2.1 与 vLLM/Ascend 0.30.0，详见其版本附录。
+硬件口径：Book1–2 新版使用 CPU float64 数学核验与 CPU float32 小实验，旧 Mac/MPS 资产按历史口径保留；Book3–5已完成原稿润色，其历史实验读数保留原口径，新增数学核验单独说明；Book6 起实验主线切换为昇腾 NPU（原有实验为 Atlas 910B3，2026-10-30 新增、现保留为 Book6 第19章的并行专题使用8张910B2；torch-npu / vllm-ascend / CANN 9.1.0）。新版 Book8 的观测环境为 910B2、CANN 9.2.1 与 vLLM/Ascend 0.30.0，详见其版本附录。
 
 ## 为谁而写
 
@@ -34,7 +34,7 @@ seq2seq  Transformer  预训练范式    现代骨架(组件化)   规模与效�
 
 | # | 书名 | 一句话定位 | 状态 | 入口 |
 |---|------|-----------|------|------|
-| 1 | 《Transformer 原典：从序列建模到完整计算》 | 架构演变、完整数学与可复现实验 | 重写交付 2026-11-03 | [进入](book1-transformer-original/README.md) |
+| 1 | 《Transformer 原典：从序列建模到完整计算》 | 架构演变、完整数学与可复现实验 | 原稿润色与推理补全 2026-11-04 | [进入](book1-transformer-original/README.md) |
 | 2 | 《预训练革命：目标、架构、配方与规模》 | 以旧稿为底本，保留模型演进与完整实践，补齐数学和证据链 | 全册润色交付 2026-11-03 | [进入](book2-pretraining-revolution/README.md) |
 | 3 | 《现代开源骨架：LLaMA 与组件化时代》 | 组件学与插槽化骨架 | 定稿 2026-10-04 | [进入](book3-modern-open-source-skeleton/README.md) |
 | 4 | 《规模与效率：MoE、MLA 与旗舰世代》 | 效率悖论：总参数涨、单 token 成本降 | 定稿 2026-10-05 | [进入](book4-scale-and-efficiency/README.md) |
@@ -45,7 +45,7 @@ seq2seq  Transformer  预训练范式    现代骨架(组件化)   规模与效�
 
 Book8 已重写为一册，包含 28 章、4 篇附录、87 张图及配套观测记录。[连续阅读版](book8-vllm-v1-source-code/全书连续阅读.html)内嵌图片和公式；每章提供全局定位、对象关系、调用路径、中文源码解读与数据现场。旧正式源码上下册已经由此替代，历史资产在写作工作区保留。
 
-Book1 已重写为16章、3篇附录、18张图，从[Markdown目录](book1-transformer-original/README.md)阅读。数学推导节首段串联设计故事，完整计算保留在正文。Book2—5将按作者逐册指令推进。
+Book1按原版第0—11章完成润色与推理补全，保留完整翻译项目、消融与历史负结果，从[Markdown目录](book1-transformer-original/README.md)阅读。数学单元首段交代设计目的，完整计算留在正文；Book2—5已按原稿润色方式完成。正式各册仅含教学内容与相关插图、代码。
 
 ## 编年史（全系列 · 七册合并去重）
 

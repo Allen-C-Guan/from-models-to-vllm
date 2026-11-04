@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="586.8pt" height="306.22pt" viewBox="0 0 586.8 306.22" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-11-04T10:23:20.009345</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 306.22 
+L 586.8 306.22 
+L 586.8 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 237.6 92.236 
+L 349.2 92.236 
+Q 351.06 92.236 351.06 90.85 
+L 351.06 63.13 
+Q 351.06 61.744 349.2 61.744 
+L 237.6 61.744 
+Q 235.74 61.744 235.74 63.13 
+L 235.74 90.85 
+Q 235.74 92.236 237.6 92.236 
+z
+" clip-path="url(#p81389ccb02)" style="fill: #16857a; fill-opacity: 0.07451; stroke: #16857a; stroke-width: 1.3; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 70.2 171.931 
+L 181.8 171.931 
+Q 183.66 171.931 183.66 170.545 
+L 183.66 135.895 
+Q 183.66 134.509 181.8 134.509 
+L 70.2 134.509 
+Q 68.34 134.509 68.34 135.895 
+L 68.34 170.545 
+Q 68.34 171.931 70.2 171.931 
+z
+" clip-path="url(#p81389ccb02)" style="fill: #2367ad; fill-opacity: 0.07451; stroke: #2367ad; stroke-width: 1.3; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 291.466379 91.37031 
+Q 209.698932 113.372787 129.335004 134.997597 
+" clip-path="url(#p81389ccb02)" style="fill: none; stroke: #5d6875; stroke-width: 1.3; stroke-linecap: round"/>
+    <path d="M 135.031981 136.157105 
+L 129.335004 134.997597 
+L 133.680796 131.13572 
+z
+" clip-path="url(#p81389ccb02)" style="fill: #5d6875; stroke: #5d6875; stroke-width: 1.3; stroke-linecap: round"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 405 171.931 
+L 516.6 171.931 
+Q 518.46 171.931 518.46 170.545 
+L 518.46 135.895 
+Q 518.46 134.509 516.6 134.509 
+L 405 134.509 
+Q 403.14 134.509 403.14 135.895 
+L 403.14 170.545 
+Q 403.14 171.931 405 171.931 
+z
+" clip-path="url(#p81389ccb02)" style="fill: #2367ad; fill-opacity: 0.07451; stroke: #2367ad; stroke-width: 1.3; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 295.333621 91.37031 
+Q 377.101068 113.372787 457.464996 134.997597 
+" clip-path="url(#p81389ccb02)" style="fill: none; stroke: #5d6875; stroke-width: 1.3; stroke-linecap: round"/>
+    <path d="M 453.119204 131.13572 
+L 457.464996 134.997597 
+L 451.768019 136.157105 
+z
+" clip-path="url(#p81389ccb02)" style="fill: #5d6875; stroke: #5d6875; stroke-width: 1.3; stroke-linecap: round"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 28.35 272.416 
+L 223.65 272.416 
+Q 225.51 272.416 225.51 271.03 
+L 225.51 222.52 
+Q 225.51 221.134 223.65 221.134 
+L 28.35 221.134 
+Q 26.49 221.134 26.49 222.52 
+L 26.49 271.03 
+Q 26.49 272.416 28.35 272.416 
+z
+" clip-path="url(#p81389ccb02)" style="fill: #c86b27; fill-opacity: 0.07451; stroke: #c86b27; stroke-width: 1.3; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 363.15 272.416 
+L 558.45 272.416 
+Q 560.31 272.416 560.31 271.03 
+L 560.31 222.52 
+Q 560.31 221.134 558.45 221.134 
+L 363.15 221.134 
+Q 361.29 221.134 361.29 222.52 
+L 361.29 271.03 
+Q 361.29 272.416 363.15 272.416 
+z
+" clip-path="url(#p81389ccb02)" style="fill: #16857a; fill-opacity: 0.07451; stroke: #16857a; stroke-width: 1.3; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 126 172.546723 
+Q 126 196.534445 126 219.068723 
+" clip-path="url(#p81389ccb02)" style="fill: none; stroke: #5d6875; stroke-width: 1.3; stroke-linecap: round"/>
+    <path d="M 128.6 213.868723 
+L 126 219.068723 
+L 123.4 213.868723 
+z
+" clip-path="url(#p81389ccb02)" style="fill: #5d6875; stroke: #5d6875; stroke-width: 1.3; stroke-linecap: round"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 460.8 172.546723 
+Q 460.8 196.534445 460.8 219.068723 
+" clip-path="url(#p81389ccb02)" style="fill: none; stroke: #5d6875; stroke-width: 1.3; stroke-linecap: round"/>
+    <path d="M 463.4 213.868723 
+L 460.8 219.068723 
+L 458.2 213.868723 
+z
+" clip-path="url(#p81389ccb02)" style="fill: #5d6875; stroke: #5d6875; stroke-width: 1.3; stroke-linecap: round"/>
+   </g>
+   <g id="text_1">
+    <text style="font-size: 16px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: middle" x="293.4" y="28.48" transform="rotate(-0 293.4 28.48)">局部最大不等于整句最大</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: middle; fill: #172536" x="293.4" y="81.17" transform="rotate(-0 293.4 81.17)">开始</text>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: middle; fill: #172536" x="126" y="157.4" transform="rotate(-0 126 157.4)">A：0.6</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: middle; fill: #172536" x="460.8" y="157.4" transform="rotate(-0 460.8 157.4)">B：0.4</text>
+   </g>
+   <g id="text_5">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #172536" transform="translate(90.958984 245.455)">A → EOS：0.5</text>
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #172536" transform="translate(68.261172 256.455)">整句概率 0.6×0.5=0.30</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #172536" transform="translate(425.489141 245.455)">B → EOS：0.9</text>
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #172536" transform="translate(403.061172 256.455)">整句概率 0.4×0.9=0.36</text>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 9px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'" transform="translate(234.9 188.896563)">其余条件概率流向其他候选；</text>
+    <text style="font-size: 9px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'" transform="translate(239.4 198.265)">本图只展开两条比较路径。</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p81389ccb02">
+   <rect x="14.4" y="14.62" width="558" height="277.2"/>
+  </clipPath>
+ </defs>
+</svg>

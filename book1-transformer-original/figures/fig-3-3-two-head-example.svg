@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="642.6pt" height="278.28pt" viewBox="0 0 642.6 278.28" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-11-04T10:23:17.775923</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 278.28 
+L 642.6 278.28 
+L 642.6 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 29.745 177.8094 
+L 157.62 177.8094 
+Q 159.666 177.8094 159.666 176.562 
+L 159.666 107.955 
+Q 159.666 106.7076 157.62 106.7076 
+L 29.745 106.7076 
+Q 27.699 106.7076 27.699 107.955 
+L 27.699 176.562 
+Q 27.699 177.8094 29.745 177.8094 
+z
+" clip-path="url(#p36c2675f93)" style="fill: #16857a; fill-opacity: 0.07451; stroke: #16857a; stroke-width: 1.3; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 219 121.6764 
+L 372.45 121.6764 
+Q 374.496 121.6764 374.496 120.429 
+L 374.496 83.007 
+Q 374.496 81.7596 372.45 81.7596 
+L 219 81.7596 
+Q 216.954 81.7596 216.954 83.007 
+L 216.954 120.429 
+Q 216.954 121.6764 219 121.6764 
+z
+" clip-path="url(#p36c2675f93)" style="fill: #2367ad; fill-opacity: 0.07451; stroke: #2367ad; stroke-width: 1.3; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 219 208.9944 
+L 372.45 208.9944 
+Q 374.496 208.9944 374.496 207.747 
+L 374.496 170.325 
+Q 374.496 169.0776 372.45 169.0776 
+L 219 169.0776 
+Q 216.954 169.0776 216.954 170.325 
+L 216.954 207.747 
+Q 216.954 208.9944 219 208.9944 
+z
+" clip-path="url(#p36c2675f93)" style="fill: #2367ad; fill-opacity: 0.07451; stroke: #2367ad; stroke-width: 1.3; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 159.324584 138.100754 
+Q 188.308173 120.430114 216.050774 103.516077 
+" clip-path="url(#p36c2675f93)" style="fill: none; stroke: #5d6875; stroke-width: 1.3; stroke-linecap: round"/>
+    <path d="M 210.257426 104.003033 
+L 216.050774 103.516077 
+L 212.96433 108.442928 
+z
+" clip-path="url(#p36c2675f93)" style="fill: #5d6875; stroke: #5d6875; stroke-width: 1.3; stroke-linecap: round"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 159.28712 149.596606 
+Q 188.310773 168.76626 216.121636 187.134887 
+" clip-path="url(#p36c2675f93)" style="fill: none; stroke: #5d6875; stroke-width: 1.3; stroke-linecap: round"/>
+    <path d="M 213.215554 182.099544 
+L 216.121636 187.134887 
+L 210.349712 186.438547 
+z
+" clip-path="url(#p36c2675f93)" style="fill: #5d6875; stroke: #5d6875; stroke-width: 1.3; stroke-linecap: round"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 449.175 171.5724 
+L 602.625 171.5724 
+Q 604.671 171.5724 604.671 170.325 
+L 604.671 114.192 
+Q 604.671 112.9446 602.625 112.9446 
+L 449.175 112.9446 
+Q 447.129 112.9446 447.129 114.192 
+L 447.129 170.325 
+Q 447.129 171.5724 449.175 171.5724 
+z
+" clip-path="url(#p36c2675f93)" style="fill: #c86b27; fill-opacity: 0.07451; stroke: #c86b27; stroke-width: 1.3; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 374.327852 102.40493 
+Q 410.812639 115.751301 445.932442 128.598351 
+" clip-path="url(#p36c2675f93)" style="fill: none; stroke: #5d6875; stroke-width: 1.3; stroke-linecap: round"/>
+    <path d="M 441.942139 124.370174 
+L 445.932442 128.598351 
+L 440.155719 129.253687 
+z
+" clip-path="url(#p36c2675f93)" style="fill: #5d6875; stroke: #5d6875; stroke-width: 1.3; stroke-linecap: round"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 374.273998 188.220496 
+Q 410.811323 171.884776 446.021783 156.142293 
+" clip-path="url(#p36c2675f93)" style="fill: none; stroke: #5d6875; stroke-width: 1.3; stroke-linecap: round"/>
+    <path d="M 440.213433 155.891154 
+L 446.021783 156.142293 
+L 442.335862 160.63829 
+z
+" clip-path="url(#p36c2675f93)" style="fill: #5d6875; stroke: #5d6875; stroke-width: 1.3; stroke-linecap: round"/>
+   </g>
+   <g id="text_1">
+    <text style="font-size: 16px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: middle" x="321.3" y="29.9925" transform="rotate(-0 321.3 29.9925)">不同的读取比例，输出投影再混合</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #172536" transform="translate(54.831875 140.9385)">值：v₁=1，v₂=3</text>
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #172536" transform="translate(66.1825 151.9385)">同一组候选</text>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: middle; fill: #172536" x="295.725" y="105.480344" transform="rotate(-0 295.725 105.480344)">头1：(3/4,1/4) → 1.5</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: middle; fill: #172536" x="295.725" y="192.798344" transform="rotate(-0 295.725 192.798344)">头2：(1/4,3/4) → 2.5</text>
+   </g>
+   <g id="text_5">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #172536" transform="translate(506.112891 134.603188)">Wᴼ 混合</text>
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #172536" transform="translate(482.780859 145.603188)">(1.5+2.5, 1.5−2.5)</text>
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; fill: #172536" transform="translate(507.211172 157.4385)">= (4,−1)</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 10px; font-family: 'Noto Sans CJK SC', 'DejaVu Sans'; text-anchor: middle" x="321.3" y="248.2875" transform="rotate(-0 321.3 248.2875)">这是构造例，不是训练出的“语法头”；输出投影后不再要求落在原值的凸包内。</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p36c2675f93">
+   <rect x="14.4" y="14.4" width="613.8" height="249.48"/>
+  </clipPath>
+ </defs>
+</svg>
