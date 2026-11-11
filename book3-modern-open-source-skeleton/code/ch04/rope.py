@@ -11,6 +11,7 @@
 # 运行方式：cd code/ch04 && python rope.py   （全 CPU fp32 秒级，无命令行参数）
 # 依赖：sys.path 两级 bootstrap（00-feasibility 的 llama_slots）；transformers 仅在对拍段 import。
 import os
+import math
 import sys
 
 import torch
@@ -30,8 +31,11 @@ def build_rope_cache(seq_len, head_dim, theta, device):
     论文 §3.2.2 写 1 起的 10000^{-2(i-1)/d}，两式是同一个集合——记号考据见正文 4.4 节脚注）。
     freqs[t, i] = t * inv_freq_i（位置 t 在第 i 对维度上转过的角度）；
     emb = cat(freqs, freqs)——两半式约定需要整维宽的表（前半与后半用同一组角度）。
-    n 可以任意大：没有查表上限，这正是「墙变软墙」的代码实体（ch7 外推不改代码的原因）。
+    n不受学习式位置表行数限制，但受内存、角度精度及其他实现边界约束；有限精度不是无限长度保证。
     """
+    if not isinstance(seq_len,int) or isinstance(seq_len,bool) or seq_len<0:raise ValueError('seq_len须为非负整数')
+    if not isinstance(head_dim,int) or isinstance(head_dim,bool) or head_dim<=0 or head_dim%2:raise ValueError('head_dim须为正偶数')
+    if not math.isfinite(theta) or theta<=0:raise ValueError('theta须为有限正数')
     inv_freq = 1.0 / (theta ** (torch.arange(0, head_dim, 2, dtype=torch.float32, device=device) / head_dim))  # (hd/2,)
     t = torch.arange(seq_len, dtype=torch.float32, device=device)                # (n,)
     freqs = torch.outer(t, inv_freq)                                             # (n, hd/2)
@@ -45,6 +49,7 @@ def rotate_half(x):
     2D 旋转矩阵 (cos -sin; sin cos) 作用在第 (j, hd/2+j) 维对上时，实数写法拆成
     「x*cos + rotate_half(x)*sin」——复数乘法 (x+iy)(cos+i·sin) 的实数化（式 (4.10)）。
     """
+    if x.ndim==0 or x.shape[-1]==0 or x.shape[-1]%2:raise ValueError("末维须为正偶数")
     x1 = x[..., : x.shape[-1] // 2]
     x2 = x[..., x.shape[-1] // 2:]
     return torch.cat((-x2, x1), dim=-1)
@@ -56,7 +61,12 @@ def apply_rope(q, k, cos, sin):
     q (B,h,n,hd)、k (B,h_kv,n,hd)；cos/sin (1,n,hd) 沿批与头维广播。
     返回 (q', k')，形状不变——RoPE 不引入新形状、不引入新参数，位置只作为旋转角进入。
     """
-    cos, sin = cos.to(q.dtype), sin.to(q.dtype)
+    if q.ndim!=4 or k.ndim!=4 or q.shape[0]!=k.shape[0] or q.shape[2:]!=k.shape[2:]:
+        raise ValueError('Q/K须为(B,h,n,d)及(B,h_kv,n,d)，批/序列/头维匹配')
+    if q.dtype!=k.dtype or q.device!=k.device or not q.is_floating_point():raise ValueError('Q/K须同设备同浮点dtype')
+    if cos.shape!=sin.shape or tuple(cos.shape)!=(1,q.shape[2],q.shape[3]):
+        raise ValueError('本入口只接收共享位置表(1,n,d)；按批位置表须显式插入头维')
+    cos, sin = cos.to(device=q.device,dtype=q.dtype), sin.to(device=q.device,dtype=q.dtype)
     q_embed = (q * cos) + (rotate_half(q) * sin)      # (B,h,n,hd)
     k_embed = (k * cos) + (rotate_half(k) * sin)      # (B,h_kv,n,hd)
     return q_embed, k_embed
@@ -70,7 +80,7 @@ def rope_interleaved_complex(x, pos, head_dim, theta):
     x (…, hd) -> 输出 (…, hd)。与两半式数学等价、只差一个固定置换（本文件 main 的
     性质三验证这件事）。Meta 官方 llama/model.py 的参考实现即此约定（相邻配对）。
     """
-    inv_freq = 1.0 / (theta ** (torch.arange(0, head_dim, 2, dtype=x.dtype) / head_dim))  # (hd/2,)
+    inv_freq = 1.0 / (theta ** (torch.arange(0, head_dim, 2, dtype=x.dtype,device=x.device) / head_dim))  # (hd/2,)
     angles = pos * inv_freq                                     # (hd/2,) 位置 m 在各对上转过的角度
     fcis = torch.polar(torch.ones_like(angles), angles)         # e^{i·m·θ_i}（欧拉公式）
     xc = torch.view_as_complex(x.reshape(*x.shape[:-1], -1, 2).contiguous())   # (…, hd/2) 复数
@@ -83,7 +93,7 @@ def half_split_perm(head_dim):
 
     y = x[..., perm] 后，两半式的每一对搭档恰好变成相邻配对的第 j 对——
     于是「两半式(x) == 相邻式(x[perm])[argsort(perm)]」（输出侧用 τ^{-1}=argsort，排坑记录见正文 4.7）。
-    权重侧同理：W_q/W_k 的输出行做同一置换，两套约定即可互换（Meta→HF 转换脚本的 permute）。
+    权重侧半→邻用perm，邻→半用argsort(perm)，各头输出行分别处理；Meta→HF是后一个方向。
     """
     j = torch.arange(head_dim // 2)
     perm = torch.empty(head_dim, dtype=torch.long)
@@ -95,10 +105,10 @@ def half_split_perm(head_dim):
 def _rope_half_at(x, pos, head_dim, theta):
     """两半式旋转的定点版（性质验证用）：只把位置 pos 的那一行 cos/sin 应到 x 上。
 
-    dtype 跟随 x（fp64 验证恒等式、fp32 复现工程口径——大角度下两者的差是角度舍入、
-    不是恒等性失效，见 main 性质一的对照报告）。
+    dtype跟随x；有限精度差可来自频率、角度、三角函数和归约。两dtype分别生成随机输入，
+    是同构设置，不是逐元素相同输入的纯dtype消融。
     """
-    inv_freq = 1.0 / (theta ** (torch.arange(0, head_dim, 2, dtype=x.dtype) / head_dim))  # (hd/2,)
+    inv_freq = 1.0 / (theta ** (torch.arange(0, head_dim, 2, dtype=x.dtype,device=x.device) / head_dim))  # (hd/2,)
     angles = pos * inv_freq                                          # (hd/2,)
     cos = torch.cat((angles.cos(), angles.cos()), dim=-1)            # (hd,)
     sin = torch.cat((angles.sin(), angles.sin()), dim=-1)            # (hd,)
@@ -108,6 +118,8 @@ def _rope_half_at(x, pos, head_dim, theta):
 # ---------------- 自测：对拍两道 + 性质验证三件 ----------------
 
 def main():
+    import transformers
+    print(f"实际版本torch={torch.__version__}, transformers={transformers.__version__}；device=cpu")
     torch.manual_seed(20261002)          # 全书统一种子
     device = torch.device("cpu")         # 数值对拍一律 CPU fp32 报数（写作规范 §8）
     hd, theta, n = 64, 10000.0, 128      # 模块档头维 / LLaMA1-2 基底 / 序列长
@@ -140,14 +152,13 @@ def main():
     cos_hf, sin_hf = rot(q.float(), pos_ids)                          # (B,n,hd) x2（内部强制 fp32）
     qr_hf, kr_hf = apply_rotary_pos_emb(q, k, cos_hf, sin_hf)         # unsqueeze(1) 广播到头维
     d_hf = max((qr - qr_hf).abs().max().item(), (kr - kr_hf).abs().max().item())
-    print(f"== 对拍② vs HF LlamaRotaryEmbedding（transformers 5.18.0，CPU fp32）==")
+    print(f"== 对拍② vs HF LlamaRotaryEmbedding（transformers {transformers.__version__}，CPU fp32）==")
     print(f"  q/k 旋转后 max|Δ| = {d_hf:.3e}（inv_freq 外积 vs 矩阵乘两种写法、数值同源）")
     assert d_hf < 1e-6
 
     # ---- 性质一：平移不变（式 (4.3) 的机器验证）—— 内积只依赖 m-n ----
     # 口径说明：恒等式的机器验证用 fp64（身份本身是精确的）；fp32 下大角度的舍入会盖过
-    # 恒等差——pos≈5100、θ_0=1 时 fp32 角度绝对误差已达 ~5e-4 rad（HF 强制 fp32 算 cos/sin
-    # 的数值纪律与此同源，正文 4.9 节一句注记）。
+    # 恒等差。5100×θ_0本身可精确表示；非整数频率、角度乘法、三角函数与归约均可能舍入。
     print(f"== 性质一：平移不变（d={hd}，随机 200 对 q/k，fp64）==")
     torch.manual_seed(20261002)
     worst = 0.0
@@ -168,8 +179,8 @@ def main():
         ip1 = torch.dot(_rope_half_at(qv, 100, hd, theta), _rope_half_at(kv, 37, hd, theta))
         ip2 = torch.dot(_rope_half_at(qv, 5100, hd, theta), _rope_half_at(kv, 5037, hd, theta))
         worst32 = max(worst32, abs(ip1 - ip2).item())
-    print(f"  fp32 对照（同试验，pos 5100）：max|Δ| = {worst32:.2e}——大角度舍入成为主导，"
-          f"这是角度精度问题、不是恒等性失效")
+    print(f"  fp32 对照（同位置设置、另生成输入，pos 5100）：max|Δ| = {worst32:.2e}——有限精度下未严格相等，"
+          f"误差不推翻精确恒等式，也不能仅凭本探针确定误差的唯一来源")
 
     # ---- 性质二：保范数（正交性——位置只改方向不改长度） ----
     torch.manual_seed(20261002)

@@ -1,7 +1,7 @@
-# 用途：Book2 ch5 两张图——图 5.1 text-to-text 统一接口四算例 / 图 5.2 三种架构对照（塔排布 + 「谁看见谁」mask）
+# 用途：Book2第5章早期英文布局练习；与正文现行中文图排版不同。图2画合并依赖关系，不把双塔当一个softmax算子。
 # 所属章节：Book2 第 5 章 §5.1、§5.3-5.4
 # 运行方式：cd 工作区根目录 && source env.sh && python code/ch05/make_figures.py
-# 产物：drafts/Book2-预训练革命/figures/fig-5-{1,2}-*.png（300dpi，图内文字英文、图注见正文）
+# 产物：默认log/book2-ch05/figures；可用BOOK2_FIGURE_OUTPUT_DIR改目录。
 # 数据来源：全部数字/字符串取自 T5 v4（= JMLR 21(2020) 20-074）Figure 1 p.3、Table 2、§3.2、附录 D.15（本地缓存 log/research-cache/t5/t5_fulltext.txt 逐字核对，2026-10）
 
 import os
@@ -13,8 +13,8 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch, Rectangle
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-FIG_DIR = os.path.join(REPO, "figures")
-os.makedirs(FIG_DIR, exist_ok=True)
+FIG_DIR = os.environ.get("BOOK2_FIGURE_OUTPUT_DIR",
+    os.path.join(os.environ.get("BOOK2_LOG_ROOT", "log"), "book2-ch05", "figures"))
 
 BLUE, ORANGE, TEAL, YELLOW = "#2a78d6", "#eb6834", "#1baf7a", "#eda100"
 GRID, TICK, DARK, MUTED = "#e1e0d9", "#898781", "#0b0b0b", "#52514e"
@@ -57,9 +57,9 @@ def fig_5_1():
     ax.set_ylim(0, 10.6)
     ax.axis("off")
 
-    ax.text(8.6, 10.15, "Text-to-Text: every NLP task is text in → text out",
+    ax.text(8.6, 10.15, "Text-to-Text: a common interface for the studied tasks",
             ha="center", fontsize=10.5, weight="bold")
-    ax.text(8.6, 9.62, "one model, one loss, one decoding procedure (after Raffel et al. 2020, Fig.1 + App. D.15)",
+    ax.text(8.6, 9.62, "shared architecture and prediction interface; task-specific fine-tuning (Raffel et al. 2020)",
             ha="center", fontsize=6.5, color=MUTED)
 
     rows = [
@@ -77,8 +77,8 @@ def fig_5_1():
 
     ax.add_patch(FancyBboxPatch((9.1, 4.3), 2.5, 2.5, boxstyle="round,pad=0.04",
                                 fc="#f7fafe", ec=BLUE, lw=1.6))
-    ax.text(10.35, 5.55, "T5", ha="center", fontsize=11, weight="bold", color=BLUE)
-    ax.text(10.35, 4.95, "one model\none loss\none decoding", ha="center", fontsize=6.8, color=MUTED)
+    ax.text(10.35, 6.1, "T5", ha="center", fontsize=11, weight="bold", color=BLUE)
+    ax.text(10.35, 4.95, "shared\ntext-to-text\ninterface", ha="center", va="center", fontsize=6.8, color=MUTED)
 
     left_ys = [6.55, 5.9, 5.25, 4.6]
     for i, ((task, color, prefix, body, out), cy) in enumerate(zip(rows, centers)):
@@ -91,10 +91,10 @@ def fig_5_1():
         lines = textwrap.wrap(full, width=68)[:3]
         for j, ln in enumerate(lines):
             if j == 0 and prefix:
-                two_color_text(ax, 0.48, y + 0.82 - 0.37 * j, prefix,
+                two_color_text(ax, 0.48, y + 0.95 - 0.37 * j, prefix,
                                ln[len(prefix):] if ln.startswith(prefix) else "")
             else:
-                ax.text(0.48, y + 0.82 - 0.37 * j, ln, fontsize=6.0, va="center",
+                ax.text(0.48, y + 0.95 - 0.37 * j, ln, fontsize=6.0, va="center",
                         family="DejaVu Sans Mono")
         ax.add_patch(FancyBboxPatch((12.9, y), 4.1, h, boxstyle="round,pad=0.02",
                                     fc="#fdf8ef", ec=DARK, lw=1.0))
@@ -106,7 +106,7 @@ def fig_5_1():
     ax.text(11.72, 2.98, "token ids (n_out,)", fontsize=6.0, color=MUTED)
 
     ax.text(8.6, 0.32, "blue = task prefix (routes the task) · SQuAD carries no prefix — "
-                       "its fields question: / context: are self-explanatory · batch dim B omitted",
+                       "question: / context: identify the task format · batch dim B omitted",
             ha="center", fontsize=6.0, color=MUTED)
     fig.tight_layout()
     fig.savefig(os.path.join(FIG_DIR, "fig-5-1-text-to-text.png"), facecolor="white")
@@ -118,7 +118,7 @@ def mask_ok(kind, r, c):
     """r=查询行（0-7），c=被看见列；前 4 位为前缀/输入段、后 4 位为目标段。"""
     if kind == "c":                      # decoder-only LM：纯因果下三角
         return c <= r
-    if kind == "ab":                     # enc-dec 与 prefix LM：可见性矩阵相同
+    if kind == "ab":                     # 合并的信息依赖示意；双塔实际由三类注意力算子实现
         return c < 4 if r < 4 else (c < 4 or c <= r)
     raise ValueError(kind)
 
@@ -147,15 +147,15 @@ def draw_mask(ax, x0, y0, kind, cell=0.34, ticks=("prefix", "target")):
 
 def fig_5_2():
     fig, ax = plt.subplots(figsize=(8.6, 4.9), dpi=300)
-    ax.set_xlim(0, 18)
+    ax.set_xlim(0, 20.2)
     ax.set_ylim(0, 10.2)
     ax.axis("off")
 
-    panels = [(0.25, "(a) Encoder-Decoder", "two stacks + explicit cross-attn bridge (T5 baseline)",
+    panels = [(0.25, "(a) Encoder-Decoder", "separate self- and cross-attention",
                "input", "target", "GLUE 83.28", "2P params · M FLOPs", "ab"),
-              (6.45, "(b) Prefix LM", "one shared stack — bridge replaced by full attention",
+              (6.45, "(b) Prefix LM", "one stack; bidirectional prefix",
                "prefix", "target", "GLUE 81.82", "P params · M FLOPs", "ab"),
-              (12.65, "(c) Decoder-only LM", "one stack — pure causal, no prefix visibility",
+              (12.65, "(c) Decoder-only LM", "one stack; causal within prefix too",
                "pos 1-4", "pos 5-8", "GLUE 74.70", "P params · M FLOPs", "c")]
 
     for px, title, sub, t0, t1, score, pm, kind in panels:
@@ -163,8 +163,8 @@ def fig_5_2():
         ax.text(px + 2.55, 9.28, sub, ha="center", fontsize=6.4, color=MUTED)
 
         if title.startswith("(a)"):
-            box(ax, px + 0.30, 6.0, 1.7, 2.4, "Encoder\n× 12\n(B, n_in, 768)", fc="#f7fafe", ec=BLUE, lw=1.5, fs=7.2)
-            box(ax, px + 3.10, 6.0, 1.7, 2.4, "Decoder\n× 12\n(B, n_out, 768)", fc="#f7fafe", ec=BLUE, lw=1.5, fs=7.2)
+            box(ax, px + 0.30, 6.0, 1.7, 2.4, "Encoder\n× 12\n(B, n_in, 768)", fc="#f7fafe", ec=BLUE, lw=1.5, fs=5.8)
+            box(ax, px + 3.10, 6.0, 1.7, 2.4, "Decoder\n× 12\n(B, n_out, 768)", fc="#f7fafe", ec=BLUE, lw=1.5, fs=5.8)
             arrow(ax, px + 2.0, 7.2, px + 3.1, 7.2, color=ORANGE, lw=1.8)
             ax.text(px + 2.55, 7.62, "cross-attn", ha="center", fontsize=6.2, color=ORANGE)
             ax.text(px + 2.55, 6.42, "K,V ← enc out\n(B, n_in, 768)", ha="center", fontsize=5.2, color=MUTED)
@@ -175,7 +175,7 @@ def fig_5_2():
             arrow(ax, px + 3.95, 8.4, px + 3.95, 8.95)
             ax.text(px + 3.95, 9.02, "logits (B, n_out, |V|)", ha="center", fontsize=5.6, color=MUTED)
         elif title.startswith("(b)"):
-            box(ax, px + 1.0, 6.0, 3.0, 2.4, "Shared stack\n× 12\n(B, n, 768)", fc="#f7fafe", ec=BLUE, lw=1.5, fs=7.2)
+            box(ax, px + 1.0, 6.0, 3.0, 2.4, "Shared stack\n× 12\n(B, n, 768)", fc="#f7fafe", ec=BLUE, lw=1.5, fs=5.8)
             ax.add_patch(FancyBboxPatch((px + 1.0, 5.05), 1.5, 0.6, boxstyle="round,pad=0.02", fc=LBLUE, ec=DARK, lw=0.8))
             ax.text(px + 1.75, 5.35, "prefix x", ha="center", va="center", fontsize=6.4)
             ax.add_patch(FancyBboxPatch((px + 2.5, 5.05), 1.5, 0.6, boxstyle="round,pad=0.02", fc=LORANGE, ec=DARK, lw=0.8))
@@ -185,7 +185,7 @@ def fig_5_2():
             arrow(ax, px + 2.5, 8.4, px + 2.5, 8.95)
             ax.text(px + 2.5, 9.02, "logits (B, n, |V|)", ha="center", fontsize=5.6, color=MUTED)
         else:
-            box(ax, px + 1.0, 6.0, 3.0, 2.4, "Stack\n× 12\n(B, n, 768)", fc="#f7fafe", ec=BLUE, lw=1.5, fs=7.2)
+            box(ax, px + 1.0, 6.0, 3.0, 2.4, "Stack\n× 12\n(B, n, 768)", fc="#f7fafe", ec=BLUE, lw=1.5, fs=5.8)
             ax.add_patch(FancyBboxPatch((px + 1.0, 5.05), 3.0, 0.6, boxstyle="round,pad=0.02", fc=GREY, ec=DARK, lw=0.8))
             ax.text(px + 2.5, 5.35, "one causal stream:  x ‖ y", ha="center", va="center", fontsize=6.4)
             arrow(ax, px + 2.5, 5.65, px + 2.5, 6.0)
@@ -193,10 +193,10 @@ def fig_5_2():
             arrow(ax, px + 2.5, 8.4, px + 2.5, 8.95)
             ax.text(px + 2.5, 9.02, "logits (B, n, |V|)", ha="center", fontsize=5.6, color=MUTED)
 
-        ax.text(px + 1.9, 4.35, "who-sees-whom mask", fontsize=6.2, color=MUTED)
+        ax.text(px + .55, 4.6, "combined dependencies (not a single mask)" if title.startswith("(a)") else "attention visibility", fontsize=5.8, color=MUTED)
         draw_mask(ax, px + 0.55, 1.45, kind, ticks=(t0, t1))
         ax.text(px + 0.55, 0.62, score, fontsize=8.2, weight="bold")
-        ax.text(px + 0.55 + 1.05, 0.62, "·  " + pm, fontsize=6.6, color=MUTED)
+        ax.text(px + 0.55, 0.24, "approx. " + pm, fontsize=6.6, color=MUTED)
 
     fig.tight_layout()
     fig.savefig(os.path.join(FIG_DIR, "fig-5-2-three-architectures.png"), facecolor="white")
@@ -204,6 +204,7 @@ def fig_5_2():
 
 
 if __name__ == "__main__":
+    os.makedirs(FIG_DIR, exist_ok=True)
     fig_5_1()
     fig_5_2()
     print("figures written to", FIG_DIR)

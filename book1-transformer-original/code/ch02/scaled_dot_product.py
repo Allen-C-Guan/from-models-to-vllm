@@ -3,8 +3,9 @@
 #       曲线，以及与 F.scaled_dot_product_attention 的对拍（实现对照，锁 MATH 后端）。
 # 所属章节：Book1《Transformer 原典》第 2 章
 # 运行方式：source env.sh && python code/ch02/scaled_dot_product.py
-#           （CPU 上秒级-分钟级；三张图输出到 figures/）
+#           （CPU上秒级至分钟级；新图输出到log/Book1-ch02/，可用BOOK1_LOG_ROOT覆盖）
 import math
+import os
 import time
 
 import matplotlib
@@ -27,7 +28,8 @@ plt.rcParams.update({
 })
 
 from pathlib import Path
-FIG_DIR = Path(__file__).resolve().parents[2] / "figures"
+BOOK_ROOT = Path(__file__).resolve().parents[2]
+FIG_DIR = Path(os.environ.get("BOOK1_LOG_ROOT", BOOK_ROOT / "log")).expanduser() / "Book1-ch02"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
 
 

@@ -5,10 +5,11 @@
 #       附图 fig-7-1「mask 三态热图」。
 # 所属章节：《Transformer 原典》第 7 章（整机组装与 mask 全景；原论文 v7 §3.2.3/Fig 2）
 # 运行：source env.sh && python "code/ch07/masks.py"（CPU 秒级；MPS 段需 Apple Silicon，无 MPS 自动跳过）
-# 注：torch 2.13 已移除 F.generate_square_subsequent_mask（本文件自写 causal_mask 替代，
-#     并与仅存的 nn.Transformer.generate_square_subsequent_mask 静态方法对拍）。
+# 注：所据版本的 F 未提供 generate_square_subsequent_mask；不能由不存在推断移除历史。
+#     本文件自写 causal_mask，并与 nn.Transformer 的同名静态方法对拍。
 # 形状口径（与正文表 7.1 一致）：因果掩码 (L,L)、填充掩码 (B,L)、组合掩码 (B,1,L,L)（bool 形态）。
 import math
+import os
 from pathlib import Path
 
 import matplotlib
@@ -20,7 +21,7 @@ import torch.nn.functional as F
 
 # 本书印刷图规格（_写作规范.md 第 4 节）：蓝主色、灰系坐标文字、hairline 网格
 BLUE, DARK, INK, NOTE, GRID, AX_GREY = "#2a78d6", "#0d366b", "#0b0b0b", "#52514e", "#e1e0d9", "#898781"
-FIG_DIR = Path(__file__).resolve().parents[2] / "figures"
+FIG_DIR = Path(os.environ.get("BOOK1_LOG_ROOT", Path(__file__).resolve().parents[2] / "log")) / "Book1-ch07"
 
 
 # ---------- 1. 因果掩码（自写：torch 2.13 已无 F.generate_square_subsequent_mask） ----------
@@ -52,7 +53,7 @@ def exp_constructors():
     print(f"  与 nn.Transformer.generate_square_subsequent_mask(5) allclose = {ok}")
     import torch.nn.functional as Fn
     print(f"  hasattr(F, 'generate_square_subsequent_mask') = {hasattr(Fn, 'generate_square_subsequent_mask')}"
-          f"（torch 2.13 已移除，旧教程代码会 AttributeError）")
+          f"（仅报告当前命名空间检查；不推断历史上是否移除）")
     kpm = padding_mask([3, 5], L)                              # (B,L)=(2,5) bool：样本 0 末 2 位是 padding
     print(f"  右填充 padding_mask(lengths=[3,5], L=5)（True=padding）：\n{kpm.to(torch.long)}")
 
@@ -91,7 +92,7 @@ def exp_combine(d_model=64, h=8, B=2, L=5):
         pad_f = torch.zeros(B, 1, L, L, dtype=x.dtype).masked_fill(kpm[:, None, None, :], float("-inf"))
         combined = (causal_mask(L).unsqueeze(0) + pad_f).expand(B, h, L, L).reshape(B * h, L, L)
         out_a, _ = mha(x, x, x, attn_mask=combined, need_weights=True)
-        # 写法 B：分开传 float 因果 + bool padding（官方推荐的省事口径）
+        # 写法 B：保留历史 float+bool 混用对照；会发弃用警告，新代码统一 dtype
         out_b, _ = mha(x, x, x, attn_mask=causal_mask(L), key_padding_mask=kpm, need_weights=True)
         # 写法 C：bool 因果 + bool padding（MHA 语义 True=屏蔽）
         out_c, _ = mha(x, x, x, attn_mask=causal_mask_bool(L), key_padding_mask=kpm, need_weights=True)
@@ -133,13 +134,13 @@ def _all_masked_once(dev):
     Q, K, V = split(q @ wq), split(q @ wk), split(q @ wv)     # 各 (N,H,L,dk)
     scores = Q @ K.transpose(-2, -1) / math.sqrt(dk) + fm     # (N,H,L,dk)x(N,H,dk,L) -> (N,H,L,L)
     res["手写 matmul+softmax"] = (torch.softmax(scores, dim=-1) @ V)[0, 0, 0, :3]
-    # 路径 3/4：nn.MultiheadAttention 两条内部路径（掩码分开传，内部转 float 相加合并）
+    # 调用 3/4：分别请求/不请求权重；这里只观察输出，不据参数推断内部分支
     mha = nn.MultiheadAttention(E, H, batch_first=True).eval().to(dev)
     with torch.no_grad():
-        out3, _ = mha(q, q, q, key_padding_mask=kpm, need_weights=True)   # bmm+softmax 慢路径
-        res["MHA need_weights=True(bmm)"] = out3[0, 0, :3]
-        out4, _ = mha(q, q, q, key_padding_mask=kpm, need_weights=False)  # 内部走 SDPA
-        res["MHA need_weights=False(内部SDPA)"] = out4[0, 0, :3]
+        out3, _ = mha(q, q, q, key_padding_mask=kpm, need_weights=True)   # need_weights=True 也可能进入 native 推理路径
+        res["MHA need_weights=True"] = out3[0, 0, :3]
+        out4, _ = mha(q, q, q, key_padding_mask=kpm, need_weights=False)  # 实际分支还取决于 fastpath 等条件
+        res["MHA need_weights=False"] = out4[0, 0, :3]
     # 路径 5：直接 F.scaled_dot_product_attention + 4D float 掩码（可触发 CPU 融合核）
     q4 = torch.randn(N, H, L, dk, device=dev)
     k4, v4 = torch.randn_like(q4), torch.randn_like(q4)
@@ -160,33 +161,38 @@ def exp_all_masked():
             tag = "NaN" if torch.isnan(v).any().item() else ("全 0" if (v == 0).all().item() else "非零")
             cells.append(f"{d}={tag}")
         print(f"  {name:<26s} {'  '.join(cells)}")
-    # SDPA 的 3D 掩码语义陷阱：MHA 收 (N·h,L,S)，SDPA 却按 (N,h,L,S) 的子维解释，直接传会报错
+    # 本例N=2、h=8，(16,L,S)无法广播到(2,8,L,S)；N=1则可广播，不是一律报错
     q4 = torch.randn(2, 8, 4, 8)
     k4, v4 = torch.randn_like(q4), torch.randn_like(q4)
     fm3 = torch.full((16, 4, 4), 0.0)
     try:
         with torch.no_grad():
             F.scaled_dot_product_attention(q4, k4, v4, attn_mask=fm3)
-        print("  SDPA 3D (N·h,L,S) 掩码：可运行（与 MHA 3D 语义相同）")
+        print("  当前尺寸可广播；可运行本身并不说明与 MHA 的轴语义相同。")
     except RuntimeError as e:
         print(f"  SDPA 3D (N·h,L,S) 掩码：RuntimeError（{str(e)[:42]}…）——SDPA 的 3D 掩码按"
-              f"(N,h,L,S) 子维解释，与 MHA 的 (N·num_heads,L,S) 不同，跨 API 搬掩码必失配")
-    print("  → 数学上 0/0 未定义；实测：bmm 路径双设备皆 NaN；MHA 内部 SDPA 在 CPU 走数学后端得 NaN、")
-    print("    在 MPS 得 0 向量；直接 SDPA(4D 掩码)双设备皆 0（CPU 融合核显式处理全屏蔽行）。")
-    print("    同一份数学、五条实现路径、三种输出——这就是「实现定义行为」；CUDA/融合注意力内核（后世）")
-    print("    fp16 行为本机未测（防御法：保证每个 query 至少一个可见位置，如右填充+因果天然满足）")
-    # 加测：输入布局也会换路径——同一模型/数据/掩码，仅 batch_first 不同，CPU 输出一个 NaN 一个 0
+              f"(N,h,L,S) 右对齐广播；本例 N=2、h=8 不匹配。")
+    print("  → 全屏蔽行数学上未定义；以上仅报告本次可用设备、当前版本的部分输出分量。")
+    print("    返回值不能单独证明内部使用了哪条路径；本脚本不测试 CUDA 或 fp16。")
+    print("    应保证有效查询有合法键，对无效行另行定义有限输出；仅忽略损失不足以隔离 NaN。")
+    # 加测：复制同一组权重后比较输入布局；报告实际输出，不预设 NaN/0 或内部路径
     q_b = torch.randn(2, 4, 64)
     q_l = q_b.transpose(0, 1).contiguous()                     # 同一批数据，序列维在前
     kpm2 = torch.zeros(2, 4, dtype=torch.bool); kpm2[0] = True
     tag = {}
+    shared_state = None
     for bf, q in ((True, q_b), (False, q_l)):
         m = nn.MultiheadAttention(64, 8, batch_first=bf).eval()
+        if shared_state is None:
+            shared_state = m.state_dict()
+        else:
+            m.load_state_dict(shared_state)
         with torch.no_grad():
             o, _ = m(q, q, q, key_padding_mask=kpm2, need_weights=False)
-        tag[bf] = "NaN" if torch.isnan(o[0, 0]).any().item() else "0"
-    print(f"  加测（仅 CPU）：同一数据与掩码，batch_first=True 走原生 fused 路径得 {tag[True]}、"
-          f"batch_first=False 走 functional+SDPA 得 {tag[False]}——连输入布局都能换实现路径")
+        value = o[0, 0]
+        tag[bf] = "NaN" if torch.isnan(value).any().item() else ("0" if (value == 0).all().item() else "非零")
+    print(f"  加测（仅 CPU、同权重/数据/掩码）：batch_first=True 得 {tag[True]}、"
+          f"False 得 {tag[False]}；本测试没有跟踪具体内部分支。")
 
 
 # ---------- 6. 图 7.1：mask 三态热图 ----------
@@ -194,10 +200,10 @@ def exp_all_masked():
 def fig_7_1(L=6, lengths=(4, 6)):
     causal = causal_mask_bool(L)                               # (L,L) True=屏蔽
     kpm = padding_mask(list(lengths), L)                       # (N,L) True=padding
-    combined = causal | kpm[0][:, None]                        # 样本 0 的组合（因果∪填充，行=查询）
+    combined = causal | kpm[0][None, :]                        # 样本 0 的组合（因果∪填充，行=查询）
     panels = [("causal (float, (T,T))", causal),
               ("key padding (bool, (B,S))", kpm),
-              ("combined = causal ∪ padding (sample 0, (B,T,T))", combined)]
+              ("combined (sample 0, (T,T))", combined)]
     fig, axes = plt.subplots(1, 3, figsize=(8, 4), dpi=300,
                              gridspec_kw={"width_ratios": [1, 0.75, 1]})
     for ax, (title, m) in zip(axes, panels):
@@ -219,6 +225,7 @@ def fig_7_1(L=6, lengths=(4, 6)):
     axes[0].set_ylabel("query position i", color=AX_GREY, fontsize=7)
     axes[1].set_ylabel("sample / position", color=AX_GREY, fontsize=7)
     fig.tight_layout()
+    FIG_DIR.mkdir(parents=True, exist_ok=True)
     fig.savefig(FIG_DIR / "fig-7-1-mask-three-states.png", facecolor="white")
     plt.close(fig)
     print(f"== 图 7.1 已保存：{FIG_DIR / 'fig-7-1-mask-three-states.png'} ==")

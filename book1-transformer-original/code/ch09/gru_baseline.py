@@ -78,9 +78,9 @@ class GRUBahdanau(nn.Module):
         self.encoder = nn.GRU(D_EMB, hidden, batch_first=True, bidirectional=True)  # 编码输出 2H
         self.w_dec = nn.Linear(hidden, attn_dim)          # 对 s_{i-1}
         self.w_enc = nn.Linear(2 * hidden, attn_dim)      # 对 h_j
-        self.v = nn.Linear(attn_dim, 1, bias=False)       # 打分向量（加性＝Luong 术语的 general 前身之争见 ch2）
+        self.v = nn.Linear(attn_dim, 1, bias=False)       # 加性打分向量；不同于Luong general的双线性打分
         self.cell = nn.GRUCell(D_EMB + 2 * hidden, hidden)
-        self.s0_proj = nn.Linear(2 * hidden, hidden)      # s_0 = tanh(W h_T)（Bahdanau 原式）
+        self.s0_proj = nn.Linear(2 * hidden, hidden)      # 本书用双向末态拼接投影；原论文用反向编码的首位置状态
         self.out_proj = nn.Linear(hidden, D_EMB)
         self.emb_drop = nn.Dropout(p_drop)
 
@@ -124,7 +124,7 @@ class GRUBahdanau(nn.Module):
         return self.decode(ys, state)[:, -1]
 
     def attention_weights(self, src, tgt):
-        """导出对齐矩阵 α（图 9.2 素材，Bahdanau Fig.3 的真模型重演）。src (1,S)、tgt (1,T) → (T,S)。"""
+        """在eval模式导出本书GRU的对齐矩阵α。src (1,S)、tgt (1,T) → (T,S)；不等于原论文图的复现。"""
         enc_out, h_final, enc_mask = self.encode(src)
         s = torch.tanh(self.s0_proj(h_final))
         alphas = []

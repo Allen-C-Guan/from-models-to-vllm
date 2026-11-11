@@ -5,6 +5,7 @@
 # 所属：《从模型到 vLLM》Book1 第 5 章（原论文 v7 §3.5 / Table 3 (E)）
 # 运行：source env.sh && python code/ch05/pe.py
 import math
+import os
 from pathlib import Path
 
 import matplotlib
@@ -13,7 +14,8 @@ import matplotlib.pyplot as plt
 import torch
 from matplotlib.colors import LinearSegmentedColormap
 
-FIG_DIR = Path(__file__).resolve().parents[2] / "figures"
+BOOK_ROOT = Path(__file__).resolve().parents[2]
+FIG_DIR = Path(os.environ.get("BOOK1_LOG_ROOT", BOOK_ROOT / "log")).expanduser() / "Book1-ch05"
 # _写作规范.md 第 4 节配色：主色蓝 #2a78d6；发散型（有极性）蓝-灰-红，中点 #f0efec
 BLUE, AX_GREY, TITLE, NOTE, GRID = "#2a78d6", "#898781", "#0b0b0b", "#52514e", "#e1e0d9"
 CMAP_DIV = LinearSegmentedColormap.from_list("div", ["#0d366b", "#f0efec", "#c14a39"])
@@ -82,6 +84,7 @@ def attn_forward(x, w, causal=False):
 
 
 def main():
+    FIG_DIR.mkdir(parents=True, exist_ok=True)
     torch.manual_seed(5)
     d, length = 512, 1024
     pe64 = sinusoidal_pe(length, d)                 # float64：性质验证
@@ -113,7 +116,7 @@ def main():
 
     print("== 4) 点积恒等式 PE_pos·PE_{pos+k} = Σ_i cos(k/τ_i)（恰只依赖相对偏移 k，本书补写）==")
     inv_tau = 10000.0 ** (-2.0 * torch.arange(d // 2, dtype=torch.float64) / d)  # (d/2,)，1/τ_i
-    g = pe64 @ pe64.T                                    # (1024,1024) 内积矩阵，沿反对角线恒定（Toeplitz）
+    g = pe64 @ pe64.T                                    # (1024,1024) 内积矩阵，沿平行于主对角线的各条对角线恒定（Toeplitz）
     dev_ident, dev_collapse = 0.0, 0.0
     for pos in range(0, 300):
         for k in range(0, 60):
@@ -171,8 +174,8 @@ def main():
     plt.close(fig)
 
     # ---- 图 5.2：相对位置点积相似度（左：Toeplitz 热图；右：随偏移 k 的曲线）----
-    cos_sim = (pe64[:100] @ pe64[:100].T / (d / 2)).numpy()          # (100,100)：前 100 位置的内积/归一
-    k_axis = torch.arange(300, dtype=torch.float64)
+    cos_sim = (pe64[:128] @ pe64[:128].T / (d / 2)).numpy()          # (128,128)：与正文图5.2相同的取值范围
+    k_axis = torch.arange(512, dtype=torch.float64)
     s_k = torch.stack([torch.cos(kk * inv_tau).sum() for kk in k_axis]) / (d / 2)
     fig, (a1, a2) = plt.subplots(1, 2, figsize=(8, 4), dpi=300)
     a1.imshow(cos_sim, cmap=CMAP_DIV, vmin=-1, vmax=1, aspect="auto", interpolation="nearest")

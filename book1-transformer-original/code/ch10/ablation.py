@@ -11,9 +11,9 @@
 # 协议（ch09 公平协议原样复用，gru_baseline.py 同款五条）：同 shared BPE-8k 词表（直接加载 ch09 已训
 #   bpe_8k.model）· 同数据（L=16 双侧过滤 17555 对、batch 64、30 epochs=8250 步=同 token 预算）·
 #   同优化调度（Noam warmup 4000/factor 1.0 + Adam β2=0.98 eps=1e-9；所有行 d_model=256 → lr 逐 step 相同）·
-#   checkpoint=末 epoch（Table 3 口径：无 averaging、不挑 best-val）· beam=4 α=0.6 全 test 1000 句 ·
+#   checkpoint取末epoch（本书选择；与Table3无averaging这一点一致）· beam=4 α=0.6 全 test 1000 句 ·
 #   sacreBLEU tokenize=13a · 句长桶 ≤7/8-13/≥14（按参考句词数，与 ch9 eval 同一口径常量）。
-# 诚实条款（notes/01 (7)）：绝对 BLEU/PPL 与 Table 3 不可比（Multi30K≠WMT14、算力 ~1/100），只宣称方向；
+# 诚实条款（notes/01 (7)）：绝对 BLEU/PPL 与 Table 3 不可比（Multi30K≠WMT14、实际操作量差额未测），只宣称方向；
 #   PPL 为 per-wordpiece 口径；消融行单种子 + base 3 种子方差代理，局限随 JSON 落盘。
 #
 # ── 适配说明（ch09 一行不改，变体全部以 wrapper 在本文件解决）─────────────────────────
@@ -36,7 +36,6 @@ import time
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import sacrebleu
 
 sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "ch09")))  # 复用 ch09 管线模块
 from data import (ensure_bpe, load_raw, encode_pairs, filter_pairs, batches, ids_to_text,
@@ -47,7 +46,7 @@ from train import NoamLR, WARMUP, label_smoothing_loss, nll_loss
 from decode import decode_corpus, BEAM, ALPHA
 from eval import BUCKETS, _loss_rows  # 句长桶与外推 loss 行口径与 ch9 同源
 
-LOG_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "log", "Book1-ch10"))
+LOG_DIR = os.path.join(os.path.dirname(CH9_LOG_DIR), "Book1-ch10")  # 与ch09共享BOOK1_LOG_ROOT约定
 # 落盘目标按模式选定（一处改动）：--smoke 冒烟档隔离落 grid_smoke.json，绝不触碰正式网格的 grid_results.json
 RESULTS_JSON = os.path.join(LOG_DIR, "grid_smoke.json" if "--smoke" in sys.argv else "grid_results.json")
 
@@ -78,8 +77,8 @@ class ReducedDKMHA(MultiHeadAttention):
     输出投影 wo 从 128 收回 256；注意力在更低维空间打分，参数量随之下降（论文 65M→60M/58M 同方向）。
     与论文 (B) 的差异如实注记：论文 (B) 固定 h=8、只把 d_k 从 64 缩到 32/16（d_v 不动，参数 60M/58M
     由 65M 扣 W^Q/W^K 而来，ch03 表 3.1 已核对）；本书 base 为 h=8/d_k=d_v=32，取「每头 dk=dv 同步
-    减半到 16」——d_v 一并缩半是本书口径与论文 (B) 的幅度差异（mini 模型投影收缩后拼回维度需对齐），
-    语义同为「缩小每头打分维度」。
+    减半到 16」——d_v一并缩半还改变值通道容量，是另一项联动干预，不能只归为d_k效应；
+    数学上可以保持d_v不变，本实现共用self.d_k仅是代码选择。
     形状差异（对照 base d_k=d_v=32）：wq/wk/wv (B,n,256)→(B,n,h·d_k=128)，逐头拆分后 (B,h,n,32)→(B,h,n,16)；
     打分矩阵仍 (B,h,n,m)——缩的是每头打分/取值维度，注意力矩阵形状不变；拼回 (B,n,128) 再由 wo 收回
     (B,n,256)，子层对外 I/O 与 base 同形（forward 完全继承 ch09，split/√dk 缩放/拼回均按 self.d_k 自适应）。"""
@@ -92,7 +91,7 @@ class ReducedDKMHA(MultiHeadAttention):
 
 
 class NoPETransformer(Transformer):
-    """无 PE 行（必做三行之二）：PE 置零，只保留 嵌入×√d_model——模型退化为词袋（置换等变，ch2 回收）。
+    """无 PE 行（必做三行之二）：PE 置零，只保留 嵌入×√d_model——无PE编码器保持置换等变，但解码器仍含因果顺序结构，不能把整机称为词袋。
     教学性消融，Table 3 无对应行（显式标注）。
     形状差异：无——嵌入输出仍 (B,n,256)，只是加法里少了「位置项」这个加数，逐张量与 base 同形。"""
 
@@ -103,8 +102,8 @@ class NoPETransformer(Transformer):
 class LearnedPETransformer(Transformer):
     """learned PE 行（Table 3 (E) 语义）：nn.Embedding 位置嵌入替代正弦。
     尺寸=训练 max_len：L=16 双侧内容过滤 + SOS/EOS → 训练序列长上限 18。
-    推理遇超长序列（test 未按 L 过滤、解码上限 64）时位置下标截到最后一位——learned PE 无法外推，
-    正是与正弦 PE 的对照点（ch9 外推实测的反面）。初始化取正弦值（Annotated Transformer 同款做法），
+    推理遇超长序列时，本实现把位置下标截到最后一位；这是本实验的越界策略，不代表所有学习式位置编码。
+    初始化取正弦值是本书选择，不由Table3或Annotated教程规定；
     训练中可学习。
     形状差异：PE 项来源从「按需生成的 (n,256) 正弦矩阵」换成「(18,256) 查表」——论文 (max_len,512)
     位置查表的本书缩尺寸版；查表 I/O：pos 下标 (n,) → (n,256)，广播加到嵌入 (B,n,256) 上，
@@ -118,7 +117,7 @@ class LearnedPETransformer(Transformer):
 
     def _add_pe(self, ids):
         pos = torch.arange(ids.size(1), device=ids.device)  # (n,)
-        pos = torch.clamp(pos, max=self.pe.num_embeddings - 1)  # 超长输入截位（无法外推的诚实处理）
+        pos = torch.clamp(pos, max=self.pe.num_embeddings - 1)  # 本实现以截位复用末行；其他扩展策略需另行设计
         return self.emb_drop(self.embed(ids) * math.sqrt(self.d_model) + self.pe(pos))  # (B,n,256)+(n,256) 广播相加
 
 
@@ -152,7 +151,7 @@ def build_model(cfg: dict, vocab: int) -> nn.Module:
 
 # ---------------- 消融网格（13 运行：base×3 种子 + 10 行单种子消融，seed 0） ----------------
 GRID = [
-    # base ×3 种子：估计 σ_seed（方向判据的分母）+ Table 3 base 行锚点
+    # base ×3种子：估计样本标准差，作为探索性筛选量级，不是分母
     dict(run_id="base_s0", row="base", seed=0, table3="base: PPL 4.92 / BLEU 25.8 / 65M"),
     dict(run_id="base_s1", row="base", seed=1, table3="base: PPL 4.92 / BLEU 25.8 / 65M"),
     dict(run_id="base_s2", row="base", seed=2, table3="base: PPL 4.92 / BLEU 25.8 / 65M"),
@@ -199,7 +198,7 @@ def run_epoch_ls(model, id_pairs, opt_sched, device, epoch, seed, eps, clip=None
 @torch.no_grad()
 def validate_ls(model, id_pairs, device, eps):
     """ch09 train.validate 的参数化复刻（eps 可变）。返回（LS 损失, 每 piece NLL）：
-    NLL/PPL 与 eps 无关、跨行可比（Table 3 的 PPL 即 per-wordpiece 口径）；LS 损失各行用各自 eps，只作训练曲线。"""
+    对固定权重与输入，NLL评估公式不含eps；训练时eps会影响最终模型，不能称最终PPL与eps无关（Table 3 的 PPL 即 per-wordpiece 口径）；LS 损失各行用各自 eps，只作训练曲线。"""
     model.eval()
     ls, nl, tok = 0.0, 0.0, 0
     for src, tgt in batches(id_pairs, BATCH, shuffle=False):
@@ -213,6 +212,7 @@ def validate_ls(model, id_pairs, device, eps):
 
 def evaluate_bleu(model, sp, test_pairs, device):
     """全 test beam=4/α=0.6 解码 + sacreBLEU(13a) + 句长桶——与 ch9 eval.evaluate 同口径同代码路径。"""
+    import sacrebleu
     hyp_ids, dec_sec = decode_corpus(model, sp, test_pairs, device, k=BEAM, alpha=ALPHA)
     hyps = [ids_to_text(sp, ids) for ids in hyp_ids]
     refs = [de for _, de in test_pairs]
@@ -286,7 +286,7 @@ def load_results() -> dict:
 
 
 def save_results(res: dict):
-    """每配置完成即原子落盘（tmp + os.replace）——中途断电/杀进程不损坏 JSON，重启按 run_id 续跑。"""
+    """先写临时JSON再os.replace，避免常规读取看见半写文件；不等于断电持久化保证。"""
     tmp = RESULTS_JSON + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(res, f, ensure_ascii=False, indent=2)
@@ -315,9 +315,13 @@ def variant_selftest(sp, device):
 
 # ---------------- 方向判据汇总（plan 10.2 ①-⑦ + 信息行） ----------------
 def summarize(res: dict):
-    runs = res["runs"]
+    runs = [r for r in res["runs"] if "bleu_13a" in r and "final_val_ppl_piece" in r]
+    incomplete = [r.get("run_id") for r in res["runs"] if r not in runs]
     bases = [r for r in runs if r["row"] == "base"]
-    if not bases:
+    if len(bases) < 2:
+        res["summary"] = {"status": "insufficient_base_repeats", "base_n_seeds": len(bases),
+                          "base_sigma_bleu": None, "threshold": None, "incomplete_runs": incomplete}
+        print("[汇总] 有效base重复少于2次，无法估计样本标准差；不生成筛选判定。", flush=True)
         return
     mean = sum(b["bleu_13a"] for b in bases) / len(bases)
     sigma = (sum((b["bleu_13a"] - mean) ** 2 for b in bases) / max(len(bases) - 1, 1)) ** 0.5  # 样本标准差
@@ -339,9 +343,10 @@ def summarize(res: dict):
         rows.append({"run_id": cfg["run_id"], "row": cfg["row"], "table3_ref": cfg["table3"],
                      "bleu_13a": r["bleu_13a"], "delta_bleu": round(d_bleu, 2),
                      "ppl_piece": r["final_val_ppl_piece"], "delta_ppl": round(d_ppl, 2),
-                     "threshold": round(thr, 3), "beyond_seed_noise": hit})
+                     "threshold": round(thr, 3), "exceeds_exploratory_threshold": hit,
+                     "beyond_seed_noise": hit})
         print(f"  {cfg['run_id']:<14} BLEU {r['bleu_13a']:>6}（Δ{d_bleu:+6.2f}）  PPL {r['final_val_ppl_piece']:>8.2f}"
-              f"（Δ{d_ppl:+7.2f}）  超噪声 {'是' if hit else '否'}  ← {cfg['table3']}", flush=True)
+              f"（Δ{d_ppl:+7.2f}）  超探索性筛选线 {'是' if hit else '否'}  ← {cfg['table3']}", flush=True)
 
     def d(rid):
         r = by.get(rid)
@@ -356,7 +361,7 @@ def summarize(res: dict):
             "" if dp(rid) is None else f"，ΔPPL={dp(rid):+.2f}")
 
     checks = [
-        ("① h=1 显著差", d("h1_s0") is not None and d("h1_s0") <= -thr, fmt("h1_s0")),
+        ("① h=1 下降达到探索性筛选线", d("h1_s0") is not None and d("h1_s0") <= -thr, fmt("h1_s0")),
         ("② 缩 d_k 变差（(B) 语义单点）", d("dk16_s0") is not None and d("dk16_s0") < 0, fmt("dk16_s0")),
         ("③ N=2 变差（单边证据）", d("n2_s0") is not None and d("n2_s0") < 0, fmt("n2_s0")),
         ("④ Pdrop=0 变差 ≥1 BLEU", d("drop0_s0") is not None and -d("drop0_s0") >= 1.0, fmt("drop0_s0")),
@@ -368,15 +373,20 @@ def summarize(res: dict):
          d("nope_s0") is not None and d("nope_s0") <= -5 * thr, fmt("nope_s0")),
         ("⑧ 去 √d_k（论文无行，不判定，如实呈现）", None, fmt("noscale_s0")),
     ]
-    print("[汇总] plan 10.2 方向判据命中情况（如实）：", flush=True)
+    ids = ["h1_s0", "dk16_s0", "n2_s0", "drop0_s0", "ls0_s0", "learnedpe_s0", "nope_s0", "noscale_s0"]
+    checks = [(name, hit if rid in by else None, detail)
+              for (name, hit, detail), rid in zip(checks, ids)]
+    print("[汇总] 历史教学规则满足情况（非显著性检验，各规则条件不同）：", flush=True)
     for name, hit, detail in checks:
-        verdict = "信息行" if hit is None else ("命中" if hit else "未命中")
+        verdict = "信息行" if name.startswith("⑧") else ("未具备数据" if hit is None else ("命中" if hit else "未命中"))
         print(f"  {name:<28} {verdict}  （{detail}）", flush=True)
     res["summary"] = {"base_n_seeds": len(bases), "base_mean_bleu": round(mean, 2),
                       "base_sigma_bleu": round(sigma, 3), "base_mean_ppl_piece": round(ppl_mean, 2),
                       "threshold": round(thr, 3),
-                      "threshold_rule": "|ΔBLEU| ≥ max(2σ_seed, 0.5)；σ=样本标准差（3 种子，ddof=1）",
-                      "single_seed_caveat": "消融行为单种子，Δ 含种子噪声；结论只宣称方向（绝对值与 Table 3 不可比）",
+                      "threshold_rule": f"|ΔBLEU| ≥ max(2s_base, 0.5)；s为样本标准差（{len(bases)}次有效重复，ddof=1）",
+                      "incomplete_runs": incomplete,
+                      "legacy_field_note": "beyond_seed_noise为兼容旧制图保留，只表示越过探索性筛选线，不证明排除噪声",
+                      "single_seed_caveat": "单次变体无法估自身方差；越线非显著、线内非等效，命中只指各自教学规则成立",
                       "rows": rows, "direction_checks": [{"criterion": n, "hit": h, "detail": s} for n, h, s in checks]}
 
 
@@ -384,12 +394,13 @@ def summarize(res: dict):
 @torch.no_grad()
 def evaluate_extrap_learnedpe(device):
     """learned PE 行（判据⑥）的外推补测：沿 ch09 eval.py 的外推同协议——band [24,32]（=1.5L~2L，L=16），
-    测试集不相交两两拼接 286 对 + 天然长句 43 句（同种子 2017），逐集 LS 损失 / per-piece PPL + beam BLEU，
+    测试集内不重复两两配对的拼接286对，加天然长句43句（两组可共享原句）（同种子 2017），逐集 LS 损失 / per-piece PPL + beam BLEU，
     落 log/Book1-ch10/learnedpe_extrap.json（与 extrap_transformer.json 并排即「正弦 vs 学习式」收口）。
     截位行为如实记录：learned PE 是 pe_len=18 的 nn.Embedding（L=16 内容 + SOS/EOS），
-    序列位置 ≥18 一律 clamp 到末位（第 17 号）向量复用——查表结构上无法外推的诚实处理（LearnedPETransformer._add_pe）。
+    序列位置 ≥18 一律 clamp 到末位（第 17 号）向量复用——本实现选择的固定表越界策略（LearnedPETransformer._add_pe）。
     形状口径：外推序列长 n∈[24,32] > pe_len=18——位置下标 (n,) 先 clamp 再查表得 (n,256)，加法与输出
     (B,n,256) 形状不变；打分/前馈/logits 各张量形状与域内一致，变的只是查表来源（18 号以内向量被反复复用）。"""
+    import sacrebleu
     ckpt = torch.load(os.path.join(LOG_DIR, "grid_learnedpe_s0.pt"), map_location="cpu", weights_only=False)
     sp = ensure_bpe(CH9_LOG_DIR)
     model = build_model(ckpt["cfg"], sp.get_piece_size()).to(device)
@@ -435,15 +446,15 @@ def evaluate_extrap_learnedpe(device):
     seq_lens = [len(sp.encode(p[0], out_type=int)) + 2 for p in concat_pairs + natural_pairs]
     clamped = sum(max(0, l - pe_len) for l in seq_lens)
     res = {"tag": "learnedpe_s0", "arch_note": "ch10 消融网格 learned PE 行（LearnedPETransformer：18×256 位置查表，"
-                                               "初始化取正弦值后可学习；域内 test BLEU 22.19 见 grid_results.json）",
+                                               "初始化取正弦值后可学习；历史天然test BLEU22.19 见 grid_results.json）",
            "protocol": "ch09 eval.evaluate_extrap 同协议：band=[24,32]（1.5L~2L，L=16），拼接 286 对 + 天然长句 43 句"
                        "（种子 2017）；beam=4 α=0.6，sacreBLEU 13a；PPL 为 per-piece 口径",
            "band": [lo, hi], "L_train": MAX_TRAIN_PIECES, "pe_len": pe_len,
            "n_concat_pairs": len(concat_pairs), "n_natural_in_band": len(natural_pairs),
-           "truncation": {"rule": f"位置下标 clamp 到 pe_len-1={pe_len - 1}：序列第 {pe_len} 个及以后的位置"
+           "truncation": {"rule": f"位置下标 clamp 到 pe_len-1={pe_len - 1}：序列第 {pe_len + 1} 个及以后的位置"
                                   f"一律复用末位（第 {pe_len - 1} 号）向量",
                           "extrap_clamped_position_share": round(clamped / sum(seq_lens), 4),
-                          "note": "learned PE 查表结构上无法外推（pos ≥ pe_len 无向量可用），截位复用末位是诚实处理；"
+                          "note": "固定表的pos≥pe_len无已分配行；本实现以截位复用末行处理，不代表所有学习式方案；"
                                   "正弦 PE 无此限制（闭合公式按需生成任意长度，对照数字见 sinusoid_ch9_ref）"},
            "loss_stats": stats, "bleu_extrap": bleu_rows, "extrap_samples": samples,
            "sinusoid_ch9_ref": {"source": "log/Book1-ch09/extrap_transformer.json（同协议正弦侧，ch9 9.6 引用）",
@@ -512,9 +523,9 @@ def main():
             "train_pairs": len(kept), "keep_rate": round(keep_rate, 4), "max_train_pieces": MAX_TRAIN_PIECES,
             "batch": BATCH, "epochs_per_config": epochs,
             "optim": f"Noam(warmup={WARMUP}, factor=1.0, d_model={D_MODEL}) + Adam(β2=0.98, eps=1e-9)，ls=0.1",
-            "checkpoint": "末 epoch（Table 3 口径：无 averaging、不挑 best-val）",
+            "checkpoint": "末epoch（本书选择；论文Table3只明确无checkpoint平均）",
             "eval": f"beam={BEAM} α={ALPHA} 全 test {len(raw['test'])} 句 · sacreBLEU 13a · 句长桶 ≤7/8-13/≥14（参考句词数）",
-            "metric_caveat": "绝对值与 Table 3 不可比（Multi30K≠WMT14，算力 ~1/100）；PPL=per-wordpiece",
+            "metric_caveat": "绝对值与 Table 3 不可比（Multi30K≠WMT14，实际操作量差额未测）；PPL=per-wordpiece",
         }
     save_results(res)
 
@@ -550,7 +561,8 @@ def main():
         summarize(res)
     res["grid_seconds_total"] = round(time.perf_counter() - t_grid, 1)
     save_results(res)
-    print(f"\n[结束] {len(res['runs'])}/{len(grid)} 配置在档 → {RESULTS_JSON}"
+    success = sum("bleu_13a" in r and "final_val_ppl_piece" in r for r in res["runs"])
+    print(f"\n[结束] 成功{success}/{len(grid)}次运行，失败或未完成{len(grid)-success}次 → {RESULTS_JSON}"
           f"{'（冒烟档：验证后请删除本 JSON 与 grid_smoke_*.pt）' if args.smoke else ''}", flush=True)
 
 

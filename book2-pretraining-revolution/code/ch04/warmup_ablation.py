@@ -1,11 +1,10 @@
-# warmup_ablation.py —— Book2 ch4 §4.5「停药实验」：{post-LN, pre-LN}×{warmup 0, 200} 四配置 2×2 短训对照
-# 手术背景：GPT-1 术后现状 = post-LN + 2000 步 warmup（§4.1 原配方，仍在吃药）；GPT-2 §2.3 = pre-LN + ln_f +
-#   残差初始化 1/√N（术后停药）。判据二居其一：post-LN×warmup0 「绝对发散」或「相对自伤」（同配置加 warmup 明显更优）；
-#   两者皆否 => 6 层档可停药（与 Nguyen&Salazar 1910.05895「6 层 post-LN 即 warmup-free、掉点在更大规模」一致，同为好叙事）。
-# 所属章节：Book2 第 4 章 §4.5（drafts/Book2-预训练革命/ch04-GPT单塔与差异清单.md 表 4.5/图 4.3 数据源）
-# 运行方式：python warmup_ablation.py --steps 3000 --cells all --out-name warmup_full [--depth 6|12 --lr 1e-3|3e-3]
-#   冒烟：--steps 500 --cells post_ln__w0,pre_ln__w0,post_ln__w200 --out-name warmup_smoke
-# 产物：log/book2-ch04/{out-name}.json + 每配置曲线 {out-name}__{cell}.csv / .npy（step, train_loss, ema, grad_norm, lr）
+# 用途：Book2第4章4.5节，post/pre-LN × warmup 0/200 四格对照。
+# 比较包含pre的末端LN；不是GPT1与GPT2完整配方的复现。
+# 0.05 nat为探索阈值，不是统计显著性或等效性检验。
+# Nguyen与Salazar的无warmup表中4层post可运行但较差，5/6层失败，不能误引为6层post普遍可取消warmup。
+# 运行：在本册目录、已准备环境后 python code/ch04/warmup_ablation.py --steps 3000 --cells all
+# 历史曲线：正文图4.5；时长仅为原MPS参考。新运行结果默认写log/book2-ch04，需独立结果名。
+# 当前修正窗口采样的末端边界；历史四格来自旧采样协议，未重新训练。
 
 import argparse
 import json
@@ -24,9 +23,10 @@ import torch.nn.functional as F
 # ---------------- 固定口径 ----------------
 SEED = 20261002  # 全书统一种子（与 00-feasibility 探针同源，可复算）；--seed 可换种子复核稳健性
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-OUT_DIR = os.path.join(REPO_ROOT, "log", "book2-ch04")
+LOG_ROOT = os.path.abspath(os.environ.get("BOOK2_LOG_ROOT", "log"))
+OUT_DIR = os.path.join(LOG_ROOT, "book2-ch04")
 DATA_PATH = os.path.join(OUT_DIR, "data", "tiny_shakespeare.txt")
-FALLBACK_DATA = os.path.join(REPO_ROOT, "log", "book2-feasibility", "data", "tiny_shakespeare.txt")
+FALLBACK_DATA = os.path.join(LOG_ROOT, "book2-feasibility", "data", "tiny_shakespeare.txt")
 SHAKESPEARE_URL = "https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt"
 
 # 四格命名：ln 位置 × warmup 步数（w0 = 停药，w200 = nanoGPT 同型对照；GPT-1 原配方 2000 步见章内考据）
@@ -65,7 +65,10 @@ def load_ids():
 
 def get_batch(ids, block, batch, device, gen=None):
     """随机采样一个批：x,y 均为 (B,T)，y 与 x 错位一格（next-char 预测）。gen 给定则用固定生成器（评测口径）。"""
-    ix = torch.randint(len(ids) - block - 1, (batch,), generator=gen)
+    if block <= 0 or batch <= 0 or len(ids) <= block:
+        raise ValueError("需要正的block/batch，且语料至少有block+1个token")
+    # y的最后一位是ids[start+block]，所以start可取0到len(ids)-block-1。
+    ix = torch.randint(len(ids) - block, (batch,), generator=gen)
     x = torch.stack([ids[i:i + block] for i in ix]).to(device)      # (B,T) 整数 id
     y = torch.stack([ids[i + 1:i + block + 1] for i in ix]).to(device)  # (B,T) 右移一位的标签
     return x, y
@@ -145,8 +148,8 @@ class GPT(nn.Module):
 
     ln_position="pre" 时按 GPT-2 §2.3 在最后一个块之后加 ln_f（手术②的两半：挪 LN + 补 ln_f）；
     "post" 时与 GPT-1/Book1 同型、无 ln_f。p_drop 默认 0（小语料短训不设 dropout，参数保留给 ch8 族）。
-    前向：idx (B,T) -> logits (B,T,V)。初始化 GPT-2 口径 N(0,0.02)，残差流出端投影再乘 0.02/sqrt(2*n_layer)
-    ——两种 ln_position 用同一初始化流（参数形状全同、RNG 消耗一致），保证四格唯一的差异变量就是 LN 接法与 warmup。
+    前向：idx (B,T) -> logits (B,T,V)。初始化 GPT-2 口径 N(0,0.02)，残差流出端投影重新采样，标准差设为0.02/sqrt(2*n_layer)
+    ——共有参数形状与初始化随机流一致；pre额外含ln_f，其初始化为常量。比较变量为LN配置（含末端LN）与warmup。
     """
 
     def __init__(self, n_layer=6, n_embd=384, n_head=6, vocab=65, block_size=256,
@@ -196,7 +199,7 @@ class GPT(nn.Module):
 
 # ---------------- 训练单格 ----------------
 def lr_at(step, peak, warmup, total, min_ratio=0.1):
-    """lr 日程：warmup 段线性升到 peak，之后余弦降到 min_ratio*peak（nanoGPT 同型；warmup=0 即从 peak 起步）。"""
+    """lr 日程：warmup 段线性升到 peak，之后余弦降到 min_ratio*peak（nanoGPT 同型；warmup=0 时step=0为peak，实际训练从step=1开始，略低于peak）。"""
     if warmup > 0 and step <= warmup:
         return peak * step / warmup
     prog = (step - warmup) / max(1, total - warmup)
@@ -206,6 +209,9 @@ def lr_at(step, peak, warmup, total, min_ratio=0.1):
 @torch.no_grad()
 def eval_val_loss(model, val_ids, block, batch, device, n_batches=20):
     """val loss：固定种子 20 批均值（探针(b)同口径，跨格可比）。"""
+    if n_batches <= 0:
+        raise ValueError("n_batches必须为正")
+    was_training = model.training
     model.eval()
     gen = torch.Generator().manual_seed(20261002)   # val 批序固定（与探针 b 同源，不随 --seed 变）
     losses = []
@@ -213,12 +219,12 @@ def eval_val_loss(model, val_ids, block, batch, device, n_batches=20):
         x, y = get_batch(val_ids, block, batch, device, gen)
         _, loss = model(x, y)
         losses.append(loss.item())
-    model.train()
+    model.train(was_training)
     return sum(losses) / len(losses)
 
 
 def run_cell(cell, ln_position, warmup, args, train_ids, val_ids, vocab, device):
-    """跑一格：固定种子重建模型与数据批序（四格初始权重与批序列完全一致），逐 step 记录曲线。"""
+    """跑一格：固定种子重建共有参数与数据批序；pre另外含末端LN，逐 step 记录曲线。"""
     print(f"\n===== 格 {cell}：ln={ln_position}, warmup={warmup}, L={args.depth}, "
           f"lr={args.lr}, steps={args.steps}, seed={args.seed} =====", flush=True)
     torch.manual_seed(args.seed)          # 每格重置：init 与批序跨格一致，唯一变量 = LN 接法 × warmup
@@ -228,6 +234,7 @@ def run_cell(cell, ln_position, warmup, args, train_ids, val_ids, vocab, device)
 
     curve = {"step": [], "train_loss": [], "ema": [], "grad_norm": [], "lr": []}
     ema = None
+    updates_done = 0
     diverged_at, reason = None, None
     t0 = time.perf_counter()
     for step in range(1, args.steps + 1):
@@ -237,13 +244,20 @@ def run_cell(cell, ln_position, warmup, args, train_ids, val_ids, vocab, device)
         x, y = get_batch(train_ids, 256, 64, device)
         _, loss = model(x, y)
         opt.zero_grad(set_to_none=True)
-        loss.backward()
-        gn = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0).item()
-        opt.step()
         lv = loss.item()
+        gn = float("nan")
+        if not math.isfinite(lv) or lv > 100.0:
+            diverged_at, reason = step, ("non-finite loss" if not math.isfinite(lv) else f"loss={lv:.1f}>100")
+        else:
+            loss.backward()
+            gn = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0).item()
+            if not math.isfinite(gn):
+                diverged_at, reason = step, "non-finite gradient norm"
+            else:
+                opt.step()
+                updates_done += 1
         ema = lv if ema is None else 0.99 * ema + 0.01 * lv
-        if not math.isfinite(lv) or lv > 100.0:   # 发散判据：非有限值，或 loss 冲破 100（ln65≈4.17 起步）
-            diverged_at, reason = step, ("non-finite" if not math.isfinite(lv) else f"loss={lv:.1f}>100")
+        if diverged_at is not None:
             curve["step"].append(step); curve["train_loss"].append(lv); curve["ema"].append(ema)
             curve["grad_norm"].append(gn); curve["lr"].append(lr)
             print(f"  [发散] step {step}: {reason}", flush=True)
@@ -259,21 +273,23 @@ def run_cell(cell, ln_position, warmup, args, train_ids, val_ids, vocab, device)
     n_done = len(curve["step"])
     end_n = max(50, args.steps // 10)                 # 末段 = 最后 10% 步（至少 50 步）
     tail = curve["train_loss"][-min(end_n, n_done):]
+    valid_run = diverged_at is None and n_done == args.steps
+    finite_norms = [v for v in curve["grad_norm"][:200] if math.isfinite(v)]
     result = {
         "cell": cell, "ln_position": ln_position, "warmup": warmup,
         "n_layer": args.depth, "n_embd": 384, "n_head": 6,
-        "steps_planned": args.steps, "steps_done": n_done,
+        "steps_planned": args.steps, "steps_done": n_done, "updates_done": updates_done,
         "diverged": diverged_at is not None, "diverged_at_step": diverged_at, "divergence_reason": reason,
         "n_params_total": model.n_params(), "n_params_non_embedding": model.n_params(non_embedding=True),
-        "end_mean_train_loss": round(sum(tail) / len(tail), 4),
+        "end_mean_train_loss": round(sum(tail) / len(tail), 4) if valid_run else None,
         "end_segment": [max(1, n_done - min(end_n, n_done) + 1), n_done],
-        "min_train_loss": round(min(curve["train_loss"]), 4),
-        "final_ema": round(curve["ema"][-1], 4),
-        "max_grad_norm_first200": round(max(curve["grad_norm"][:200]), 3),
+        "min_train_loss": round(min(curve["train_loss"]), 4) if valid_run else None,
+        "final_ema": round(curve["ema"][-1], 4) if valid_run else None,
+        "max_grad_norm_first200": round(max(finite_norms), 3) if finite_norms else None,
         "batch": 64, "block": 256, "peak_lr": args.lr,
         "sec_per_step": round(sec / n_done, 4), "sec_total": round(sec, 1),
         "final_val_loss": (round(eval_val_loss(model, val_ids, 256, 64, device), 4)
-                           if n_done >= args.steps // 2 else None),  # 中途发散的格不给 val（无意义）
+                           if valid_run else None),  # 只有完整且无数值失败的运行才评测
     }
     # 曲线落盘：csv + npy（图 4.3 自产数据源）
     stem = os.path.join(OUT_DIR, f"{args.out_name}__{cell}")
@@ -285,27 +301,41 @@ def run_cell(cell, ln_position, warmup, args, train_ids, val_ids, vocab, device)
     np.save(stem + ".npy", np.column_stack([curve["step"], curve["train_loss"],
                                             curve["ema"], curve["grad_norm"], curve["lr"]]))
     with open(stem + ".json", "w", encoding="utf-8") as f:
-        json.dump(result, f, ensure_ascii=False, indent=2)
+        json.dump(result, f, ensure_ascii=False, indent=2, allow_nan=False)
     print(f"  [格完成] end_mean {result['end_mean_train_loss']}, diverged={result['diverged']}, "
           f"{result['sec_per_step']}s/step -> {stem}.csv", flush=True)
     return result
 
 
 def main():
-    ap = argparse.ArgumentParser(description="ch4 §4.5 停药实验：post/pre-LN × warmup 0/200 四格对照")
+    ap = argparse.ArgumentParser(description="ch4 §4.5：post/pre-LN × warmup 0/200 四格对照")
     ap.add_argument("--steps", type=int, default=3000, help="每格总步数（默认 3000）")
     ap.add_argument("--cells", type=str, default="all",
                     help="逗号分隔的格名（post_ln__w0/post_ln__w200/pre_ln__w0/pre_ln__w200）或 all")
-    ap.add_argument("--depth", type=int, default=6, help="层数 n_layer（默认 6；分化不足时 12）")
-    ap.add_argument("--lr", type=float, default=1e-3, help="peak 学习率（默认 1e-3；保分化可 3e-3）")
+    ap.add_argument("--depth", type=int, default=6, help="层数 n_layer（默认6；修改深度即改变实验设置）")
+    ap.add_argument("--lr", type=float, default=1e-3, help="peak学习率（默认1e-3；修改后应独立报告）")
     ap.add_argument("--out-name", type=str, default="warmup_ablation", help="产物名（JSON/CSV 前缀）")
     ap.add_argument("--device", type=str, default="mps" if torch.backends.mps.is_available() else "cpu")
     ap.add_argument("--seed", type=int, default=SEED, help="训练种子（init+批序；默认全书 20261002）")
+    ap.add_argument("--overwrite", action="store_true", help="明确允许覆盖同名结果，默认拒绝")
     args = ap.parse_args()
+    if args.steps <= 0 or args.depth <= 0 or not math.isfinite(args.lr) or args.lr <= 0:
+        ap.error("steps、depth、lr必须为有限正数")
+    if not args.out_name or any(c in args.out_name for c in ("/", "\\")):
+        ap.error("out-name须为不含路径分隔符的非空名称")
     os.makedirs(OUT_DIR, exist_ok=True)
     cell_names = list(CELLS) if args.cells == "all" else [c.strip() for c in args.cells.split(",")]
     for c in cell_names:
-        assert c in CELLS, f"未知格名 {c}"
+        if c not in CELLS:
+            ap.error(f"未知格名 {c}")
+    if len(cell_names) != len(set(cell_names)):
+        ap.error("cells不能重复")
+    targets = [os.path.join(OUT_DIR, args.out_name + ".json")]
+    targets += [os.path.join(OUT_DIR, f"{args.out_name}__{c}{ext}")
+                for c in cell_names for ext in (".json", ".csv", ".npy")]
+    if not args.overwrite and any(os.path.exists(p) for p in targets):
+        ap.error("同名结果已存在；请换out-name，或明确使用--overwrite")
+
 
     ensure_corpus()
     train_ids, val_ids, vocab = load_ids()
@@ -321,9 +351,9 @@ def main():
             "torch": torch.__version__, "corpus": "tiny_shakespeare(char)",
             "vocab": vocab, "steps": args.steps, "peak_lr": args.lr,
             "optimizer": "AdamW(betas=0.9,0.95,wd=0.1)+grad_clip1.0, cosine->0.1*peak",
-            "schedule": "warmup 线性升 + 余弦降（min_ratio=0.1）；w0 即无 warmup 直取 peak",
-            "init": "N(0,0.02), 残差 c_proj 再乘 0.02/sqrt(2N)（四格同初始化流，单变量=LN 接法×warmup）",
-            "protocol": "batch 64 x block 256；每格重置种子（init/批序跨格一致）；val=固定种子 20 批均值",
+            "schedule": "warmup 线性升 + 余弦降（min_ratio=0.1）；w0无warmup，step1从接近peak开始",
+            "init": "N(0,0.02), 残差c_proj重采样std=.02/sqrt(2N)；共有参数同初始化流，pre另含末端LN",
+            "protocol": "batch 64 x block 256；共有参数与批序固定；val=固定种子20批均值；新采样包含最后合法窗口，旧历史记录遗漏该窗口",
             "argv": " ".join(sys.argv[1:]),
         },
         "cells": results,
@@ -332,15 +362,19 @@ def main():
     by = {r["cell"]: r for r in results}
     summary = {}
     if "post_ln__w0" in by and "post_ln__w200" in by:
-        gap = by["post_ln__w0"]["end_mean_train_loss"] - by["post_ln__w200"]["end_mean_train_loss"]
-        summary["post_selfharm_gap(end_mean_w0_minus_w200)"] = round(gap, 4)
-        summary["post_w0_diverged"] = by["post_ln__w0"]["diverged"]
-        summary["verdict_hint"] = ("diverged=绝对发散" if by["post_ln__w0"]["diverged"] else
-                                   ("gap>0.05=相对自伤" if gap > 0.05 else "两者皆否=6层档可停药(仍需看规模变量)"))
+        zero, warm = by["post_ln__w0"], by["post_ln__w200"]
+        if zero["end_mean_train_loss"] is None or warm["end_mean_train_loss"] is None:
+            summary["verdict_hint"] = "至少一格失败或未完成，不能比较末段损失"
+        else:
+            gap = zero["end_mean_train_loss"] - warm["end_mean_train_loss"]
+            summary["post_selfharm_gap(end_mean_w0_minus_w200)"] = round(gap, 4)
+            summary["post_w0_diverged"] = zero["diverged"]
+            summary["verdict_hint"] = ("无warmup损失较高，超过探索阈值0.05 nat" if gap > .05
+                                       else "本次未观察到超过0.05 nat的训练损失劣势；不构成等效性证明")
     report["summary"] = summary
     out_json = os.path.join(OUT_DIR, f"{args.out_name}.json")
     with open(out_json, "w", encoding="utf-8") as f:
-        json.dump(report, f, ensure_ascii=False, indent=2)
+        json.dump(report, f, ensure_ascii=False, indent=2, allow_nan=False)
     print(f"\n[汇总] {json.dumps(summary, ensure_ascii=False)} -> {out_json}", flush=True)
 
 

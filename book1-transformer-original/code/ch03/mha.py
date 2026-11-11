@@ -101,7 +101,7 @@ def compare_weight_transfer(d_model=512, h=8, bs=2, n=10):
         mine.w_o.weight.copy_(official.out_proj.weight)       # W^O
         mine.w_o.bias.copy_(official.out_proj.bias)
         x = torch.randn(bs, n, d_model)
-        # need_weights=True 走 bmm+softmax 慢路径（最贴近论文公式，也避开推理 fast path）
+        # 请求返回权重；need_weights=True 本身不关闭原生推理快路径。
         out_official, w_official = official(x, x, x, need_weights=True)
         out_mine, attn_mine = mine(x, x, x)
     diff = (out_mine - out_official).abs().max().item()
@@ -125,7 +125,7 @@ def compare_with_torch(d_model=512, h=8, bs=2, n=10):
     official = nn.MultiheadAttention(d_model, h, batch_first=True).eval()  # batch_first 必须显式传
     x = torch.randn(bs, n, d_model)
     with torch.no_grad():
-        # need_weights=True 走 bmm+softmax 慢路径（最贴近论文公式，也避开推理 fast path）
+        # 请求返回权重；need_weights=True 本身不关闭原生推理快路径。
         out_official, _ = official(x, x, x, need_weights=True)
         # torch 存 (out,in) 且沿 dim0 打包；先转置成论文记法 (in=512, out=512)，再按列块取每头
         Wq, Wk, Wv = (w.T for w in official.in_proj_weight.chunk(3, dim=0))

@@ -1,11 +1,13 @@
 # make_fig_1_1.py —— 图 1.1 组件-组装双轴时间线（自绘示意级：上轴组件论文节点、下轴 LLaMA 组装节点）
-# 用途：ch1 1.5 节「三改没有一件是 LLaMA 发明的」的可视化——横轴时间，连线标注采纳关系；
+# 用途：ch1 1.5节已有组件与LLaMA整机的关系；横轴时间，连线标所选采纳关系；
 #       日期全部官方锚（arXiv v1 日期 / 许可日期），出处见 research papers/06 §六双轴时间线表。
 # 所属章节：Book3 第 1 章 1.5 节（图 1.1；纯 matplotlib，CPU 秒级）。
-# 运行方式：cd 工作区根目录 && source env.sh && python code/ch01/make_fig_1_1.py
-# 产物：figures/fig-1-1-component-assembly-timeline.png（300 dpi）
-import os
-
+# 运行方式：激活既有环境后按本书路径调用；--out-dir可指定工作目录log中的输出。
+# 产物：log/book3-ch01/figures/fig-1-1-component-assembly-timeline.png（300dpi）；不改正文图。
+import argparse
+from pathlib import Path
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 BLUE, ORANGE, TEAL, YELLOW = "#2a78d6", "#eb6834", "#1baf7a", "#eda100"
@@ -19,7 +21,7 @@ COMPONENTS = [                          # 上轴：组件论文（蓝点；Chinc
     ("Chinchilla\n(recipe) 2022", 2022.22, 1), ("GQA\n2023", 2023.40, 0),
 ]
 ASSEMBLIES = [                          # 下轴：LLaMA 代际（橙方；日期=arXiv/许可锚）
-    ("LLaMA 1\n2023-02", 2023.16, 0), ("LLaMA 2\n2023-07", 2023.55, 1),
+    ("LLaMA 1\n2023-02", 2023.16, 0), ("LLaMA 2\n34B/70B: GQA\n2023-07", 2023.55, 1),
     ("Llama 3\n2024-04", 2024.30, 0), ("Llama 3.1 405B\n2024-07", 2024.56, 1),
 ]
 ADOPT = [("RMSNorm", 2023.16, TEAL, "-"), ("SwiGLU", 2023.16, TEAL, "-"),
@@ -30,7 +32,11 @@ POS = {n.split("\n")[0]: x for n, x, _ in COMPONENTS}
 
 
 def main():
-    fig, ax = plt.subplots(figsize=(8, 4), dpi=300)
+    ap=argparse.ArgumentParser(description="选定组件与LLaMA采纳关系；不是首次发明/采用证明")
+    ap.add_argument('--out-dir',type=Path,default=Path.cwd()/'log/book3-ch01/figures')
+    args=ap.parse_args();out=args.out_dir/'fig-1-1-component-assembly-timeline.png'
+    if out.exists():raise FileExistsError(out)
+    fig, ax = plt.subplots(figsize=(10, 5), dpi=300)
     for yr in range(2016, 2025):                      # 年度竖网格（hairline 置底层）
         ax.axvline(yr, color=GRID, lw=0.6, zorder=0)
     for name, x, lv in COMPONENTS:                    # 上轴节点与标签
@@ -51,9 +57,9 @@ def main():
         ax.annotate("", xy=(b, Y_COMP - 0.10), xytext=(a, Y_COMP - 0.10),
                     arrowprops=dict(arrowstyle="-|>", color=TICK, lw=1.0, alpha=0.85,
                                     connectionstyle="arc3,rad=-0.30"), zorder=1)
-    ax.annotate("", xy=(2019.79, 1.72), xytext=(2023.16, 1.72),          # 3.4 年跨度标注
+    ax.annotate("", xy=(2019.79, 2.08), xytext=(2023.16, 2.08),          # 3.4 年跨度标注
                 arrowprops=dict(arrowstyle="<|-|>", color=SUB, lw=1.0))
-    ax.text(2021.48, 1.80, "3.4 years from paper to assembly", ha="center",
+    ax.text(2021.48, 2.16, "~3.4 years: RMSNorm paper to LLaMA 1", ha="center",
             fontsize=8, color=SUB)
     ax.text(2015.95, Y_COMP, "component\npapers", ha="left", va="center", fontsize=8,
             color=SUB, style="italic")
@@ -67,20 +73,18 @@ def main():
     ax.legend(handles=handles, loc="lower left", fontsize=7.5, frameon=False,
               bbox_to_anchor=(0.002, 0.02))
     ax.set_xlim(2015.8, 2025.15)
-    ax.set_ylim(-1.95, 2.1)
+    ax.set_ylim(-2.10, 2.48)
     ax.set_xticks(range(2016, 2025))
     ax.set_yticks([])
     ax.tick_params(colors=TICK, labelsize=8)
     for s in ("top", "right", "left"):
         ax.spines[s].set_visible(False)
     ax.spines["bottom"].set_color(GRID)
-    ax.set_title("Assembly, not invention: every LLaMA slot predates it", fontsize=11, color=INK)
+    ax.set_title("Selected components and their adoption in LLaMA models", fontsize=11, color=INK)
     fig.tight_layout()
-    out = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(
-        os.path.abspath(__file__))))), "figures",
-        "fig-1-1-component-assembly-timeline.png")
-    os.makedirs(os.path.dirname(out), exist_ok=True)
+    args.out_dir.mkdir(parents=True, exist_ok=True)
     fig.savefig(out)                                  # 规范：savefig 不用 bbox_inches='tight'
+    plt.close(fig)
     print(f"[saved] {out}")
 
 

@@ -1,338 +1,237 @@
-# ablation_norm.py —— Book3 ch2 模块消融：LayerNorm vs RMSNorm（同数据同种子两臂短训）
-# 用途：统一模块档（d=512/L=6/h=8/V=8192，B=16/T=512）下跑两臂——base（Book2 ch10 model.py 的
-#       GPT-2 底座，import 复用零改动）vs +rmsnorm（llama_slots.RMSNorm 换装 ln_1/ln_2/ln_f 共 13 处，
-#       pre 位置不变、无 bias、eps=1e-5）——产出每臂 train loss 曲线 CSV、末 300 步均值、固定窗 eval
-#       loss 与秒步速度；判据预注册见同目录 preregistered.md（随书快照，含执行记录）。
-# 运行方式：cd code/ch02 && python ablation_norm.py [--steps 1000] [--out-name fast]
-#           [--cells base,rmsnorm] [--eval-every 500]；两档位：fast=1000 步 / full=5000 步（卷级大纲 ch2 契约）。
-# 产物（log/book3-ch02/，不入库）：ablation_norm_{out}.json（总报告）+ curve_{臂}_{out}.csv（每臂曲线）
-#           + ckpt_{臂}_{out}.pt（断点续跑用，臂完成即删）。
-# 协议口径（= Book2 ch8 五件套，run_family.py 同款）：AdamW(betas 0.9/0.95, wd=0.1) + grad clip 1.0
-#           + lr 1e-3 余弦降至 1e-4 + warmup 100 步；train bf16 autocast / eval fp32；
-#           训练数据 tokens.bin 顺序连续分块一次通过（第 k 步消费流首部 (k-1)*8192 起 8192+1 token，
-#           两臂按步号取同一批——「同数据批序列」由构造保证，且天然断点续跑安全）；
-#           eval 固定窗：eval.bin 内固定种子抽 49 个 (16,512) 窗 = 401,408 token（跨臂跨步完全同集）。
+# Book3第2章：同种子/同位置序列的LN与RMSNorm消融，保留历史fast/full配置。
+# 只在显式执行时训练；数据与产物默认在工作目录log，可指定data-dir/out-dir。
+# 同名续跑须配置、日程、数据、实现身份一致；非有限梯度在更新前拒绝；完成后保留权重。
+# 历史0.02只是描述性差值带，不称统计等效证明；49批SE不等于独立token近似SE。
 import argparse
 import csv
+import hashlib
 import json
 import math
 import os
+from pathlib import Path
 import sys
 import time
 
 import numpy as np
 import torch
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.abspath(os.path.join(HERE, "..", "00-feasibility")))
-for _base in (os.path.join(HERE, "..", "..", "Book2-预训练革命", "ch10"),                              # 工作区布局
-              os.path.join(HERE, "..", "..", "..", "book2-pretraining-revolution", "code", "ch10")):  # 书仓快照布局
-    if os.path.isdir(_base):
-        sys.path.insert(0, os.path.abspath(_base))  # Book2 ch10 GPT-2 定版底座
-from model import GPT2, GPT2Config              # noqa: E402  Book2 ch10 定版底座（改装对象，import 复用）
-from llama_slots import RMSNorm                 # noqa: E402  本册插槽组件库（ch2 换装件）
+HERE=Path(__file__).resolve().parent
+sys.path.insert(0,str(HERE.parent/'00-feasibility'))
+for candidate in (HERE.parents[2]/'book2-pretraining-revolution/code/ch10',HERE.parents[1]/'Book2-预训练革命/ch10'):
+    if candidate.is_dir():
+        sys.path.insert(0,str(candidate));break
+else:raise ImportError('找不到配套Book2第10章模型，请保留相邻书目录布局')
+from model import GPT2,GPT2Config
+from llama_slots import RMSNorm
 
-# ---------------- 固定口径 ----------------
-SEED = 20261002          # 全书统一种子（模型初始化；数据由步号决定，无需 RNG）
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
-OUT_DIR = os.path.join(REPO_ROOT, "log", "book3-ch02")
-TOKENS_BIN = os.path.join(REPO_ROOT, "log", "book2-ch08", "tokens.bin")   # 306M token 训练池（sp-8k）
-EVAL_BIN = os.path.join(REPO_ROOT, "log", "book2-ch08", "eval.bin")       # 1.2M token eval 池（与训练段互斥）
-
-VOCAB = 8192             # sp-8k 词表
-BATCH = 16               # B：批大小
-BLOCK = 512              # T：序列长（wpe 查表上限 1024，留外推余量）
-TPB = BATCH * BLOCK      # 8192 token/步（与 Book2 ch8 b32×s256 同吞吐口径）
-EVAL_BATCHES = 49        # 49×8192 = 401,408 token ≥ 40 万（Book2 ch8 eval 协议，se<0.005）
-PEAK_LR = 1e-3           # 峰值学习率
-MIN_LR_RATIO = 0.1       # 余弦降到 0.1×peak = 1e-4
-WARMUP = 100             # warmup 步数（Book2 五件套口径）
-WDECL = 0.1              # weight decay
-TAIL = 300               # 末段均值窗口（末 300 步）
-N_LAYER, N_EMBD, N_HEAD = 6, 512, 8              # 统一模块档（探针 A/B 定档：23.6M）
+SEED=20261002
+OUT_DIR=str(Path.cwd()/'log/book3-ch02')
+TOKENS_BIN=str(Path.cwd()/'log/book2-ch08/tokens.bin')
+EVAL_BIN=str(Path.cwd()/'log/book2-ch08/eval.bin')
+VOCAB=8192;BATCH=16;BLOCK=512;TPB=BATCH*BLOCK;EVAL_BATCHES=49
+PEAK_LR=1e-3;MIN_LR_RATIO=.1;WARMUP=100;WDECL=.1;TAIL=300
+N_LAYER,N_EMBD,N_HEAD,N_POSITIONS=6,512,8,1024
 
 
-def lr_at(step, total):
-    """lr 日程（Book2 ch8 同式）：warmup 段线性升，之后余弦降到 min_ratio*peak。"""
-    if step <= WARMUP:
-        return PEAK_LR * step / WARMUP
-    prog = (step - WARMUP) / max(1, total - WARMUP)
-    return PEAK_LR * (MIN_LR_RATIO + (1 - MIN_LR_RATIO) * 0.5 * (1 + math.cos(math.pi * prog)))
+def file_identity(path):
+    h=hashlib.sha256();path=Path(path)
+    with path.open('rb') as f:
+        for chunk in iter(lambda:f.read(1024*1024),b''):h.update(chunk)
+    return dict(bytes=path.stat().st_size,sha256=h.hexdigest())
+
+
+def save_json(path,value):
+    payload=json.dumps(value,ensure_ascii=False,indent=2,allow_nan=False)+'\n'
+    temp=Path(str(path)+'.tmp');temp.write_text(payload);os.replace(temp,path)
+
+
+def lr_at(step,total):
+    if WARMUP>0 and step<=WARMUP:return PEAK_LR*step/WARMUP
+    progress=(step-WARMUP)/max(1,total-WARMUP)
+    return PEAK_LR*(MIN_LR_RATIO+(1-MIN_LR_RATIO)*.5*(1+math.cos(math.pi*progress)))
 
 
 class TrainStream:
-    """训练数据：tokens.bin 流首部按步号顺序切块（一次通过，构造上无重复 epoch）。
-
-    第 k 步（1 起）消费 tokens[(k-1)*8192 : (k-1)*8192+8193]：x=前 8192 reshape (16,512)，y=左移一格。
-    两臂按步号取到完全相同的批（同数据批序列）；步号确定性使断点续跑天然安全。
-    """
-
-    def __init__(self, path):
-        self.arr = np.memmap(path, dtype=np.uint16, mode="r")     # 只读 memmap，306M token 不进内存
-        self.max_step = (len(self.arr) - 1) // TPB
-
-    def batch(self, step, device):
-        off = (step - 1) * TPB
-        span = np.asarray(self.arr[off:off + TPB + 1], dtype=np.int64)       # (8193,)
-        x = torch.from_numpy(span[:-1].reshape(BATCH, BLOCK)).to(device)     # (16,512)
-        y = torch.from_numpy(span[1:].reshape(BATCH, BLOCK)).to(device)      # (16,512) 目标=左移一格
-        return x, y
+    """第k步的输入/目标均为(BATCH,BLOCK)，目标右移一位；位置一次通过不证明文本去重。"""
+    def __init__(self,path):
+        self.path=str(path)
+        if Path(path).stat().st_size%2:raise ValueError('uint16流字节数须为偶数')
+        self.arr=np.memmap(path,dtype=np.uint16,mode='r');self.max_step=(len(self.arr)-1)//TPB
+    def batch(self,step,device):
+        if not 1<=step<=self.max_step:raise ValueError('训练步数越过流容量')
+        start=(step-1)*TPB;span=np.asarray(self.arr[start:start+TPB+1],dtype=np.int64)
+        return (torch.from_numpy(span[:-1].reshape(BATCH,BLOCK)).to(device),
+                torch.from_numpy(span[1:].reshape(BATCH,BLOCK)).to(device))
 
 
 def build_eval_batches(device):
-    """固定 eval 窗集：eval 池内固定种子抽 49 批 (16,512)（跨臂/跨步/跨档完全同集，可比）。
-
-    返回 (ex, ey)，形状 (49,16,512)；构建后常驻显存，eval 时逐批前向。
-    """
-    ev = np.memmap(EVAL_BIN, dtype=np.uint16, mode="r")
-    gen = torch.Generator().manual_seed(SEED)      # 窗位固定（Book2 ch8 同口径）
-    offs = torch.randint(0, len(ev) - BLOCK - 1, (EVAL_BATCHES * BATCH,), generator=gen).numpy()
-    xs, ys = [], []
-    for o in offs:
-        xs.append(np.asarray(ev[o:o + BLOCK], dtype=np.int64))
-        ys.append(np.asarray(ev[o + 1:o + BLOCK + 1], dtype=np.int64))
-    x = torch.from_numpy(np.stack(xs).reshape(EVAL_BATCHES, BATCH, BLOCK)).to(device)  # (49,16,512)
-    y = torch.from_numpy(np.stack(ys).reshape(EVAL_BATCHES, BATCH, BLOCK)).to(device)
-    return x, y
+    """全部合法起点中固定抽49批×16窗；不同池、种子或抽样版本不能称同窗。"""
+    ev=np.memmap(EVAL_BIN,dtype=np.uint16,mode='r')
+    if len(ev)<BLOCK+1:raise ValueError('评估池不足一个输入/目标窗口')
+    gen=torch.Generator().manual_seed(SEED)
+    starts=torch.randint(0,len(ev)-BLOCK,(EVAL_BATCHES*BATCH,),generator=gen).tolist()
+    x=torch.tensor(np.stack([ev[o:o+BLOCK] for o in starts]).astype(np.int64)).reshape(EVAL_BATCHES,BATCH,BLOCK)
+    y=torch.tensor(np.stack([ev[o+1:o+BLOCK+1] for o in starts]).astype(np.int64)).reshape(EVAL_BATCHES,BATCH,BLOCK)
+    return x.to(device),y.to(device)
 
 
 @torch.no_grad()
-def eval_loss(model, ex, ey):
-    """固定窗 eval loss：49 批 fp32 前向（无 autocast，报数用全精度），返回 (均值, 批间 se 估计)。
-
-    每批 (16,512) 前向得标量 loss；401,408 token 池化。se = std(批loss)/sqrt(49) 为粗口径
-    采样误差估计（Book2 ch8 tok_std=2.50 实测底数下 se≈0.004）。
-    """
-    model.eval()
-    losses = []
-    for i in range(EVAL_BATCHES):
-        _, loss = model(ex[i], ey[i])              # (16,512) -> 标量
-        losses.append(loss.item())
-    model.train()
-    mean = sum(losses) / len(losses)
-    se = (sum((l - mean) ** 2 for l in losses) / (len(losses) - 1)) ** 0.5 / math.sqrt(len(losses))
-    return mean, se
+def eval_loss(model,ex,ey,return_batches=False):
+    """等长窗口均值及批间SE；相关/重叠窗不保证独立，单批不能估SE。退出恢复原模式。"""
+    if ex.shape!=ey.shape or len(ex)==0:raise ValueError('评估输入/目标形状不符或无批')
+    before=model.training;model.eval()
+    try:losses=[float(model(ex[i],ey[i])[1]) for i in range(len(ex))]
+    finally:model.train(before)
+    if not all(math.isfinite(v) for v in losses):raise FloatingPointError('非有限评估损失')
+    mean=sum(losses)/len(losses)
+    se=float(np.std(losses,ddof=1)/math.sqrt(len(losses))) if len(losses)>1 else None
+    return (mean,se,losses) if return_batches else (mean,se)
 
 
 def build_arm(arm):
-    """构造两臂模型：同种子先建 GPT-2 底座，rmsnorm 臂再做插槽换装。
-
-    底座构造消耗的 RNG 抽样序列两臂完全一致（LayerNorm/RMSNorm 的 ones/zeros 初始化不耗 RNG），
-    因此 attn/mlp/wte/wpe 初始权重逐位相同——唯一变量 = 归一化零件（单插槽改装原则）。
-    换装发生在初始化之后：RMSNorm.weight 保持全 1（与 LayerNorm 初始 weight=1/bias=0 对齐）。
-    形状口径：两臂前向均 idx (16,512) -> logits (16,512,8192)。
-    """
+    """先同种子构造GPT2，两臂保留相同共享权重；RMS臂只替换归一化及去掉beta。"""
+    if arm not in ('base','rmsnorm'):raise ValueError(arm)
     torch.manual_seed(SEED)
-    m = GPT2(GPT2Config(vocab_size=VOCAB, n_positions=1024,
-                        n_layer=N_LAYER, n_embd=N_EMBD, n_head=N_HEAD))
-    if arm == "base":
-        pass                                        # GPT-2 底座原样（pre-LN + nn.LayerNorm）
-    elif arm == "rmsnorm":
-        for blk in m.blocks:                        # 6×2 处块内归一化：pre 位置不变，只换零件
-            blk.ln_1 = RMSNorm(N_EMBD, eps=1e-5)    # (16,512,512) -> (16,512,512)，无 bias、eps=1e-5
-            blk.ln_2 = RMSNorm(N_EMBD, eps=1e-5)
-        m.ln_f = RMSNorm(N_EMBD, eps=1e-5)          # 末尾 ln_f 同步换装（共 13 处）
-    else:
-        raise ValueError(arm)
-    return m
+    model=GPT2(GPT2Config(vocab_size=VOCAB,n_positions=N_POSITIONS,n_layer=N_LAYER,n_embd=N_EMBD,n_head=N_HEAD))
+    if arm=='rmsnorm':
+        for block in model.blocks:
+            block.ln_1=RMSNorm(N_EMBD,eps=1e-5);block.ln_2=RMSNorm(N_EMBD,eps=1e-5)
+        model.ln_f=RMSNorm(N_EMBD,eps=1e-5)
+    return model
 
 
-def run_arm(arm, steps, eval_every, device, stream, ex, ey, report, out_json):
-    """单臂训练（含断点续跑）：训练循环 = Book2 五件套；每 eval 边界存 ckpt，臂完成即删。"""
-    ckpt_path = os.path.join(OUT_DIR, f"ckpt_{arm}_{report['meta']['out_name']}.pt")
-    m = build_arm(arm).to(device)
-    n_total = m.n_params()
-    n_nonemb = m.n_params(non_embedding=True)
-    opt = torch.optim.AdamW(m.parameters(), lr=PEAK_LR, betas=(0.9, 0.95), weight_decay=WDECL)
+def run_identity(steps,eval_every,device,stream):
+    return dict(schema=2,seed=SEED,steps=steps,eval_every=eval_every,device=str(device),torch=str(torch.__version__),
+        model=[VOCAB,N_LAYER,N_EMBD,N_HEAD,N_POSITIONS],batch=BATCH,block=BLOCK,eval_batches=EVAL_BATCHES,
+        learning_rate=[PEAK_LR,MIN_LR_RATIO,WARMUP],weight_decay=WDECL,
+        train=file_identity(stream.path),eval=file_identity(EVAL_BIN),sampler='all_legal_starts_v2',
+        runner=file_identity(__file__),factory=file_identity(sys.modules[GPT2.__module__].__file__),
+        norm=file_identity(sys.modules[RMSNorm.__module__].__file__))
 
-    train_losses, lrs, times, evals = [], [], [], []
-    start_step, elapsed_train, elapsed_eval = 0, 0.0, 0.0
-    resumed_from = None
-    if os.path.exists(ckpt_path):   # ---- 断点续跑：从最近 eval 边界恢复 ----
-        ck = torch.load(ckpt_path, map_location=device, weights_only=False)
-        m.load_state_dict(ck["model"])
-        opt.load_state_dict(ck["opt"])
-        train_losses, lrs, times = ck["train_losses"], ck["lrs"], ck["times"]
-        evals = ck["evals"]
-        start_step, elapsed_train, elapsed_eval = ck["step"], ck["elapsed_train"], ck["elapsed_eval"]
-        resumed_from = start_step
-        print(f"  [{arm} 续跑] 自 step {start_step + 1}（已完成 {start_step} 步，eval {len(evals)} 次）", flush=True)
 
-    m.train()
-    base_alloc = torch.mps.current_allocated_memory() / 2**20 if device.type == "mps" else 0.0
-    peak = base_alloc
-    diverged_at, reason = None, None
-    t_arm = time.perf_counter()
-    for step in range(start_step + 1, steps + 1):
-        lr = lr_at(step, steps)
-        for g in opt.param_groups:
-            g["lr"] = lr
-        x, y = stream.batch(step, device)           # (16,512)×2（按步号定位，两臂同批）
-        t0 = time.perf_counter()
-        with torch.autocast(device_type="mps", dtype=torch.bfloat16) if device.type == "mps" \
-                else torch.autocast("cpu", enabled=False):
-            _, loss = m(x, y)                       # (16,512) -> 标量 train loss
-        opt.zero_grad(set_to_none=True)
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(m.parameters(), 1.0)   # 五件套：梯度裁剪 1.0
+def usable(record):
+    return (record.get('completed') is True and not record.get('diverged') and
+            record.get('steps_done')==record.get('steps_planned') and record.get('steps_done',0)>0
+            and isinstance(record.get('eval_final'),(int,float)) and math.isfinite(record['eval_final']))
+
+
+def run_arm(arm,steps,eval_every,device,stream,ex,ey,report,out_json):
+    """有效身份下从eval边界恢复；CPU小模型续跑可测试，MPS不承诺逐位确定性。"""
+    device=torch.device(device)
+    if not 0<=WARMUP<steps or eval_every<=0 or steps>stream.max_step:raise ValueError('步数、warmup或评估间隔无效')
+    identity={**run_identity(steps,eval_every,device,stream),'arm':arm}
+    name=report['meta']['out_name'];folder=Path(OUT_DIR);folder.mkdir(parents=True,exist_ok=True)
+    ckpt=folder/f'ckpt_{arm}_{name}.pt';curve=folder/f'curve_{arm}_{name}.csv'
+    if curve.exists() and not ckpt.exists():raise FileExistsError('同名曲线无可核断点，请改out-name')
+    model=build_arm(arm).to(device)
+    opt=torch.optim.AdamW(model.parameters(),lr=PEAK_LR,betas=(.9,.95),weight_decay=WDECL)
+    train_losses=[];lrs=[];times=[];evals=[];start=0;train_time=eval_time=0.;memory=[]
+    if ckpt.exists():
+        saved=torch.load(ckpt,map_location=device,weights_only=True)
+        if saved.get('run_identity')!=identity:raise ValueError('断点配置/数据/实现身份不同，禁止混接')
+        model.load_state_dict(saved['model']);opt.load_state_dict(saved['opt'])
+        torch.set_rng_state(saved['cpu_rng'].cpu())
+        if device.type=='mps' and saved.get('mps_rng') is not None:torch.mps.set_rng_state(saved['mps_rng'].cpu())
+        start=saved['step'];train_losses=saved['train_losses'];lrs=saved['lrs'];times=saved['times'];evals=saved['evals']
+        train_time=saved['elapsed_train'];eval_time=saved['elapsed_eval'];memory=saved.get('memory_samples',[])
+        if not 0<=start<=steps or len(train_losses)!=start or len(lrs)!=start or len(times)!=start:raise ValueError('断点步数与曲线不符')
+    model.train();begin=time.perf_counter();failure=None
+    base_alloc=torch.mps.current_allocated_memory()/2**20 if device.type=='mps' else None
+    for step in range(start+1,steps+1):
+        lr=lr_at(step,steps)
+        for group in opt.param_groups:group['lr']=lr
+        x,y=stream.batch(step,device);t0=time.perf_counter()
+        with torch.autocast('mps',dtype=torch.bfloat16) if device.type=='mps' else torch.autocast('cpu',enabled=False):
+            _,loss=model(x,y)
+        value=float(loss.detach())
+        if not math.isfinite(value) or value>100:
+            failure={'step':step,'reason':'非有限或超过本实验阈值的loss，未更新'};break
+        opt.zero_grad(set_to_none=True);loss.backward()
+        norm=float(torch.nn.utils.clip_grad_norm_(model.parameters(),1.0))
+        if not math.isfinite(norm):failure={'step':step,'reason':'非有限梯度，未更新'};break
         opt.step()
-        if device.type == "mps":
-            torch.mps.synchronize()
-        times.append(time.perf_counter() - t0)
-        elapsed_train += times[-1]
-        lv = loss.item()
-        train_losses.append(lv)
-        lrs.append(lr)
-        if device.type == "mps":
-            peak = max(peak, torch.mps.current_allocated_memory() / 2**20)
-        if not math.isfinite(lv) or lv > 100.0:     # 发散守门（Book2 ch8 同款）
-            diverged_at, reason = step, ("non-finite" if not math.isfinite(lv) else f"loss={lv:.1f}>100")
-            print(f"  [{arm} 发散] step {step}: {reason}", flush=True)
-            break
-        if step % 100 == 0 or step == 1:
-            print(f"  [{arm:8s}] step {step:5d}/{steps} train {lv:.4f} lr {lr:.2e} "
-                  f"({elapsed_train/(step - start_step + 1):.3f}s/step)", flush=True)
-        if step % eval_every == 0 or step == steps:   # ---- eval 边界：报数 + 存 ckpt ----
-            t0 = time.perf_counter()
-            el, se = eval_loss(m, ex, ey)
-            if device.type == "mps":
-                torch.mps.synchronize()
-            elapsed_eval += time.perf_counter() - t0
-            evals.append({"step": step, "eval_loss": round(el, 5), "eval_se": round(se, 5),
-                          "n_tokens": EVAL_BATCHES * TPB})
-            print(f"  [{arm:8s}] [eval] step {step}: eval loss {el:.4f} ± {se:.4f}"
-                  f"（401,408 token，fp32）", flush=True)
-            torch.save({"model": m.state_dict(), "opt": opt.state_dict(), "step": step,
-                        "train_losses": train_losses, "lrs": lrs, "times": times, "evals": evals,
-                        "elapsed_train": elapsed_train, "elapsed_eval": elapsed_eval}, ckpt_path)
-
-    steps_done = len(train_losses)
-    steady = times[20:] if len(times) > 20 else times    # 丢前 20 步（编译/缓存预热）
-    tail = train_losses[-min(TAIL, steps_done):]
-    rec = {
-        "arm": arm,
-        "arm_def": ("GPT-2 底座（Book2 ch10 model.py，pre-LN + nn.LayerNorm eps=1e-5）" if arm == "base"
-                    else "13 处 LayerNorm -> llama_slots.RMSNorm（pre 位置不变/无 bias/eps=1e-5）"),
-        "config": {"d": N_EMBD, "L": N_LAYER, "h": N_HEAD, "V": VOCAB, "B": BATCH, "T": BLOCK},
-        "params_total": n_total, "params_non_embedding": n_nonemb,
-        "steps_done": steps_done, "steps_planned": steps, "resumed_from_step": resumed_from,
-        "tail300_train_loss": round(sum(tail) / len(tail), 5),
-        "tail300_def": f"最后 {min(TAIL, steps_done)} 步 train loss 均值（bf16 autocast 训练损失）",
-        "last_step_loss": round(train_losses[-1], 5) if train_losses else None,
-        "min_train_loss": round(min(train_losses), 5) if train_losses else None,
-        "evals": evals,
-        "eval_final": evals[-1]["eval_loss"] if evals else None,
-        "eval_final_se": evals[-1]["eval_se"] if evals else None,
-        "sec_per_step_steady": round(sum(steady) / len(steady), 4),
-        "sec_step_std": round(float(np.std(steady)), 4),
-        "sec_per_step_all": round(elapsed_train / max(1, steps_done - start_step), 4),
-        "mem_peak_delta_mb": round(peak - base_alloc, 1),
-        "wallclock_sec": round(time.perf_counter() - t_arm, 1),
-        "eval_overhead_sec": round(elapsed_eval, 1),
-        "diverged": diverged_at is not None, "diverged_at_step": diverged_at, "divergence_reason": reason,
-        "precision": "train bf16 autocast / eval fp32",
-    }
-    # 曲线落盘 + 清 ckpt（臂已完成，结果自含）
-    curve_path = os.path.join(OUT_DIR, f"curve_{arm}_{report['meta']['out_name']}.csv")
-    with open(curve_path, "w", newline="", encoding="utf-8") as cf:
-        w = csv.writer(cf)
-        w.writerow(["step", "train_loss", "lr"])
-        for i, (lv, lr) in enumerate(zip(train_losses, lrs), 1):
-            w.writerow([i, f"{lv:.6g}", f"{lr:.6g}"])
-    if steps_done >= steps and os.path.exists(ckpt_path):
-        os.remove(ckpt_path)
-    report["arms"][arm] = rec
-    with open(out_json, "w", encoding="utf-8") as f:
-        json.dump(report, f, ensure_ascii=False, indent=2)
-    print(f"  [{arm} 完成] steps {steps_done} | tail300 {rec['tail300_train_loss']} | "
-          f"eval_final {rec['eval_final']} | {rec['sec_per_step_steady']}s/step（稳态） | "
-          f"曲线 {curve_path}", flush=True)
-    del m, opt
-    if device.type == "mps":
-        torch.mps.empty_cache()
-    return rec
+        if device.type=='mps':torch.mps.synchronize()
+        elapsed=time.perf_counter()-t0;times.append(elapsed);train_time+=elapsed;train_losses.append(value);lrs.append(lr)
+        if device.type=='mps':memory.append(torch.mps.current_allocated_memory()/2**20)
+        if step==1 or step%100==0:print(f'[{arm}] {step}/{steps} loss={value:.4f} 累计训练秒/步={train_time/len(times):.4f}',flush=True)
+        if step%eval_every==0 or step==steps:
+            t0=time.perf_counter();el,se,batches=eval_loss(model,ex,ey,True)
+            if device.type=='mps':torch.mps.synchronize()
+            eval_time+=time.perf_counter()-t0
+            evals.append(dict(step=step,eval_loss=round(el,5),eval_se=round(se,5) if se is not None else None,
+                              batch_losses=batches,n_tokens=ey.numel(),se_definition='批均值的样本std/sqrt(批数)，不保证独立'))
+            saved=dict(model=model.state_dict(),opt=opt.state_dict(),step=step,train_losses=train_losses,lrs=lrs,times=times,evals=evals,
+                elapsed_train=train_time,elapsed_eval=eval_time,run_identity=identity,cpu_rng=torch.get_rng_state(),
+                mps_rng=torch.mps.get_rng_state() if device.type=='mps' else None,memory_samples=memory)
+            torch.save(saved,str(ckpt)+'.tmp');os.replace(str(ckpt)+'.tmp',ckpt)
+    count=len(train_losses);steady=times[20:] if len(times)>20 else times;tail=train_losses[-TAIL:]
+    completed=failure is None and count==steps and bool(evals) and evals[-1]['step']==steps
+    record=dict(arm=arm,run_identity=identity,params_total=model.n_params(),params_non_embedding=model.n_params(non_embedding=True),
+        config=dict(d=N_EMBD,L=N_LAYER,h=N_HEAD,V=VOCAB,B=BATCH,T=BLOCK),steps_done=count,steps_planned=steps,
+        resumed_from_step=start or None,completed=completed,diverged=failure is not None,failure=failure,
+        tail300_train_loss=round(sum(tail)/len(tail),5) if tail else None,tail300_def=f'最后min({TAIL},已完成步数)步的均值',
+        last_step_loss=train_losses[-1] if train_losses else None,min_train_loss=min(train_losses) if train_losses else None,
+        evals=evals,eval_final=evals[-1]['eval_loss'] if completed else None,eval_final_se=evals[-1]['eval_se'] if completed else None,
+        sec_per_step_steady=sum(steady)/len(steady) if steady else None,sec_step_std=float(np.std(steady)) if steady else None,
+        sec_per_step_all=train_time/count if count else None,wallclock_sec=time.perf_counter()-begin,
+        wallclock_scope='本次调用片段；累计训练与eval分别记录',elapsed_train=train_time,eval_overhead_sec=eval_time,
+        max_current_mib_after_step=max(memory) if memory else None,memory_scope='更新后离散current读数，非训练峰值',
+        precision='MPS bf16 autocast训练/fp32 eval' if device.type=='mps' else 'CPU fp32训练/eval',checkpoint=str(ckpt))
+    with curve.open('w',newline='') as f:
+        writer=csv.writer(f);writer.writerow(['step','train_loss','lr']);writer.writerows(zip(range(1,count+1),train_losses,lrs))
+    report['arms'][arm]=record;save_json(out_json,report)
+    print(f'[{arm} {"完成" if completed else "未完成"}] {count}/{steps}，eval={record["eval_final"]}',flush=True)
+    del model,opt
+    if device.type=='mps':torch.mps.empty_cache()
+    return record
 
 
 def add_pair_summary(report):
-    """双臂对照汇总：eval 差 / 末段差 / 速度差（判据预注册的读数字段，判读规则见 preregistered.md）。"""
-    a, b = report["arms"].get("base"), report["arms"].get("rmsnorm")
-    if not (a and b):
-        return
-    report["pair_summary"] = {
-        "eval_final_diff_base_minus_rmsnorm": round(a["eval_final"] - b["eval_final"], 5)
-        if a["eval_final"] is not None and b["eval_final"] is not None else None,
-        "tail300_diff_base_minus_rmsnorm": round(a["tail300_train_loss"] - b["tail300_train_loss"], 5),
-        "sec_per_step_diff": round(a["sec_per_step_steady"] - b["sec_per_step_steady"], 4),
-        "speedup_base_over_rmsnorm": round(a["sec_per_step_steady"] / b["sec_per_step_steady"], 4),
-        "note": "正=base 更高；判据：|eval 差|≤0.02 nat 视为等价成立（噪声带口径见 preregistered.md），速度差单独报",
-    }
+    a,b=report['arms'].get('base'),report['arms'].get('rmsnorm')
+    if not a or not b or not usable(a) or not usable(b):
+        report['pair_summary']={'status':'双臂均完整且有效后才比较'};return
+    ia={k:v for k,v in a['run_identity'].items() if k!='arm'};ib={k:v for k,v in b['run_identity'].items() if k!='arm'}
+    if ia!=ib:raise ValueError('双臂运行身份不一致')
+    diffs=np.asarray(a['evals'][-1]['batch_losses'])-np.asarray(b['evals'][-1]['batch_losses'])
+    difference=float(diffs.mean());se=float(diffs.std(ddof=1)/math.sqrt(len(diffs))) if len(diffs)>1 else None
+    report['pair_summary']=dict(eval_final_diff_base_minus_rmsnorm=difference,
+        paired_batch_se=se,within_historical_band=abs(difference)<=.02,
+        tail300_diff_base_minus_rmsnorm=a['tail300_train_loss']-b['tail300_train_loss'],
+        sec_per_step_diff=a['sec_per_step_steady']-b['sec_per_step_steady'],
+        speedup_base_over_rmsnorm=a['sec_per_step_steady']/b['sec_per_step_steady'],
+        note='0.02只是历史描述带；配对批SE依然不含训练种子方差，不是统计等效结论')
 
 
 def main():
-    ap = argparse.ArgumentParser(description="ch2 模块消融：LayerNorm vs RMSNorm（同数据同种子）")
-    ap.add_argument("--steps", type=int, default=1000, help="每臂步数（fast=1000 / full=5000）")
-    ap.add_argument("--out-name", type=str, default=None,
-                    help="输出名（缺省按步数自动取 fast(≤1500)/full，防覆写正式文件）")
-    ap.add_argument("--cells", type=str, default="base,rmsnorm",
-                    help="臂选择，逗号分隔（base / rmsnorm；默认双臂全跑）")
-    ap.add_argument("--eval-every", type=int, default=500, help="eval 间隔步数（默认 500，Book2 ch8 口径）")
-    args = ap.parse_args()
-    out_name = args.out_name or ("fast" if args.steps <= 1500 else "full")
-    arms = [c.strip() for c in args.cells.split(",")]
-    for a in arms:
-        if a not in ("base", "rmsnorm"):
-            raise SystemExit(f"未知臂 {a}（可选 base / rmsnorm）")
-
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-    os.makedirs(OUT_DIR, exist_ok=True)
-    stream = TrainStream(TOKENS_BIN)
-    if args.steps > stream.max_step:
-        raise SystemExit(f"步数 {args.steps} 超出一次通过上限 {stream.max_step}（不许重复 epoch）")
-    ex, ey = build_eval_batches(device)
-    out_json = os.path.join(OUT_DIR, f"ablation_norm_{out_name}.json")
-
-    # ---- 载入已有报告（跨进程续跑：已完成且步数足够的臂直接跳过） ----
-    if os.path.exists(out_json):
-        with open(out_json, encoding="utf-8") as f:
-            report = json.load(f)
-        report.setdefault("arms", {})
-        print(f"[续跑] 已有报告载入：臂 {sorted(report['arms'])}", flush=True)
+    global OUT_DIR,TOKENS_BIN,EVAL_BIN,WARMUP,SEED
+    ap=argparse.ArgumentParser(description='LN/RMSNorm模块实验；同名严格续跑，成功权重保留')
+    ap.add_argument('--steps',type=int,default=1000);ap.add_argument('--out-name');ap.add_argument('--cells',default='base,rmsnorm')
+    ap.add_argument('--eval-every',type=int,default=500);ap.add_argument('--warmup',type=int,default=WARMUP);ap.add_argument('--seed',type=int,default=SEED)
+    ap.add_argument('--out-dir',type=Path,default=Path(OUT_DIR));ap.add_argument('--data-dir',type=Path,default=Path(TOKENS_BIN).parent)
+    ap.add_argument('--device',choices=['cpu','mps'],default='mps' if torch.backends.mps.is_available() else 'cpu');args=ap.parse_args()
+    WARMUP=args.warmup;SEED=args.seed;OUT_DIR=str(args.out_dir);TOKENS_BIN=str(args.data_dir/'tokens.bin');EVAL_BIN=str(args.data_dir/'eval.bin')
+    if not 0<=WARMUP<args.steps or args.eval_every<=0:raise ValueError('需要0<=warmup<steps且eval-every正')
+    name=args.out_name or ('fast' if args.steps<=1500 else 'full')
+    if Path(name).name!=name or name in ('','.','..'):raise ValueError('out-name须为单个名称')
+    arms=args.cells.split(',')
+    if not arms or len(set(arms))!=len(arms) or any(x not in ('base','rmsnorm') for x in arms):raise ValueError('无效或重复实验臂')
+    stream=TrainStream(TOKENS_BIN)
+    if args.steps>stream.max_step:raise ValueError('步数超过位置一次通过容量')
+    identity=run_identity(args.steps,args.eval_every,args.device,stream);path=args.out_dir/f'ablation_norm_{name}.json'
+    if path.exists():
+        report=json.loads(path.read_text())
+        if report.get('meta',{}).get('run_identity')!=identity:raise ValueError('旧报告身份不同或缺失，使用新out-name')
     else:
-        report = {"arms": {}}
-    report["meta"] = {
-        "date": time.strftime("%Y-%m-%d %H:%M:%S"), "seed": SEED, "device": str(device),
-        "torch": torch.__version__, "out_name": out_name,
-        "corpus": "log/book2-ch08/tokens.bin（OpenWebText 子采样，sp-8k V=8192，306M token 流）",
-        "tokenizer": "sp-8k BPE byte_fallback（Book2 ch8 遗产，分词器与 LM 语料分离）",
-        "experiment": "ch2 模块消融：LayerNorm（base）vs RMSNorm（+rmsnorm）——单插槽改装，其余零改动",
-        "module_tier": f"d={N_EMBD}/L={N_LAYER}/h={N_HEAD}/V={VOCAB}（统一模块档，{BATCH}×{BLOCK}，8192 tok/步）",
-        "optimizer": f"AdamW(betas=0.9,0.95,wd={WDECL}) + grad_clip 1.0（Book2 五件套）",
-        "schedule": f"lr {PEAK_LR} 余弦降至 {PEAK_LR*MIN_LR_RATIO:.0e}，warmup={WARMUP}；两臂统一日程",
-        "data_protocol": "顺序连续分块一次通过（第 k 步消费流首部 (k-1)*8192 起 token）；两臂按步号取同批",
-        "eval_protocol": f"每 {args.eval_every} 步 + 终步：eval.bin 固定 49 窗 {EVAL_BATCHES*TPB:,} token，fp32 前向",
-        "precision": "train bf16 autocast / eval fp32",
-        "ckpt": "每 eval 边界存 ckpt_{臂}_{out}.pt，臂完成即删；中断后重跑同命令自动续跑",
-        "argv": " ".join(sys.argv[1:]),
-    }
-    with open(out_json, "w", encoding="utf-8") as f:
-        json.dump(report, f, ensure_ascii=False, indent=2)
-
-    t_all = time.perf_counter()
+        report=dict(meta=dict(out_name=name,run_identity=identity,protocol='相同配置/数据身份下的同位置批；非内容去重证明',
+            eval_protocol=f'{EVAL_BATCHES}批固定窗；新版包含末合法起点，不要求逐值复现旧窗口',
+            precision='MPS bf16/fp32' if args.device=='mps' else 'CPU fp32',
+            historical_note='评估抽样边界及运行环境须重新核对；Book2第10章底本已按目标标准差初始化，旧分数不能继承为当前运行结果'),arms={})
+    args.out_dir.mkdir(parents=True,exist_ok=True);ex,ey=build_eval_batches(args.device)
     for arm in arms:
-        done = report["arms"].get(arm)
-        if done and done["steps_done"] >= args.steps:
-            print(f"[跳过] 臂 {arm} 已完成（{done['steps_done']} 步 ≥ {args.steps}）", flush=True)
-            continue
-        print(f"\n===== 臂 {arm}（{args.steps} 步） =====", flush=True)
-        run_arm(arm, args.steps, args.eval_every, device, stream, ex, ey, report, out_json)
-    add_pair_summary(report)
-    with open(out_json, "w", encoding="utf-8") as f:
-        json.dump(report, f, ensure_ascii=False, indent=2)
-    print(f"\n[全部完成] 总耗时 {(time.perf_counter()-t_all)/60:.1f} min -> {out_json}", flush=True)
-    for a, r in report["arms"].items():
-        print(f"  {a:8s} params={r['params_total']:,} tail300={r['tail300_train_loss']} "
-              f"eval_final={r['eval_final']} {r['sec_per_step_steady']}s/step", flush=True)
+        if usable(report['arms'].get(arm,{})):continue
+        result=run_arm(arm,args.steps,args.eval_every,args.device,stream,ex,ey,report,path)
+        if not usable(result):raise RuntimeError('实验臂未完成，保留有效断点，不进行双臂结论')
+    add_pair_summary(report);save_json(path,report);print(path)
 
 
-if __name__ == "__main__":
-    main()
+if __name__=='__main__':main()

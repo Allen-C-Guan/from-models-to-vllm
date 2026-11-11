@@ -76,7 +76,7 @@ def evaluate(tag: str, device, also_greedy: bool = False, limit: int = None, log
     """主评测（表 9.2）：test 全集 beam 解码 → 三口径 BLEU + 句长分桶。
     解码侧批形状：混批 src (B,m)（m=批内两侧最长 id 长，解码只消费源侧，但批宽由两侧最长句决定——
     批内最长可达 50+ piece，组批税的温床）；sort_by_len=True 时按源句长排序、只按源侧定宽
-    （m=批内最长源 id 长，填充最小化，9.6 干净口径），结果落 eval_<tag>.json。"""
+    （m=批内最长源id长，减少填充；不是消除旧循环实现问题的保证），结果落 eval_<tag>.json。"""
     sp = ensure_bpe(log_dir)
     model, ckpt = load_ckpt(tag, device)
     pairs = load_raw()["test"]
@@ -89,7 +89,8 @@ def evaluate(tag: str, device, also_greedy: bool = False, limit: int = None, log
 
     import sacrebleu
     bleu_13a = sacrebleu.corpus_bleu(hyps_raw, [refs_raw], tokenize="13a").score
-    bleu_none = sacrebleu.corpus_bleu(hyps_raw, [refs_raw], tokenize="none").score
+    bleu_none = sacrebleu.corpus_bleu(hyps_raw, [refs_raw], tokenize="none",
+                                      smooth_method="none", use_effective_order=False).score
     bleu_naive = naive_corpus_bleu(hyps_raw, refs_raw)
 
     res = {"tag": tag, "arch": ckpt["arch"], "n_test": len(pairs), "steps": ckpt["steps"],

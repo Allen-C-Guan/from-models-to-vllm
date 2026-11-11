@@ -1,15 +1,13 @@
-# sample.py —— Book2 ch11 采样生成：贪心/temperature/top-k + 自训 vs 官方词法统计对照 + ICL 探针（11.3/11.5 节）
-# 用途：①在官方权重与自训 124M 上对比四种解码（贪心 / T=1.0 / T=0.7 / top-k=40，k=40=GPT-2 附录口径）；
-#   ②生成文本的词法统计对照（词长/空格率/型例比/高频 bigram 命中——诚实条款「生成具备词法统计特征」的实测件）；
-#   ③自训模型在 WikiText-2 上的 token loss -> word PPL 换算盒演示（跨语料诚实口径）；
-#   ④ICL 探针（选做）：官方权重上 2-3 个 few-shot 演示（本地前向，不调任何外部 API——冻结纪律）。
-# 生成一律「全量重算」口径：每生成一个 token 重跑整段前向（本册不引入增量缓存；欠账见 Book3/6）。
-# 所属章节：Book2 第 11 章 11.3/11.5 节。
-# 运行方式：cd 工作区根目录 && source env.sh && python "code/ch11/sample.py"
-#   [--train-steps 6104]（自训模型步数，与 fast 档同配同种子 -> 复现 train124_fast 曲线并保留权重）
-#   [--skip-train]（已有 self124m.pt 时直接加载）[--train-only]（只训练存档，不做采样件）
-# 产物：log/book2-ch11/{self124m.pt, sampling.json} + drafts/Book2-预训练革命/figures/fig-11-3-sampling.png
+# sample.py —— Book2第11章：同解码配对采样、词法统计和同题ICL。
+# 默认加载已有自训断点；仅显式--train-steps才训练，可直接复用train_124m保存的断点。
+# 官方权重、自训、随机初始化均比较四种解码，每组重置采样生成器；历史输出不改绑新提示。
+# 工作区激活env.sh后：python code/ch11/sample.py --help
+# --with-wikitext为显式选做，依赖datasets；只对同一目标范围计S/byte/word。
+# 生成全部CPU前向重算，logits fp32、采样概率fp64；输出log且拒绝覆盖。
 import argparse
+import hashlib
+from pathlib import Path
+import textwrap
 import json
 import math
 import os
@@ -20,9 +18,9 @@ import numpy as np
 import torch
 
 SEED = 20261002
-REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+REPO_ROOT = os.getcwd()
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book2-ch11")
-FIG_DIR = os.path.join(REPO_ROOT, "figures")
+FIG_DIR = os.path.join(OUT_DIR,"figures")
 SELF_PT = os.path.join(OUT_DIR, "self124m.pt")
 DOCS_JSONL = os.path.join(REPO_ROOT, "log", "book2-scaling", "owt_docs.jsonl")
 
@@ -46,130 +44,146 @@ def get_tok():
 
 # ---------------- 生成器（全量重算口径） ----------------
 @torch.no_grad()
-def generate(model, enc, prompt, n_new=GEN_TOKENS, temperature=1.0, top_k=0, generator=None, device="cpu"):
-    """自回归生成：贪心（temperature=0）或截断采样。
+def generate(model,enc,prompt,n_new=GEN_TOKENS,temperature=1.0,top_k=0,generator=None,device="cpu"):
+    """T=0贪心；T>0从明确top-k集合采样，平分时采用topk返回的k个索引。
 
-    ids (1,n) -> 每步整段前向重算 logits (1,n,V)，取末位 (V,)；
-    top_k>0 时先截断到前 k 个再按 temperature 加权重归一化采样（Fan 2017 的方案，GPT-2 取 k=40）。
+    每步重算(1,n)->(1,n,V)。输入/输出长度须在上下文内；退出恢复原训练模式。
     """
-    ids = torch.tensor([enc.encode(prompt)], dtype=torch.long, device=device)   # (1,n)
-    out = []
-    for _ in range(n_new):
-        logits, _ = model(ids)                                  # (1,n,V) 全量重算（不引入增量缓存）
-        last = logits[0, -1, :].float()                         # (V,)
-        if temperature <= 0:
-            nxt = int(last.argmax())
-        else:
-            last = last / temperature                           # (V,) 温度缩放（尖锐度旋钮）
-            if top_k > 0:
-                kth = torch.topk(last, top_k).values[-1]        # 第 k 大值
-                last = last.masked_fill(last < kth, float("-inf"))   # 截断到前 k
-            probs = torch.softmax(last, dim=-1)                 # (V,) 重归一化
-            nxt = int(torch.multinomial(probs, 1, generator=generator))
-        out.append(nxt)
-        ids = torch.cat([ids, torch.tensor([[nxt]], device=device)], dim=1)    # (1,n) -> (1,n+1)
-    return out
+    if not isinstance(n_new,int) or n_new<0:raise ValueError("n_new须为非负整数")
+    if not math.isfinite(temperature) or temperature<0:raise ValueError("温度须为有限非负数")
+    if not isinstance(top_k,int) or top_k<0:raise ValueError("top_k须为非负整数")
+    encoded=enc.encode(prompt,disallowed_special=())
+    if not encoded:raise ValueError("生成需要非空前缀")
+    if len(encoded)+max(0,n_new-1)>model.block_size:raise ValueError("超过上下文上限")
+    ids=torch.tensor([encoded],dtype=torch.long,device=device)
+    before=model.training;model.eval();out=[]
+    try:
+        for _ in range(n_new):
+            logits,_=model(ids);last=logits[0,-1].double()
+            if not torch.isfinite(last).all():raise FloatingPointError("生成logits非有限")
+            if top_k>len(last):raise ValueError("top_k超过词表大小")
+            if temperature==0:
+                nxt=int(last.argmax())
+            else:
+                values,index=last.topk(top_k) if top_k else (last,torch.arange(len(last),device=last.device))
+                # 减最大值不改变softmax；float64概率计算减少极小正温度的溢出风险。
+                probs=torch.softmax((values-values.max())/temperature,dim=-1)
+                choice=torch.multinomial(probs,1,generator=generator)
+                nxt=int(index[choice].item())
+            out.append(nxt)
+            ids=torch.cat([ids,torch.tensor([[nxt]],dtype=torch.long,device=device)],dim=1)
+        return out
+    finally:model.train(before)
 
 
 # ---------------- 自训侧：复现 fast 档并保留权重 ----------------
-def train_self(steps, device):
-    """与 train_124m.py 完全同配同种子的训练循环（区别仅一处：结束保留最终权重供采样对照——
-    train_124m 跑完即删 checkpoint，故在此复跑；确定性同种子下曲线应与 train124_fast.json 一致，
-    MPS 并行归约的非确定性差 ~0.004 nat 量级，如实登记）。"""
-    from warmup_ablation import GPT     # 单轨依赖链：ch04 工厂（train_124m 同款）
-    torch.manual_seed(SEED)
-    model = GPT(n_layer=t12m.N_LAYER, n_embd=t12m.N_EMBD, n_head=t12m.N_HEAD,
-                vocab=t12m.VOCAB, block_size=t12m.WPE).to(device)
-    assert model.n_params() == 124_439_808 and model.n_params(non_embedding=True) == 85_056_000
-    opt = torch.optim.AdamW(model.parameters(), lr=t12m.PEAK_LR, betas=(0.9, 0.95), weight_decay=t12m.WDECL)
-    ex, ey = t12m.build_eval_batches(device)
-    stream = t12m.TrainStream(os.path.join(OUT_DIR, "tokens50k.bin"), steps)
-    assert steps <= stream.max_step
-    evals, t0 = [], time.perf_counter()
-    for step in range(1, steps + 1):
-        for g in opt.param_groups:
-            g["lr"] = t12m.lr_at(step, t12m.PEAK_LR, t12m.WARMUP, steps)
-        x, y = stream.batch(step, device)
-        with torch.autocast(device_type="mps", dtype=torch.bfloat16) if device == "mps" else torch.autocast("cpu", enabled=False):
-            _, loss = model(x, y)
-        opt.zero_grad(set_to_none=True)
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-        opt.step()
-        if device == "mps":
-            torch.mps.synchronize()
-        if step % 1000 == 0 or step == steps:
-            el = t12m.eval_loss(model, ex, ey)
-            evals.append({"step": step, "eval_loss": round(el, 5)})
-            print(f"  [self-train] step {step}/{steps} train {loss.item():.4f} eval {el:.4f} "
-                  f"({(time.perf_counter()-t0)/60:.1f} min)", flush=True)
-    torch.save(model.state_dict(), SELF_PT)
-    wall = round(time.perf_counter() - t0, 1)
-    return model, {"steps": steps, "eval_curve": evals, "wallclock_sec": wall,
-                   "ref": "train124_fast.json 同配同种子（train_124m.py 跑完即删 ckpt，此处复跑并保留权重）"}
+def train_self(steps,device,out_name="self_sampling"):
+    """显式训练才调用；复用同一训练执行函数，保留的断点可直接采样，无需另写不一致循环。"""
+    result=t12m.train_124m(device,out_name=out_name,steps=steps,bootstrap_draws=0)
+    if not result["completed"]:raise RuntimeError("自训未完成，不用失败权重做正式对照")
+    model,info=load_self("cpu",result["checkpoint"])
+    return model,{"run":result,"checkpoint":info,
+                  "schedule_note":"总日程等于所选steps，缩短steps不等于只截取原6104步轨迹前缀"}
 
 
-def load_self(device):
-    """加载自训 124M。注意：self124m.pt 由 ch04 工厂 GPT 训练保存（其 attn.bias 是持久化 buffer，
-    与 ch10 model.py 的非持久化 mask 不同）——加载须用同一工厂类，保持单轨依赖链口径一致。"""
+def load_self(device,checkpoint_path=None):
+    """读取同一ch04工厂的权重；新版断点保留训练身份，旧裸state_dict只标来源未知。"""
     from warmup_ablation import GPT
-    model = GPT(n_layer=t12m.N_LAYER, n_embd=t12m.N_EMBD, n_head=t12m.N_HEAD,
-                vocab=t12m.VOCAB, block_size=t12m.WPE).to(device).eval()
-    model.load_state_dict(torch.load(SELF_PT, map_location=device, weights_only=True))
-    return model
+    path=Path(checkpoint_path or SELF_PT)
+    if not path.is_file():raise FileNotFoundError(path)
+    payload=torch.load(path,map_location=device,weights_only=True)
+    if isinstance(payload,dict) and "model" in payload:
+        config=payload.get("config")
+        if not config:raise ValueError("新版断点缺模型配置")
+        state=payload["model"]
+        provenance=payload.get("run_identity")
+        steps=payload.get("step")
+    else:
+        config=dict(n_layer=t12m.N_LAYER,n_embd=t12m.N_EMBD,n_head=t12m.N_HEAD,
+                    vocab=t12m.VOCAB,block_size=t12m.WPE)
+        state=payload;provenance=None;steps=None
+    model=GPT(**config).to(device).eval()
+    model.load_state_dict(state,strict=True)
+    info={"file":str(path),"sha256":t12m.file_identity(path)["sha256"],"config":config,"steps":steps,
+          "run_identity":provenance,"legacy_note":"裸权重缺训练身份，不推断其数据与日程" if provenance is None else None}
+    return model,info
 
 
 # ---------------- 词法统计 ----------------
-def lexical_stats(text, ref_bigrams):
-    """生成文本的词法统计特征（诚实条款口径：词/空格/高频 bigram）。"""
-    words = text.split()
-    n_char = max(1, len(text))
-    bigrams = list(zip(words, words[1:]))
-    return {
-        "n_words": len(words),
-        "mean_word_len": round(sum(len(w) for w in words) / max(1, len(words)), 2),
-        "space_rate": round(text.count(" ") / n_char, 3),
-        "alpha_rate": round(sum(c.isalpha() for c in text) / n_char, 3),
-        "type_token_ratio": round(len(set(words)) / max(1, len(words)), 3),
-        "bigram_hit_rate": round(sum(1 for b in bigrams if b in ref_bigrams) / max(1, len(bigrams)), 3),
-        "distinct_bigram_ratio": round(len(set(bigrams)) / max(1, len(bigrams)), 3),
-    }
+def lexical_stats(text,ref_bigrams):
+    """空白分词、大小写和标点照留；无词或无词对时比例未定义，不伪报0。"""
+    words=text.split();pairs=list(zip(words,words[1:]));n=len(text)
+    return {"n_words":len(words),"n_bigrams":len(pairs),
+            "mean_word_len":sum(map(len,words))/len(words) if words else None,
+            "space_rate":text.count(" ")/n if n else None,
+            "alpha_rate":sum(c.isalpha() for c in text)/n if n else None,
+            "type_token_ratio":len(set(words))/len(words) if words else None,
+            "bigram_hit_rate":sum(p in ref_bigrams for p in pairs)/len(pairs) if pairs else None,
+            "distinct_bigram_ratio":len(set(pairs))/len(pairs) if pairs else None}
 
 
-def build_ref_bigrams(n_docs=2000, max_words=300_000):
-    """参考 bigram 集：OWT 前 n_docs 篇的 word bigram（词法统计的「语料侧」参照）。"""
-    words = []
-    with open(DOCS_JSONL, "r", encoding="utf-8") as f:
-        for i, line in enumerate(f):
-            if i >= n_docs or len(words) >= max_words:
-                break
-            words.extend(json.loads(line)["text"].split())
-    return set(zip(words, words[1:]))
+def build_ref_bigrams(n_docs=2000,max_words=300_000,return_info=False):
+    """逐文档提取词对；不在文档连接处造一对词，严格截到max_words。"""
+    if min(n_docs,max_words)<=0:raise ValueError("文档/词预算须正")
+    pairs=set();used=docs=0
+    with open(DOCS_JSONL,encoding="utf-8") as f:
+        for raw in f:
+            if not raw.strip():continue
+            if docs>=n_docs or used>=max_words:break
+            words=json.loads(raw)["text"].split()[:max_words-used]
+            pairs.update(zip(words,words[1:]));used+=len(words);docs+=1
+    info={"actual_docs":docs,"actual_words":used,"distinct_bigrams":len(pairs),
+          "protocol":"文档内空白词对，大小写/标点照留；无跨文档拼接词对"}
+    return (pairs,info) if return_info else pairs
 
 
 # ---------------- WikiText-2 换算盒演示（自训模型跨语料诚实口径） ----------------
 @torch.no_grad()
-def wt2_eval(model, enc, device, n_windows=24, block=256):
-    """自训模型在 WikiText-2 valid 上的 token loss（fp32）+ word PPL 换算盒。"""
-    from datasets import load_dataset
-    ds = load_dataset("Salesforce/wikitext", "wikitext-2-raw-v1")
-    text = "".join(t for t in ds["validation"]["text"])
-    ids = enc.encode(text)
-    n_words = len(text.split())
-    losses = []
-    model.eval()
-    for i in range(n_windows):
-        x = torch.tensor([ids[i * block:(i + 1) * block]], dtype=torch.long, device=device)      # (1,256)
-        y = torch.tensor([ids[i * block + 1:(i + 1) * block + 1]], dtype=torch.long, device=device)
-        _, loss = model(x, y)
-        losses.append(loss.item())
-    L = sum(losses) / len(losses)
-    ntnw = (len(ids) / n_words)
-    return {"n_tokens_eval": n_windows * block, "n_words_full_valid": n_words,
-            "nt_over_nw_full_valid": round(ntnw, 4),
-            "L_token_nats": round(L, 4), "PPL_token": round(math.exp(L), 1),
-            "PPL_word_converted": round(math.exp(ntnw * L), 1),
-            "note": "fp32 前向；换算盒 ln PPL_word=(n_t/n_w)*L——跨语料（OWT 训练/WT2 评测）只作诚实对照，非可比基线"}
+def wt2_eval(model,enc,device,n_windows=24,block=256,text=None):
+    """按实际被计分的目标token累加S；字节/词分母都取同一范围，不套全valid比率。"""
+    if n_windows<=0 or block<=0:raise ValueError("窗口数和长度须正")
+    source={"kind":"provided_text"}
+    if text is None:
+        from datasets import load_dataset
+        revision="b08601e04326c79dfdd32d625aee71d232d685c3"
+        ds=load_dataset("Salesforce/wikitext","wikitext-2-raw-v1",revision=revision)
+        text="\n".join(ds["validation"]["text"])
+        source={"dataset":"Salesforce/wikitext","config":"wikitext-2-raw-v1","revision":revision}
+    ids=enc.encode(text,disallowed_special=())
+    windows=min(n_windows,(len(ids)-1)//block)
+    if windows==0:raise ValueError("文本不够一个完整输入/目标窗")
+    before=model.training;model.eval();nll=0.
+    try:
+        for i in range(windows):
+            x=torch.tensor([ids[i*block:(i+1)*block]],dtype=torch.long,device=device)
+            y=torch.tensor([ids[i*block+1:(i+1)*block+1]],dtype=torch.long,device=device)
+            _,loss=model(x,y)
+            value=float(loss)
+            if not math.isfinite(value):raise FloatingPointError("WT2 loss非有限")
+            nll+=value*block
+    finally:model.train(before)
+    count=windows*block;pieces=[enc.decode_single_token_bytes(i) for i in ids]
+    whole=b"".join(pieces);raw=text.encode("utf-8")
+    if whole!=raw:raise ValueError("本函数字节分母要求无损还原原文本的编码")
+    start=len(pieces[0]);end=sum(map(len,pieces[:count+1]))
+    segment=raw[start:end];word_count=None;reason=None
+    try:
+        prefix=raw[:start].decode("utf-8");scored=segment.decode("utf-8");suffix=raw[end:].decode("utf-8")
+        left_ok=not prefix or prefix[-1].isspace() or (scored and scored[0].isspace())
+        right_ok=not suffix or suffix[0].isspace() or (scored and scored[-1].isspace())
+        if left_ok and right_ok and scored.split():word_count=len(scored.split())
+        else:reason="评分范围切在词内，或没有完整词；不报告精确word PPL"
+    except UnicodeDecodeError:reason="评分范围切在UTF8字符内；保留byte分母，不猜词数"
+    def exp_or_none(value):return math.exp(value) if value<700 else None
+    return {"source":source,"text_sha256":hashlib.sha256(raw).hexdigest(),
+            "requested_windows":n_windows,"actual_windows":windows,"block":block,
+            "target_token_range":[1,count+1],"target_byte_range":[start,end],
+            "n_tokens_eval":count,"n_bytes_eval":len(segment),"n_words_eval":word_count,
+            "total_nll":nll,"L_token_nats":nll/count,"PPL_token":exp_or_none(nll/count),
+            "nats_per_byte":nll/len(segment),"bits_per_byte":nll/len(segment)/math.log(2),
+            "PPL_word_converted":exp_or_none(nll/word_count) if word_count else None,
+            "word_boundary_note":reason,
+            "protocol":"首token只作上下文；各block重置上下文，S及分母来自相同目标范围；非标准WT2榜单"}
 
 
 # ---------------- ICL 探针（选做；官方权重本地前向，不调 API） ----------------
@@ -178,10 +192,10 @@ ICL_TASKS = [
      "zero": "The capital of Italy is",
      "few": "The capital of France is Paris. The capital of Japan is Tokyo. The capital of Italy is"},
     {"task": "antonym few-shot",
-     "zero": "The opposite of hot is",
+     "zero": "The opposite of big is",
      "few": "The opposite of hot is cold. The opposite of up is down. The opposite of big is"},
     {"task": "EN->FR pair (GPT-2 paper style)",
-     "zero": "English: cheese. French:",
+     "zero": "English: dog. French:",
      "few": "English: hello. French: bonjour.\nEnglish: cheese. French: fromage.\nEnglish: dog. French:"},
 ]
 
@@ -189,7 +203,7 @@ ICL_TASKS = [
 @torch.no_grad()
 def icl_probe(model, enc, device):
     """每个任务取两个口径：zero-shot vs few-shot，各记（末位 top-1 token 及其概率）+（贪心续写 8 token）。
-    结果无论成败都如实入书——124M 档的 ICL 本来就弱，这是 ch7「ICL 随规模涌现」的地面端读数。"""
+    当前提示固定相同末问题；历史提示中的hot/big、cheese/dog不配对，旧结果不得挪给本版。"""
     rows = []
     for t in ICL_TASKS:
         row = {"task": t["task"]}
@@ -210,149 +224,102 @@ def icl_probe(model, enc, device):
 
 # ---------------- 图 11.3 ----------------
 def make_figure_real(rep):
+    """当前采样结果按明确decode_key分组；旧历史图不由本函数覆盖。"""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    plt.rcParams.update({"font.size": 8})
-    BLUE, ORANGE, TEAL, YELLOW, GRID, TICK, DARK = "#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e1e0d9", "#898781", "#0b0b0b"
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8, 4.2), dpi=300, gridspec_kw={"width_ratios": [1.15, 1]})
-    # ---- 左：样例表（短标签；官方=青、自训=橙、随机=灰） ----
-    short = {"greedy": "greedy", "temp=1.0": "T=1.0", "temp=0.7": "T=0.7", "top-k=40,T=1.0": "top-k40"}
-    ax1.axis("off")
-    ax1.set_title("generation samples (same prompt, same seed)", fontsize=9, color=DARK, loc="left")
-    y = 0.995
-    for r in rep["samples"]:
-        color = TEAL if r["model"] == "official" else (ORANGE if r["model"] == "self" else TICK)
-        txt = r["text"].replace("\n", " ")
-        if len(txt) > 62:
-            txt = txt[:62] + "…"
-        tag = f"{r['model'].replace('random-init', 'rand-init')} {short.get(r['label'].split(' ', 1)[-1], '')}"
-        ax1.text(0.0, y, tag, fontsize=6.9, color=color, family="monospace", va="top",
-                 transform=ax1.transAxes)
-        ax1.text(0.235, y, txt, fontsize=6.6, color=DARK, family="monospace", va="top",
-                 transform=ax1.transAxes)
-        y -= 0.098
-    # ---- 右：词法统计（按解码分组同色系成对排布——解码间不可比、同解码内可比） ----
-    rows = rep["lexical"]
-    order = ["greedy", "T=1.0", "T=0.7", "top-k40"]
-    groups = [[r for r in rows if r["label"].endswith(f" {k}")] for k in order]
-    groups.append([r for r in rows if r["label"] == "random-init top-k=40"])
-    groups.append([r for r in rows if r["label"] == "OWT corpus ref"])
-    colors = {"greedy": BLUE, "T=1.0": TEAL, "T=0.7": YELLOW, "top-k40": ORANGE}
-    xs, hs, cs, labs = [], [], [], []
-    x = 0
-    for gi, grp in enumerate(groups):
-        for r in grp:
-            key = r["label"].split(" ", 1)[-1] if " " in r["label"] else r["label"]
-            key = {"top-k=40,T=1.0": "top-k40", "top-k=40": "top-k40"}.get(key, key)
-            cs.append(colors.get(key, "#898781" if "random" in r["label"] else DARK))
-            labs.append(r["label"].replace("top-k=40,T=1.0", "top-k40").replace(" top-k=40", " top-k40"))
-            hs.append(r["bigram_hit_rate"])
-            xs.append(x)
-            x += 1
-        x += 0.7      # 组间空隙
-    ax2.bar(xs, hs, color=cs, width=0.8, zorder=3)
-    for xi, r in zip(xs, [row for grp in groups for row in grp]):
-        ax2.text(xi, r["bigram_hit_rate"] + 0.02, f"{r['mean_word_len']:.1f}|{r['type_token_ratio']:.2f}",
-                 ha="center", fontsize=5.4, color="#52514e", rotation=90)
-    ax2.set_xticks(xs)
-    ax2.set_xticklabels(labs, rotation=42, ha="right", fontsize=5.8, color=TICK)
-    ax2.set_ylabel("word-bigram hit rate vs OWT ref", fontsize=8, color=DARK)
-    ax2.grid(axis="y", color=GRID, lw=0.5, zorder=0)
-    ax2.tick_params(colors=TICK)
-    ax2.set_ylim(0, 1.18)
-    ax2.set_title("lexical stats (labels: mean word len | TTR);\ncompare within a decode group only",
-                  fontsize=8.5, color=DARK)
-    fig.tight_layout()
-    os.makedirs(FIG_DIR, exist_ok=True)
-    out = os.path.join(FIG_DIR, "fig-11-3-sampling.png")
-    fig.savefig(out, dpi=300, facecolor="white")
-    print(f"[figure] -> {out}")
+    fig,(left,right)=plt.subplots(1,2,figsize=(12,5.8),dpi=300,gridspec_kw={"width_ratios":[1.5,1.]})
+    left.axis("off")
+    rows=[[s["model"],s["decode_key"],textwrap.fill(s["text"].replace("\n"," ")[:72],48)] for s in rep["samples"]]
+    table=left.table(cellText=rows,colLabels=["model","decode","excerpt (full text in JSON)"],
+                     colWidths=[.14,.16,.7],cellLoc="left",bbox=[0,.02,1,.95])
+    table.auto_set_font_size(False);table.set_fontsize(6.8)
+    for cell in table.get_celld().values():cell.set_edgecolor("#e1e0d9")
+    keys=("greedy","temp1","temp07","topk40")
+    for j,(name,color) in enumerate((("official","#1baf7a"),("self","#eb6834"),("random-init","#898781"))):
+        values=[]
+        for key in keys:
+            item=next(x for x in rep["lexical"] if x.get("model")==name and x.get("decode_key")==key)
+            values.append(item["bigram_hit_rate"])
+        xs=np.arange(4)+(j-1)*.24
+        for x,value in zip(xs,values):
+            if value is None:right.text(x,0,"NA",ha="center",fontsize=7)
+            else:right.bar(x,value,width=.22,color=color)
+        right.plot([],[],color=color,lw=6,label=name)
+    right.set_xticks(range(4),keys);right.set_ylim(0,1.08)
+    right.set_ylabel("word-bigram hit rate (observed samples)")
+    right.set_title("Hold decoding fixed when comparing models")
+    right.legend(frameon=False,fontsize=8);right.grid(axis="y",color="#e1e0d9",lw=.5);right.set_axisbelow(True)
+    fig.tight_layout();Path(FIG_DIR).mkdir(parents=True,exist_ok=True)
+    target=Path(FIG_DIR)/"check-11-3-sampling.png"
+    if target.exists():raise FileExistsError(target)
+    fig.savefig(target,facecolor="white");plt.close(fig)
 
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--train-steps", type=int, default=t12m.TRAIN_STEPS,
-                    help="自训模型步数（默认 6104=fast 档同配，复现 train124_fast 曲线）")
-    ap.add_argument("--skip-train", action="store_true", help="已有 self124m.pt 时直接加载")
-    ap.add_argument("--train-only", action="store_true", help="只训练存档（长任务先跑）")
-    ap.add_argument("--device", type=str, default="mps" if torch.backends.mps.is_available() else "cpu")
-    args = ap.parse_args()
-    os.makedirs(OUT_DIR, exist_ok=True)
-    device = args.device
-    enc = get_tok()
-    gen_cpu = torch.Generator().manual_seed(SEED)      # 采样的固定随机源（生成在 CPU 前向，逐 token 可复算）
-
-    # ---- 自训侧：训练（或加载） ----
-    if os.path.exists(SELF_PT) and args.skip_train:
-        self_model = load_self(device)
-        train_meta = {"steps": None, "note": "加载已有 self124m.pt（--skip-train）"}
-        print("[self] 加载已有 self124m.pt", flush=True)
+    global OUT_DIR,FIG_DIR,DOCS_JSONL
+    ap=argparse.ArgumentParser(description="显式加载自训权重后采样；只在--train-steps给定时训练")
+    ap.add_argument("--train-steps",type=int,default=None)
+    ap.add_argument("--skip-train",action="store_true",help="兼容入口：缺权重时报错，不会自动转为长训练")
+    ap.add_argument("--train-only",action="store_true")
+    ap.add_argument("--self-checkpoint",type=Path)
+    ap.add_argument("--data-dir",default=t12m.OUT_DIR)
+    ap.add_argument("--out-dir",default=OUT_DIR)
+    ap.add_argument("--out-name",default="sampling.json")
+    ap.add_argument("--docs",default=DOCS_JSONL)
+    ap.add_argument("--snapshot-dir")
+    ap.add_argument("--revision")
+    ap.add_argument("--with-wikitext",action="store_true")
+    ap.add_argument("--device",choices=["cpu","mps"],default="mps" if torch.backends.mps.is_available() else "cpu")
+    a=ap.parse_args()
+    if a.train_steps is not None and (a.skip_train or a.self_checkpoint):
+        raise ValueError("显式训练与加载已有权重不能同时选择")
+    if a.train_only and a.train_steps is None:raise ValueError("train-only需要给出train-steps")
+    if Path(a.out_name).name!=a.out_name or a.out_name in ("",".",".."):raise ValueError("out-name只接受文件名")
+    OUT_DIR=a.out_dir;DOCS_JSONL=a.docs;FIG_DIR=os.path.join(OUT_DIR,"figures",Path(a.out_name).stem)
+    target=Path(OUT_DIR)/a.out_name
+    if target.exists():raise FileExistsError(target)
+    t12m.OUT_DIR=a.data_dir
+    if a.train_steps is not None:
+        self_model,train_meta=train_self(a.train_steps,a.device,Path(a.out_name).stem+"_self")
     else:
-        print(f"===== 自训 124M（{args.train_steps} 步，fast 档同配同种子）=====", flush=True)
-        self_model, train_meta = train_self(args.train_steps, device)
-    if args.train_only:
-        with open(os.path.join(OUT_DIR, "self_train.json"), "w", encoding="utf-8") as f:
-            json.dump(train_meta, f, ensure_ascii=False, indent=2)
+        checkpoint=a.self_checkpoint or Path(a.data_dir)/"ckpt_train124_fast.pt"
+        self_model,info=load_self("cpu",checkpoint)
+        train_meta={"checkpoint":info,"note":"仅加载，不训练"}
+    if a.train_only:
+        target.parent.mkdir(parents=True,exist_ok=True)
+        with target.open("x") as f:json.dump(train_meta,f,ensure_ascii=False,indent=2,allow_nan=False)
         return
-
-    rep = {"meta": {"date": time.strftime("%Y-%m-%d %H:%M:%S"), "seed": SEED, "device": device,
-                    "prompt": GEN_PROMPT, "gen_tokens": GEN_TOKENS,
-                    "generation": "全量重算口径（每 token 整段前向重算；本册不引入增量缓存）",
-                    "top_k_note": "k=40 = GPT-2 附录 Figure 5/Table 7-12 题注口径（Top-k random sampling with k = 40）；"
-                                  "k=2 为其摘要特例；top-k 方案出自 Fan et al. 1805.04833",
-                    "self_train": train_meta}}
-    self_model.eval()
-
-    # ---- 官方侧：对拍四步的①②③复用 ----
-    dl = ensure_weights()
-    official, _audit = load_official_into_ours(dl["snapshot_dir"])
-    official.eval()
-
-    # ---- 采样对照：官方/自训/随机初始化 × 贪心/T=1.0/T=0.7/top-k40 ----
-    ref_bigrams = build_ref_bigrams()
-    models = [("official", official), ("self", self_model)]
-    samples, lexical = [], []
-    for name, m in models:
-        m_cpu = m.to("cpu")
-        for label, kw in [("greedy", dict(temperature=0.0)),
-                          ("temp=1.0", dict(temperature=1.0)),
-                          ("temp=0.7", dict(temperature=0.7)),
-                          ("top-k=40,T=1.0", dict(temperature=1.0, top_k=40))]:
-            gen_cpu.manual_seed(SEED)
-            ids = generate(m_cpu, enc, GEN_PROMPT, generator=gen_cpu, device="cpu", **kw)
-            text = enc.decode(ids)
-            tag = f"{name} {label}"
-            samples.append({"model": name, "label": tag, "text": text, "kw": kw})
-            lexical.append({"label": tag, **lexical_stats(text, ref_bigrams)})
-        m.to(device)
-    # 随机初始化对照（未训练的 124M：第 10 章的「出厂」状态）
-    torch.manual_seed(SEED)
-    rand_model = GPT2().eval()
-    ids = generate(rand_model, enc, GEN_PROMPT, temperature=1.0, top_k=40, generator=gen_cpu, device="cpu")
-    text = enc.decode(ids)
-    samples.append({"model": "random-init", "label": "random-init top-k=40", "text": text})
-    lexical.append({"label": "random-init top-k=40", **lexical_stats(text, ref_bigrams)})
-    # 语料参照行
-    with open(DOCS_JSONL, "r", encoding="utf-8") as f:
-        ref_text = json.loads(f.readline())["text"][:1200]
-    lexical.append({"label": "OWT corpus ref", **lexical_stats(ref_text, ref_bigrams)})
-    rep["samples"] = samples
-    rep["lexical"] = lexical
-
-    # ---- WikiText-2 换算盒（自训模型跨语料诚实口径） ----
-    print("===== WikiText-2 token loss -> word PPL 换算盒 =====", flush=True)
-    rep["wt2_box"] = wt2_eval(self_model, enc, device)
-
-    # ---- ICL 探针（官方权重本地前向） ----
-    print("===== ICL 探针（few-shot，本地前向）=====", flush=True)
-    rep["icl"] = icl_probe(official.to("cpu"), enc, "cpu")
-
-    out_json = os.path.join(OUT_DIR, "sampling.json")
-    with open(out_json, "w", encoding="utf-8") as f:
-        json.dump(rep, f, ensure_ascii=False, indent=2)
-    print(f"[完成] -> {out_json}")
+    enc=get_tok()
+    if self_model.wte.num_embeddings!=enc.n_vocab:raise ValueError("自训词表与gpt2编码器不符")
+    dl=ensure_weights(a.revision,a.snapshot_dir);official,audit=load_official_into_ours(dl["snapshot_dir"])
+    torch.manual_seed(SEED);random_model=GPT2().eval()
+    refs,ref_info=build_ref_bigrams(return_info=True)
+    rep={"meta":{"date_utc":time.strftime("%Y-%m-%dT%H:%M:%SZ",time.gmtime()),"seed":SEED,
+                 "generation_device":"cpu","logits_dtype":"fp32","sampling_probability_dtype":"float64",
+                 "self_train":train_meta,"official_snapshot":dl,"prompt":GEN_PROMPT,"gen_tokens":GEN_TOKENS,
+                 "prompt_protocol":"same_question_v2；不改绑历史输出","reference_bigrams":ref_info},
+         "samples":[],"lexical":[],"official_audit":audit}
+    settings=[("greedy",0.,0),("temp1",1.,0),("temp07",.7,0),("topk40",1.,40)]
+    for name,model in (("official",official),("self",self_model),("random-init",random_model)):
+        model=model.to("cpu").eval()
+        for key,temp,k in settings:
+            gen=torch.Generator(device="cpu").manual_seed(SEED)
+            ids=generate(model,enc,GEN_PROMPT,temperature=temp,top_k=k,generator=gen,device="cpu")
+            text=enc.decode(ids)
+            rep["samples"].append({"model":name,"decode_key":key,"temperature":temp,"top_k":k,
+                                   "seed":SEED,"text":text,"token_ids":ids})
+            rep["lexical"].append({"model":name,"decode_key":key,**lexical_stats(text,refs)})
+    with open(DOCS_JSONL,encoding="utf-8") as f:reference=json.loads(f.readline())["text"][:1200]
+    rep["corpus_reference"]={**lexical_stats(reference,refs),
+         "note":"参考集合内文本，不是独立测试，也不进入模型对照柱"}
+    if a.with_wikitext:rep["wt2_box"]=wt2_eval(self_model.to("cpu"),enc,"cpu")
+    rep["icl"]=icl_probe(official.to("cpu"),enc,"cpu")
+    payload=json.dumps(rep,ensure_ascii=False,indent=2,allow_nan=False)+"\n"
+    target.parent.mkdir(parents=True,exist_ok=True)
     make_figure_real(rep)
+    with target.open("x") as f:f.write(payload)
+    print(f"[当前采样记录] {target}")
 
 
 if __name__ == "__main__":

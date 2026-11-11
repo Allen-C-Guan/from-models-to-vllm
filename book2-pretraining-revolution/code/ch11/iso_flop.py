@@ -1,25 +1,12 @@
-# iso_flop.py —— Book2 ch11 实验一：iso-FLOP 网格（compute-optimal 前沿的缩小版复现）
-# 所属章节：Book2 第 11 章 §11.2（drafts/Book2-预训练革命/ch11-大项目II.md 图 11.2/11.3 数据源）
-# 设计书：research/Book2-预训练革命/notes/01-实验可行性.md §4(ii)；批二教训：notes/07-批二实验数字.md §3.1
-#   （正式口径统一 warmup=200——无 warmup 族 L(N) 倒挂的修正，各规模统一日程仍满足 iso-FLOP 单变量口径）。
-#   * 3 档算力 C∈{6e14, 2e15, 6e15}（FLOPs=6ND，N=非嵌入参数，D=已处理 token；bf16 训练/fp32 eval 照 ch08）；
-#   * 每档 (N,D) 点取 D=C/(6N)（步数取整后反报 C_actual）；C1/C3 各 3 点，**中间档 C2=2e15 加密至 5 点**（N 对数等距）；
-#   * N 网格选型依据：ch08 Kaplan 族在 D=40M 固定时 L(N) 单调降到 19.5M 且末段斜率仍变陡（notes/07 §2.1）
-#     → 谷底 N* 在高算力档可能 ≥20M，C3 顶点放宽到 23.1M（超出设计书「N≤20M」的记录在案偏离，为兜住谷底）；
-#   * 每点：流首部一次通过读 D token（顺序连续分块，构造上零重复；各点共用流首部=数据分布跨点固定），
-#     b32×s256、AdamW(0.9,0.95,wd=0.1)+clip1.0、lr 1e-3 余弦降至 1e-4 + warmup 200、每 500 步 eval
-#     （49 固定窗×8192=401,408 token，与 ch08 完全同窗集可比）；
-#   * 每档对 (log10 N, eval_final) 抛物线拟合取谷底 N*(C)；再拟合 log10 N* ∝ log10 C 得 compute-optimal 斜率。
-#     不确定度：①5 点档给 polyfit 参数协方差（delta 法）+ 逐点剔除（LOO）敏感性；②全档参数 bootstrap
-#     （eval se=0.004 主口径 / 0.008 敏感性口径，notes/07 §1.3+§2.1）；③斜率 CI 由各档 N* bootstrap 联合 Monte Carlo。
-#     3 点档抛物线为精确拟合（零自由度）→ 不确定度几乎全部来自假设的 eval 噪声，如实报告（不确定度大）。
-#   * 模型：from warmup_ablation import GPT（ch04 族工厂，ch08 同款单轨依赖链）；分词器/数据复用 ch08/data_prep
-#     产物（log/book2-ch08/tokens.bin + eval.bin，sp-8k）。
-# 运行方式：python iso_flop.py [--levels c1,c2,c3] [--smoke] [--analyze-only] [--device mps]
-#       --smoke：c1 三点各 300 步、每 100 步 eval，写 iso_flop_smoke.json（冒烟前置，不动正式文件）
-# 产物：log/book2-ch11/{iso_flop.json, curve_<点名>.csv/.npy, ckpt_<点名>.pt(跑完即删)}
-
+# iso_flop.py —— Book2第11章：固定名义6ND的模型/数据分配实验。
+# 原历史网格7+5+3共15点；每点位置一次通过，内容未必无重复，形状/日程也随点改变。
+# 假设高斯扰动区间与三种锚点敏感性，不是重训置信区间，也不证明连续最优边界。
+# 工作区激活env.sh后：python code/ch11/iso_flop.py --help
+# --smoke前三点300步独立日程，不构成iso-FLOP证据；与正式实验的所有产物分名保存。
+# 同名续跑须配置/语料/代码身份一致；失败不列完成，断点保留。
 import argparse
+import hashlib
+from pathlib import Path
 import json
 import math
 import os
@@ -31,7 +18,7 @@ import torch
 
 # ---------------- 固定口径 ----------------
 SEED = 20261002          # 全书统一种子
-REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+REPO_ROOT = os.getcwd()
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book2-ch11")
 CH08_DIR = os.path.join(REPO_ROOT, "log", "book2-ch08")
 TOKENS_BIN = os.path.join(CH08_DIR, "tokens.bin")   # 训练池（ch08/data_prep.py 产物，流首部）
@@ -42,26 +29,21 @@ BLOCK = 256              # 序列长 s
 BATCH = 32               # 批大小 b（b32×s256=8192 token/步，与 ch08 同）
 TPB = BATCH * BLOCK
 EVAL_EVERY = 500
-EVAL_BATCHES = 49        # 49×8192 = 401,408 token（≥40 万协议，notes/07 §1.3 实测 se≈0.0039）
+EVAL_BATCHES = 49        # 49×8192=401,408位置；0.0039来自独立同分布近似，不是实测标准误
 PEAK_LR = 1e-3
 MIN_LR_RATIO = 0.1
 WARMUP = 200             # 批二教训：统一 warmup 200（notes/07 §3.1）
 WDECL = 0.1
-BOOT_SE = 0.004          # bootstrap 主口径：401,408 token eval se（notes/07 §1.3）
-BOOT_SE_SENS = 0.008     # 敏感性口径：叠加同配置重跑漂移 ~0.004（notes/07 §2.1）后的保守值
+BOOT_SE = 0.004          # 条件扰动的假设标准差；不是重训测得的eval标准误
+BOOT_SE_SENS = 0.008     # 加倍扰动的敏感性设置；不保证涵盖全部误差
 BOOT_DRAWS = 2000
 
-# iso-FLOP 网格：档 × 点（点名, C 名义, n_layer, n_embd, n_head）。N 实数由 GPT.n_params 报出，
-# 公式 N = L·(12C²+13C)+2C（ch08 实测同式）。N 名义取对数等距；head_dim 尽量 64（ch08 族口径），
-# 个别点 56/72/80（对数等距优先，运行元数据如实登记）。
-# 【网格自适应记录 2026-10-03】初版按 ch08 Kaplan 曲线（D=40M 固定时 L(N) 到 19.5M 仍降）预设谷底偏大 N
-#   （C1{3.1,5.5,9.9}M / C2{4.0..19.5}M / C3{9.9,14.8,23.1}M）；实测 C1 三点 eval_final 随 N 单调下降
-#   （4.979/5.183/5.484）→ 谷底 ≤3.1M、本尺度为「数据富余」型——C1 补 c1d=1.50M 兜左沿，
-#   C2/C3 整体下移（C2{1.86..8.69}M 五点 / C3{4.18,9.86,19.5}M）。全部 D≤~240M ≤306M 池一次通过。
-#   C1=6e14:  0.60M / 0.79M / 0.99M / 1.50M / 3.11M / 5.53M / 9.86M（D≈167.8M / 125.9M / 100.7M / 66.5M / 32.1M /
-#             18.1M / 10.1M；c1d/e/f/g 自适应补点——谷底持续左滑，0.33M 为一次通过池硬下限 N≥C/(6·306M)）
-#   C2=2e15:  1.86M / 3.11M / 4.00M / 6.05M / 8.69M（加密档；D≈179.6M / 107.0M / 83.2M / 55.1M / 38.4M）
-#   C3=6e15:  4.18M / 9.86M / 19.52M（D≈239.5M / 101.4M / 51.2M）
+# 三档预算的离散形状网格，实际N由模型清点，D由整步预算反算。
+# N=L*(12d²+13d)+2d；宽度/头维离散约束使N并非严格对数等距。
+# 2026-10-03初版C1从3.1M到9.9M的损失随N增加而升高，故向小模型方向补点。
+# 这支持扩展观测范围，不证明连续最优小于3.1M；最终C1最佳已测点0.595M仍在边界。
+# C2/C3范围随之下移。完整实测N/D见正文表11.2，避免沿用初始计划的舍入数。
+# 约306M位置池限定一次通过的可行N范围，不提供最优N的统计界。
 LEVELS = [
     ("c1", 6e14, [
         ("c1a", 7, 192, 3),
@@ -101,17 +83,20 @@ def lr_at(step, peak, warmup, total, min_ratio=MIN_LR_RATIO):
 
 
 class TrainStream:
-    """训练数据：tokens.bin 流首部按步顺序切块（一次通过，构造上无重复）。
-
-    第 k 步消费 tokens[(k-1)*8192 : (k-1)*8192+8193]：x=前 8192 reshape(32,256)，y=左移一格。
-    iso-FLOP 各点从流首部起步、长度各为自身 D——各点数据互为嵌套前缀，数据分布跨点固定（单变量=N×D 权衡）。
+    """第k步输入tokens[a:a+TPB]，目标tokens[a+1:a+TPB+1]，均重排(BATCH,BLOCK)。
+    各点前缀长度不同；位置不重复不证明内容不重复，也不证明经验分布相同。
     """
 
     def __init__(self, path):
+        self.path = str(path)
+        if os.path.getsize(path)%2:
+            raise ValueError("uint16训练文件长度须为偶数字节")
         self.arr = np.memmap(path, dtype=np.uint16, mode="r")
         self.max_step = (len(self.arr) - 1) // TPB
 
     def batch(self, step, device):
+        if not 1 <= step <= self.max_step:
+            raise ValueError("step超出训练池可消费范围")
         off = (step - 1) * TPB
         span = np.asarray(self.arr[off:off + TPB + 1], dtype=np.int64)      # (8193,)
         x = torch.from_numpy(span[:-1].reshape(BATCH, BLOCK)).to(device)    # (32,256)
@@ -123,7 +108,9 @@ def build_eval_batches(device):
     """固定 eval 批集：与 ch08/run_family.py 完全同窗（同种子同 eval.bin）——ch8/ch11 数字可直接同图。"""
     ev = np.memmap(EVAL_BIN, dtype=np.uint16, mode="r")
     gen = torch.Generator().manual_seed(SEED)
-    offs = torch.randint(0, len(ev) - BLOCK - 1, (EVAL_BATCHES * BATCH,), generator=gen).numpy()
+    if len(ev)<BLOCK+1:
+        raise ValueError("eval池至少需BLOCK+1个token")
+    offs = torch.randint(0, len(ev) - BLOCK, (EVAL_BATCHES * BATCH,), generator=gen).numpy()
     xs, ys = [], []
     for o in offs:
         xs.append(np.asarray(ev[o:o + BLOCK], dtype=np.int64))
@@ -135,21 +122,49 @@ def build_eval_batches(device):
 
 @torch.no_grad()
 def eval_loss(model, ex, ey):
-    """eval loss（fp32 前向，无 autocast——报数进拟合用全精度）：49 批均值 = 401,408 token 池化均值。"""
-    model.eval()
-    losses = []
-    for i in range(EVAL_BATCHES):
-        _, loss = model(ex[i], ey[i])            # (32,256) -> 标量
-        losses.append(loss.item())
-    model.train()
-    return sum(losses) / len(losses)
+    """等长固定窗均值；关闭梯度、保持原模式，不推断token独立性。"""
+    if len(ex)==0 or ex.shape!=ey.shape:raise ValueError("评估批为空或标签形状不同")
+    before=model.training;model.eval()
+    try:
+        values=[float(model(ex[i],ey[i])[1]) for i in range(len(ex))]
+        if not all(math.isfinite(v) for v in values):raise FloatingPointError("eval非有限")
+        return sum(values)/len(values)
+    finally:model.train(before)
+
+
+def file_identity(path):
+    h=hashlib.sha256()
+    with open(path,"rb") as f:
+        for chunk in iter(lambda:f.read(1024*1024),b""):h.update(chunk)
+    return {"bytes":os.path.getsize(path),"sha256":h.hexdigest()}
+
+
+def save_json(path,value):
+    payload=json.dumps(value,ensure_ascii=False,indent=2,allow_nan=False)+"\n"
+    temp=str(path)+".tmp"
+    with open(temp,"w") as f:f.write(payload)
+    os.replace(temp,path)
+
+
+def run_identity(device,stream):
+    return {"schema":2,"seed":SEED,"device":device,"torch":str(torch.__version__),
+            "batch":BATCH,"block":BLOCK,"vocab":VOCAB,"warmup":WARMUP,
+            "peak_lr":PEAK_LR,"min_lr_ratio":MIN_LR_RATIO,"weight_decay":WDECL,
+            "eval_batches":EVAL_BATCHES,"eval_sampler":"all_legal_starts_v2",
+            "factory":file_identity(Path(__file__).resolve().parents[1]/"ch04/warmup_ablation.py"),
+            "runner":file_identity(__file__),"train":file_identity(stream.path),"eval":file_identity(EVAL_BIN)}
 
 
 # ---------------- 单点训练（含断点续跑；ch08/run_family.py 同骨架） ----------------
 def run_point(name, level, c_nominal, n_layer, n_embd, n_head, device, train_stream,
-              steps_override=None, eval_every=EVAL_EVERY):
-    ckpt_path = os.path.join(OUT_DIR, f"ckpt_{name}.pt")
-    torch.manual_seed(SEED)   # 每点重置（ch08 同口径：init 流跨点一致，唯一变量 = 架构规模×算力档）
+              steps_override=None, eval_every=EVAL_EVERY, out_name="iso_flop"):
+    if Path(out_name).name!=out_name or out_name in ("",".",".."):
+        raise ValueError("out_name必须为单个文件名")
+    os.makedirs(OUT_DIR,exist_ok=True)
+    ckpt_path = os.path.join(OUT_DIR, f"ckpt_{out_name}__{name}.pt")
+    if not os.path.exists(ckpt_path) and any(Path(OUT_DIR,f"curve_{out_name}__{name}{ext}").exists() for ext in (".csv",".npy")):
+        raise FileExistsError("同名曲线已存在但无可核续跑断点，请另选out-name")
+    torch.manual_seed(SEED)   # 同seed不使不同形状模型的逐参数初始化相同。
     model = GPT(n_layer=n_layer, n_embd=n_embd, n_head=n_head,
                 vocab=VOCAB, block_size=BLOCK).to(device)
     n_total = model.n_params()
@@ -159,6 +174,10 @@ def run_point(name, level, c_nominal, n_layer, n_embd, n_head, device, train_str
         steps = steps_override
     else:
         steps = int(round(c_nominal / (6.0 * n_nonemb) / TPB))
+    if steps<=0 or not 0<=WARMUP<steps or eval_every<=0:
+        raise ValueError("需要0<=warmup<steps，评估间隔须正")
+    point_identity={**run_identity(device,train_stream),"point":[name,level,n_layer,n_embd,n_head],
+                    "steps":steps,"eval_every":eval_every,"C_nominal":c_nominal}
     d_tokens = steps * TPB
     c_actual = 6.0 * n_nonemb * d_tokens
     if steps_override is None:
@@ -175,11 +194,16 @@ def run_point(name, level, c_nominal, n_layer, n_embd, n_head, device, train_str
     train_losses, lrs, evals = [], [], []
     start_step, elapsed_train, elapsed_eval = 0, 0.0, 0.0
     if os.path.exists(ckpt_path):   # ---- 断点续跑：从最近 eval 边界恢复 ----
-        ck = torch.load(ckpt_path, map_location=device, weights_only=False)
+        ck = torch.load(ckpt_path, map_location=device, weights_only=True)
+        if ck.get("run_identity")!=point_identity:
+            raise ValueError("断点的配置/语料/代码与本次不一致，或缺少身份；另用out-name")
         model.load_state_dict(ck["model"])
+        torch.set_rng_state(ck["cpu_rng_state"].cpu())
         opt.load_state_dict(ck["opt"])
         train_losses, lrs, evals = ck["train_losses"], ck["lrs"], ck["evals"]
         start_step, elapsed_train, elapsed_eval = ck["step"], ck["elapsed_train"], ck["elapsed_eval"]
+        if not 0<=start_step<=steps or len(train_losses)!=start_step or len(lrs)!=start_step:
+            raise ValueError("断点步数/曲线不一致")
         print(f"  [续跑] 自 step {start_step + 1}（已完成 {start_step} 步，eval {len(evals)} 次）", flush=True)
 
     diverged_at, reason = None, None
@@ -192,9 +216,16 @@ def run_point(name, level, c_nominal, n_layer, n_embd, n_head, device, train_str
         t0 = time.perf_counter()
         with torch.autocast(device_type="mps", dtype=torch.bfloat16) if device == "mps" else torch.autocast("cpu", enabled=False):
             _, loss = model(x, y)
+        lv=float(loss.detach())
+        if not math.isfinite(lv) or lv>100:
+            diverged_at,reason=step,"非有限或超过本实验阈值的loss，未执行更新"
+            break
         opt.zero_grad(set_to_none=True)
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        grad_norm=float(torch.nn.utils.clip_grad_norm_(model.parameters(),1.0))
+        if not math.isfinite(grad_norm):
+            diverged_at,reason=step,"非有限梯度，未执行更新"
+            break
         opt.step()
         if device == "mps":
             torch.mps.synchronize()
@@ -202,10 +233,6 @@ def run_point(name, level, c_nominal, n_layer, n_embd, n_head, device, train_str
         lv = loss.item()
         train_losses.append(lv)
         lrs.append(lr)
-        if not math.isfinite(lv) or lv > 100.0:
-            diverged_at, reason = step, ("non-finite" if not math.isfinite(lv) else f"loss={lv:.1f}>100")
-            print(f"  [发散] step {step}: {reason}", flush=True)
-            break
         if step % 100 == 0 or step == 1:
             print(f"  step {step:6d}/{steps} train {lv:.4f} lr {lr:.2e} "
                   f"({elapsed_train / step:.3f}s/step 累计)", flush=True)
@@ -217,43 +244,49 @@ def run_point(name, level, c_nominal, n_layer, n_embd, n_head, device, train_str
             elapsed_eval += time.perf_counter() - t0
             evals.append({"step": step, "eval_loss": round(el, 5),
                           "n_tokens": EVAL_BATCHES * TPB})
-            print(f"  [eval] step {step}: eval loss {el:.4f}（401,408 token，fp32）", flush=True)
+            print(f"  [eval] step {step}: eval loss {el:.4f}（{EVAL_BATCHES*TPB:,} token，fp32）", flush=True)
             torch.save({"model": model.state_dict(), "opt": opt.state_dict(),
                         "step": step, "train_losses": train_losses, "lrs": lrs, "evals": evals,
                         "elapsed_train": elapsed_train, "elapsed_eval": elapsed_eval,
-                        "config": {"n_layer": n_layer, "n_embd": n_embd, "n_head": n_head}},
-                       ckpt_path)
+                        "config": {"n_layer": n_layer, "n_embd": n_embd, "n_head": n_head,
+                                   "vocab":VOCAB,"block_size":BLOCK},
+                        "run_identity":point_identity,"cpu_rng_state":torch.get_rng_state()},
+                       ckpt_path+".tmp")
+            os.replace(ckpt_path+".tmp",ckpt_path)
 
     wallclock = time.perf_counter() - t_point
     steps_done = len(train_losses)
-    tail = train_losses[-min(100, steps_done):]
+    tail = train_losses[-min(100, steps_done):] if steps_done else []
+    completed=diverged_at is None and steps_done==steps and bool(evals) and evals[-1]["step"]==steps
     result = {
-        "name": name, "level": level, "C_nominal": c_nominal, "C_actual": c_actual,
+        "name": name, "level": level, "C_nominal": c_nominal, "C_actual": 6.0*n_nonemb*steps_done*TPB, "C_planned":c_actual,
         "N": n_nonemb, "N_total": n_total,
         "n_layer": n_layer, "n_embd": n_embd, "n_head": n_head, "head_dim": n_embd // n_head,
         "steps": steps_done, "steps_planned": steps,
+        "completed":completed,"budget_matched":steps_override is None,
+        "run_identity":point_identity,"checkpoint":ckpt_path,
         "D_tokens": steps_done * TPB,
-        "one_pass": "顺序连续分块一次通过（流首部，构造上零重复；各点数据互为嵌套前缀）",
-        "final_train_loss": round(sum(tail) / len(tail), 5),
-        "final_train_loss_def": "最后 100 步 train loss 均值",
+        "one_pass":"目标位置不重复，各点复用嵌套前缀；不是内容去重或严格固定经验分布",
+        "final_train_loss": round(sum(tail) / len(tail), 5) if tail else None,
+        "final_train_loss_def": "最后min(100,已完成步数)步train loss均值",
         "eval_losses": evals,
-        "eval_final": evals[-1]["eval_loss"] if evals else None,
+        "eval_final": evals[-1]["eval_loss"] if completed else None,
         "eval_tokens_per_eval": EVAL_BATCHES * TPB,
         "diverged": diverged_at is not None, "diverged_at_step": diverged_at, "divergence_reason": reason,
-        "wallclock": round(wallclock, 1), "wallclock_sec_train_only": round(elapsed_train, 1),
+        "wallclock": round(wallclock, 1), "wallclock_scope":"本次调用片段，累计训练/评估时间另列",
+        "wallclock_sec_train_only": round(elapsed_train, 1),
         "wallclock_sec_eval_only": round(elapsed_eval, 1),
         "sec_per_step": round(elapsed_train / max(1, steps_done), 4),
-        "precision": "train bf16 autocast / eval fp32",
+        "precision":"train bf16 autocast / eval fp32" if device=="mps" else "train/eval fp32",
     }
-    stem = os.path.join(OUT_DIR, f"curve_{name}")
+    stem = os.path.join(OUT_DIR, f"curve_{out_name}__{name}")
     with open(stem + ".csv", "w", encoding="utf-8") as f:
         f.write("step,train_loss,lr\n")
         for i, (lv, lr) in enumerate(zip(train_losses, lrs), 1):
             f.write(f"{i},{lv:.6g},{lr:.6g}\n")
     np.save(stem + ".npy", np.column_stack([np.arange(1, steps_done + 1), train_losses, lrs]))
-    if os.path.exists(ckpt_path):
-        os.remove(ckpt_path)
-    print(f"  [点完成] steps {steps_done} | final_train {result['final_train_loss']} | "
+    # 成功也保留最近断点，失败保留最后一个有效eval边界，不用重训才能取得权重。
+    print(f"  [{'点完成' if completed else '点未完成'}] steps {steps_done} | final_train {result['final_train_loss']} | "
           f"eval_final {result['eval_final']} | {result['sec_per_step']}s/step | "
           f"wall {wallclock / 60:.1f} min", flush=True)
     del model, opt, ex, ey
@@ -263,14 +296,31 @@ def run_point(name, level, c_nominal, n_layer, n_embd, n_head, device, train_str
 
 
 # ---------------- 分析：每档抛物线谷底 N*(C) + 斜率拟合 ----------------
-def _vertex(x, y):
-    """抛物线 y=a x²+b x+c 的谷底 x*=-b/(2a)；a<=0（无谷）返回 None。"""
-    a, b, c = np.polyfit(x, y, 2)
-    return None if a <= 0 else -b / (2 * a)
+def _vertex(x,y):
+    """正曲率二次拟合的有限顶点；非正曲率并不证明真实曲线单调。"""
+    if len(x)<3 or len(np.unique(x))<3:return None
+    a,b,_=np.polyfit(x,y,2)
+    v=-b/(2*a) if a>0 else None
+    return float(v) if v is not None and math.isfinite(v) and -300<v<300 else None
+
+
+def usable_point(p):
+    """旧报告须给完整步数及末步eval；不能把失败/未完成点纳入拟合。"""
+    v=p.get("eval_final")
+    return (not p.get("diverged",False) and p.get("completed",True)
+            and p.get("steps",0)>0 and p.get("steps")==p.get("steps_planned")
+            and isinstance(v,(int,float)) and math.isfinite(v) and v>=0
+            and p.get("N",0)>0 and p.get("C_actual",0)>0
+            and bool(p.get("eval_losses")) and p["eval_losses"][-1]["step"]==p["steps"])
 
 
 def fit_level(level_name, c_nominal, pts):
-    """单档拟合：精确抛物线 + 协方差(≥4点) + bootstrap(两 se 口径) + LOO(≥4点)。"""
+    """二次形状拟合、假设高斯扰动和LOO敏感性；不将条件区间称作重训CI。"""
+    pts=sorted(pts,key=lambda p:p["N"])
+    if len(pts)<3 or len({p["N"] for p in pts})!=len(pts):
+        raise ValueError("二次拟合至少需要3个不同N")
+    if not all(usable_point(p) and p.get("budget_matched",True) for p in pts):
+        raise ValueError("只接受有限、完整、末步已评估的点")
     x = np.log10(np.array([p["N"] for p in pts], dtype=float))
     y = np.array([p["eval_final"] for p in pts], dtype=float)
     a, b, c = np.polyfit(x, y, 2)
@@ -283,8 +333,8 @@ def fit_level(level_name, c_nominal, pts):
         "eval_finals": [p["eval_final"] for p in pts],
         "eval_final_monotone_decreasing_in_N": bool(all(y[i] > y[i + 1] for i in range(len(y) - 1))),
     }
-    if a > 0:
-        xv = -b / (2 * a)
+    xv=_vertex(x,y)
+    if xv is not None:
         out["log10_N_star"] = float(xv)
         out["N_star"] = float(10 ** xv)
         out["L_star_pred"] = float(a * xv * xv + b * xv + c)
@@ -294,7 +344,7 @@ def fit_level(level_name, c_nominal, pts):
         out["N_star"] = None
         out["L_star_pred"] = None
         out["N_star_inside_grid"] = False
-        out["note"] = "a<=0：抛物线开口向上不存在，该档 eval_final 单调（无内部谷底）"
+        out["note"] = "拟合没有可报告的有限正曲率顶点；不据此断言真实损失单调"
 
     # ① 参数协方差（≥4 点才有自由度）：delta 法传到 x*
     if len(pts) >= 4:
@@ -307,7 +357,7 @@ def fit_level(level_name, c_nominal, pts):
         except Exception as e:  # noqa: BLE001
             out["cov_error"] = str(e)
 
-    # ② 参数 bootstrap：eval se=0.004（主）/0.008（敏感性）
+    # ② 条件参数扰动：假设独立高斯标准差0.004/0.008，非实测重训SE
     rng = np.random.default_rng(SEED)
     for se, tag in ((BOOT_SE, "main"), (BOOT_SE_SENS, "sens")):
         xs = []
@@ -320,13 +370,15 @@ def fit_level(level_name, c_nominal, pts):
             else:
                 xs.append(xv)
         xs = np.asarray(xs)
-        entry = {"assumed_se": se, "draws": BOOT_DRAWS, "no_valley_frac": round(no_valley / BOOT_DRAWS, 4)}
-        if len(xs) >= 100:
+        entry = {"assumed_se":se,"draws":BOOT_DRAWS,
+                 "no_valley_frac":no_valley/BOOT_DRAWS if BOOT_DRAWS else None,
+                 "interpretation":"固定二次形状和独立高斯噪声下的条件敏感性，非重训置信区间"}
+        if len(xs):
             q = np.percentile(xs, [2.5, 50, 97.5])
             entry.update({"log10_N_star_ci95": [float(v) for v in q],
                           "N_star_ci95": [float(10 ** v) for v in q],
                           "n_valid_draws": int(len(xs)),
-                          "note": "3 点档抛物线为精确拟合，CI 几乎全部由假设的 eval 噪声驱动——真实不确定度更大"})
+                          "note": "分位数只反映所设噪声；3点无残差自由度，未覆盖种子/日程/形状误差"})
         else:
             entry["note"] = f"有效抽取仅 {len(xs)}，谷底不可定位"
         out[f"bootstrap_{tag}"] = entry
@@ -344,211 +396,120 @@ def fit_level(level_name, c_nominal, pts):
     return out
 
 
-def fit_slope(level_fits, points=None):
-    """log10 N* ∝ log10 C。锚点分级：①谷底被网格兜住的档用抛物线顶点（可靠）；
-    ②谷底滑出网格的档（N_star_inside_grid=False）顶点为外推伪影（LOO 摆幅 0.3k-250k 量级），
-    只给 argmin 上界（N* ≤ 最优点 N）与一次通过池下界（N ≥ C/(6·306M)）。
-    斜率报三口径：in-grid 顶点两档 / 全档 argmin / argmin₁+顶点₂₃ 混合——band 即诚实区间。"""
-    out = {
-        "slope_def": "d log10 N* / d log10 C（N*=各档 compute-optimal 非嵌入参数；N 非嵌入口径）",
-        "lit_compare": {"kaplan_N_star_vs_C": 0.73, "chinchilla_N_star_vs_C": 0.5,
-                        "note": "文献值为各自大模型/大算力口径的 N*∝C^γ 指数（03-引用复核清单 警-2/警-4 已复核："
-                                "Kaplan §6.1/Table 5 p_N=0.73；Chinchilla iso-FLOP 法 0.49/0.51）；本实验是 "
-                                "OWT/sp-8k/≤23M 参数缩小版，C 仅跨 1 个数量级，只做同型对照不比大小"},
-    }
-    # 每档锚点：vertex（in-grid 才可靠）与 argmin（实测最优点，恒为 N* 上界）
-    anchors = {}
-    for f in level_fits:
-        a = {"level": f["level"], "log10C": math.log10(f["C_actual_mean"]),
-             "vertex": f["log10_N_star"], "vertex_in_grid": f["N_star_inside_grid"]}
-        if points is not None:
-            pts = [p for p in points if p["level"] == f["level"]]
-            if pts:
-                best = min(pts, key=lambda p: p["eval_final"])
-                a["argmin"] = math.log10(best["N"])
-                a["argmin_name"] = best["name"]
-        anchors[f["level"]] = a
-    out["anchors"] = list(anchors.values())
-
+def fit_slope(level_fits,points=None):
+    """不同锚点选择下的描述性斜率；没有连续最优界或置信带。"""
+    out={"slope_def":"所选log N锚点对log C的OLS描述",
+         "lit_compare":{"kaplan":.73,"chinchilla_isoflop":.5,
+                        "note":"平移截距后只比斜率形状，不能据本小网格确认或推翻文献定律"}}
+    anchors=[]
+    for fit in level_fits:
+        pts=[p for p in (points or []) if p["level"]==fit["level"] and usable_point(p)]
+        if not pts:continue
+        best=min(pts,key=lambda p:p["eval_final"])
+        anchors.append({"level":fit["level"],"log10C":math.log10(fit["C_actual_mean"]),
+                        "vertex":fit["log10_N_star"],"vertex_in_grid":fit["N_star_inside_grid"],
+                        "argmin":math.log10(best["N"]),"argmin_name":best["name"]})
+    out["anchors"]=anchors
     def ols(pairs):
-        lc = np.array([p[0] for p in pairs]); ln = np.array([p[1] for p in pairs])
-        s, b = np.polyfit(lc, ln, 1)
-        return float(s), float(b)
-
-    ingrid = [a for a in anchors.values() if a["vertex"] is not None and a["vertex_in_grid"] and "argmin" in a]
-    out["slope_ingrid_vertices"] = None
-    if len(ingrid) >= 2:
-        s, b = ols([(a["log10C"], a["vertex"]) for a in ingrid])
-        out["slope_ingrid_vertices"] = {
-            "slope": s, "levels": [a["level"] for a in ingrid],
-            "note": f"仅用谷底被网格兜住的 {len(ingrid)} 档抛物线顶点（可靠锚点）"}
-        ll = [(a["log10C"], a["vertex"]) for a in ingrid]
-    argmins = [a for a in anchors.values() if "argmin" in a]
-    if len(argmins) >= 2:
-        s, b = ols([(a["log10C"], a["argmin"]) for a in argmins])
-        out["slope_argmin_all"] = {
-            "slope": s, "levels": [a["level"] for a in argmins],
-            "note": "argmin=各档实测最优 N（N* 的上界：真谷底 ≤ argmin）→ 此斜率是斜率的下界口径"}
-        # 混合：低档 argmin（若其顶点出网格）+ 其余顶点
-        mixed = [(a["log10C"], a["vertex"] if (a["vertex"] is not None and a["vertex_in_grid"]) else a["argmin"])
-                 for a in argmins]
-        s2, _ = ols(mixed)
-        out["slope_mixed"] = {"slope": s2, "note": "低档取 argmin 上界、高档取 in-grid 顶点——斜率的上界口径"}
-        if "slope_ingrid_vertices" in out and out["slope_ingrid_vertices"]:
-            lo_s = min(out["slope_argmin_all"]["slope"], out["slope_ingrid_vertices"]["slope"], s2)
-            hi_s = max(out["slope_argmin_all"]["slope"], out["slope_ingrid_vertices"]["slope"], s2)
-        else:
-            lo_s, hi_s = min(out["slope_argmin_all"]["slope"], s2), max(out["slope_argmin_all"]["slope"], s2)
-        out["slope_band"] = [lo_s, hi_s]
-        out["slope_band_note"] = ("诚实区间=三口径包络：argmin 口径是下界（真 N* 更小→斜率更大），"
-                                  "顶点口径受近平局三点拟合摆动影响；正文引斜率必须引 band 而非点估计")
-    # 外推顶点档的警戒标记
-    frag = [a["level"] for a in anchors.values() if a["vertex"] is not None and not a["vertex_in_grid"]]
-    if frag:
-        out["extrapolated_vertex_levels"] = {
-            "levels": frag,
-            "warning": ("谷底滑出网格左沿（实测曲线整档单调），抛物线顶点为外推伪影：LOO 摆幅可达数量级，"
-                        "且可低于一次通过池硬下界 N=C/(6·306M)——严禁把该顶点当 N* 引用；"
-                        "该档只报 N*<argmin 上界 + 池下界")}
-    # L*(C) 幂律（in-grid 档顶点损失）
-    if len(ingrid) >= 2:
-        ll = [(a["log10C"], math.log10(next(f["L_star_pred"] for f in level_fits if f["level"] == a["level"])))
-              for a in ingrid]
-        ls, _ = ols(ll)
-        out["L_star_power_in_C_ingrid"] = float(ls)
-    # D*/N* 比（token/param at optimum）——Chinchilla 20:1 对照
-    if points is not None:
-        ratios = {}
-        for f in level_fits:
-            n_star = f["N_star"] if (f["N_star"] is not None and f["N_star_inside_grid"]) else None
-            if n_star:
-                ratios[f["level"]] = round(f["C_actual_mean"] / (6 * n_star * n_star), 1)
-        out["D_over_N_at_optimum"] = {
-            "ratios_tokens_per_param": ratios,
-            "chinchilla_ref": "~20 token/param（大算力口径）；本实验比值随 C 增大而降（数据富余度随规模缓解）",
-        }
+        if len(pairs)<2 or len({p[0] for p in pairs})<2:return None
+        slope,intercept=np.polyfit([p[0] for p in pairs],[p[1] for p in pairs],1)
+        return {"slope":float(slope),"intercept":float(intercept)}
+    inside=[a for a in anchors if a["vertex"] is not None and a["vertex_in_grid"]]
+    out["slope_ingrid_vertices"]=ols([(a["log10C"],a["vertex"]) for a in inside])
+    out["slope_argmin_all"]=ols([(a["log10C"],a["argmin"]) for a in anchors])
+    out["slope_mixed"]=ols([(a["log10C"],a["vertex"] if a in inside else a["argmin"]) for a in anchors])
+    slopes=[out[k]["slope"] for k in ("slope_ingrid_vertices","slope_argmin_all","slope_mixed") if out[k]]
+    out["anchor_sensitivity_range"]=[min(slopes),max(slopes)] if slopes else None
+    out["interpretation"]="三种选择的变化范围，非上下界、非置信区间；in-grid不保证真实谷底"
+    out["extrapolated_vertex_levels"]=[a["level"] for a in anchors if a["vertex"] is not None and not a["vertex_in_grid"]]
+    losses=[(math.log10(f["C_actual_mean"]),math.log10(f["L_star_pred"])) for f in level_fits
+            if f["N_star_inside_grid"] and f["L_star_pred"] is not None and f["L_star_pred"]>0]
+    fit=ols(losses)
+    out["L_star_power_in_C_ingrid"]=fit["slope"] if fit else None
+    out["D_over_N_candidates"]={f["level"]:f["C_actual_mean"]/(6*f["N_star"]**2)
+        for f in level_fits if f["N_star_inside_grid"] and f["N_star"] is not None}
     return out
 
 
 def analyze(report):
-    """对已完成点重算全部分析（主流程末尾与 --analyze-only 共用）。"""
-    pts = report["points"]
-    level_fits = []
-    for lname, c_nom, cfgs in LEVELS:
-        lp = sorted([p for p in pts if p["level"] == lname], key=lambda p: p["N"])
-        if not lp:
+    """部分网格只列观测；每档至少3个合法不同N后才作条件拟合。"""
+    if report.get("meta",{}).get("run_identity",{}).get("smoke"):
+        report["level_fits"]=[];report["slope_fit"]={}
+        report["analysis_note"]="smoke不是iso-FLOP网格，不拟合最优规模";return report
+    pts=[p for p in report["points"] if usable_point(p) and p.get("budget_matched",True)]
+    report["excluded_points"]=[p.get("name") for p in report["points"]
+                              if not usable_point(p) or not p.get("budget_matched",True)]
+    fits=[];partial=[]
+    for name,budget,cfgs in LEVELS:
+        group=sorted([p for p in pts if p["level"]==name],key=lambda p:p["N"])
+        if len(group)<3:
+            if group:partial.append({"level":name,"n_points":len(group),"status":"不足3点，不作二次拟合"})
             continue
-        fit = fit_level(lname, c_nom, lp)
-        fit["complete"] = len(lp) == len(cfgs)
-        if not fit["complete"]:
-            fit["note_incomplete"] = f"仅 {len(lp)}/{len(cfgs)} 点完成，拟合为部分结果"
-        level_fits.append(fit)
-    report["level_fits"] = level_fits
-    report["slope_fit"] = fit_slope(level_fits, points=pts)
+        fit=fit_level(name,budget,group);fit["complete"]=len(group)==len(cfgs);fits.append(fit)
+    report["level_fits"]=fits;report["partial_levels"]=partial
+    report["slope_fit"]=fit_slope(fits,pts)
     return report
 
 
 # ---------------- 主流程 ----------------
 def main():
-    ap = argparse.ArgumentParser(description="ch11 iso-FLOP 网格（3 档算力 × N 网格，D=C/(6N)）")
-    ap.add_argument("--levels", type=str, default="all", help="all 或逗号分隔档名（c1,c2,c3）")
-    ap.add_argument("--smoke", action="store_true", help="冒烟：c1 三点各 300 步、每 100 步 eval，写 iso_flop_smoke.json")
-    ap.add_argument("--analyze-only", action="store_true", help="只重跑分析（从已有 iso_flop.json）")
-    ap.add_argument("--device", type=str, default="mps" if torch.backends.mps.is_available() else "cpu")
-    args = ap.parse_args()
-    os.makedirs(OUT_DIR, exist_ok=True)
-    out_name = "iso_flop_smoke" if args.smoke else "iso_flop"
-    out_json = os.path.join(OUT_DIR, f"{out_name}.json")
-
-    if args.analyze_only:
-        with open(out_json, encoding="utf-8") as f:
-            report = json.load(f)
-        analyze(report)
-        with open(out_json, "w", encoding="utf-8") as f:
-            json.dump(report, f, ensure_ascii=False, indent=2)
-        print(json.dumps({"level_fits": report["level_fits"], "slope_fit": report["slope_fit"]},
-                         ensure_ascii=False, indent=2), flush=True)
-        print(f" -> {out_json}", flush=True)
-        return
-
-    level_names = [l[0] for l in LEVELS] if args.levels == "all" else \
-        [s.strip() for s in args.levels.split(",")]
-    for n in level_names:
-        assert n in [l[0] for l in LEVELS], f"未知档名 {n}"
-    if args.smoke:
-        level_names = ["c1"]
-
-    train_stream = TrainStream(TOKENS_BIN)
-    device = args.device
-
-    # ---- 断点续跑：读已有 JSON，跳过已完成点 ----
-    if os.path.exists(out_json):
-        with open(out_json, encoding="utf-8") as f:
-            report = json.load(f)
-        done = {p["name"]: p for p in report["points"]}
-        report["points"] = list(done.values())
-        print(f"[续跑] 已有 {len(done)} 点完成：{sorted(done)}", flush=True)
+    global OUT_DIR,CH08_DIR,TOKENS_BIN,EVAL_BIN,BOOT_DRAWS,SEED
+    ap=argparse.ArgumentParser(description="iso-FLOP网格；同名断点仅在完整身份一致时恢复")
+    ap.add_argument("--levels",default="all")
+    ap.add_argument("--smoke",action="store_true")
+    ap.add_argument("--analyze-only",action="store_true")
+    ap.add_argument("--input",type=Path,help="只分析时的原报告")
+    ap.add_argument("--out-dir",default=OUT_DIR)
+    ap.add_argument("--data-dir",default=CH08_DIR)
+    ap.add_argument("--out-name")
+    ap.add_argument("--bootstrap-draws",type=int,default=BOOT_DRAWS)
+    ap.add_argument("--seed",type=int,default=SEED)
+    ap.add_argument("--device",choices=["cpu","mps"],default="mps" if torch.backends.mps.is_available() else "cpu")
+    a=ap.parse_args()
+    if a.bootstrap_draws<0:raise ValueError("bootstrap次数不能为负")
+    BOOT_DRAWS=a.bootstrap_draws;SEED=a.seed;OUT_DIR=a.out_dir;CH08_DIR=a.data_dir
+    TOKENS_BIN=os.path.join(CH08_DIR,"tokens.bin");EVAL_BIN=os.path.join(CH08_DIR,"eval.bin")
+    name=a.out_name or ("iso_flop_analysis" if a.analyze_only else "iso_flop_smoke" if a.smoke else "iso_flop")
+    if Path(name).name!=name or name in ("",".",".."):raise ValueError("out-name只接受文件名")
+    name=name[:-5] if name.endswith(".json") else name
+    if name in ("",".",".."):raise ValueError("无效产物名称")
+    target=Path(OUT_DIR)/(name+".json");target.parent.mkdir(parents=True,exist_ok=True)
+    if a.analyze_only:
+        source=a.input or Path(OUT_DIR)/"iso_flop.json"
+        if target.exists() or source.resolve()==target.resolve():raise FileExistsError("分析结果不得覆盖输入或旧输出")
+        report=json.loads(source.read_text());analyze(report)
+        report["analysis_source"]={"path":str(source),"identity":file_identity(source)}
+        save_json(target,report);print(target);return
+    names=[x[0] for x in LEVELS] if a.levels=="all" else a.levels.split(",")
+    if a.smoke:names=["c1"]
+    if not names or any(n not in {x[0] for x in LEVELS} for n in names):raise ValueError("未知算力档")
+    stream=TrainStream(TOKENS_BIN)
+    identity={**run_identity(a.device,stream),"smoke":a.smoke,"grid":LEVELS}
+    # JSON把tuple转list；标准化后可跨进程精确比较。
+    identity=json.loads(json.dumps(identity))
+    if target.exists():
+        report=json.loads(target.read_text())
+        if report.get("meta",{}).get("run_identity")!=identity:
+            raise ValueError("已有报告身份不同或为旧版，请使用新的out-name")
     else:
-        done = {}
-        report = {"meta": {}, "points": []}
-
-    smoke_note = ("（冒烟档：300 步上限+每 100 步 eval，不构成 iso-FLOP 点，仅验证管道）" if args.smoke else "")
-    report["meta"] = {
-        "date": time.strftime("%Y-%m-%d %H:%M:%S"), "seed": SEED, "device": device,
-        "torch": torch.__version__ + smoke_note,
-        "corpus": "OpenWebText 子采样（ch08/data_prep.py 产物：log/book2-ch08/tokens.bin 流首部，sp-8k）",
-        "tokenizer": "sp-8k BPE byte_fallback（与 ch08 族同一分词器与同一 eval 窗集，数字可直接同图）",
-        "experiment": ("iso-FLOP 网格缩小版：C∈{6e14,2e15,6e15} 三档，每档 D=C/(6N)，"
-                       "C2=2e15 加密 5 点（N 对数等距）；每档抛物线拟合取 N*(C)，再拟合 log N*∝log C"),
-        "flops_def": "C=6ND（N=非嵌入参数，D=已处理 token；6=2 前向+4 反向；忽略 attention 分数项与 embedding 查表）",
-        "batch_block": f"b{BATCH}×s{BLOCK}（{TPB} token/步）",
-        "optimizer": f"AdamW(betas=0.9,0.95,wd={WDECL})+grad_clip1.0",
-        "schedule": (f"lr {PEAK_LR} 余弦降至 {PEAK_LR*MIN_LR_RATIO:.0e}，warmup={WARMUP} 统一"
-                     "（notes/07 §3.1 教训：无 warmup 族 L(N) 倒挂）；注意各点总步数∝D、日程形状跨点不严格一致"
-                     "（余弦各自退火到自身终点——Chinchilla iso-FLOP 同型局限，如实声明）"),
-        "data_protocol": ("顺序连续分块一次通过（零重复 epoch）；各点自流首部起步、长度=自身 D"
-                          "（各点数据互为嵌套前缀，数据分布跨点固定，单变量=N×D 权衡）"),
-        "eval_protocol": (f"每 {EVAL_EVERY} 步 + 终步：eval 池（ch08 eval.bin，与训练段互斥）固定 49 窗 "
-                          f"{EVAL_BATCHES*TPB:,} token，fp32 前向，窗集与 ch08/run_family.py 逐位相同"),
-        "precision": "train bf16 autocast / eval fp32",
-        "model_note": "块实现 import 自 ch04/warmup_ablation.py（from warmup_ablation import GPT, Block；"
-                      "pre-LN + ln_f + tied + std=0.02 初始化）",
-        "grid_note": ("N 网格对数等距；head_dim 以 64 为主（1.86M=80 / 4.18M=52 / 6.05M=56 / 1.5M=72 等个别点例外）。"
-                      "初版网格按 ch08 Kaplan 曲线预设谷底偏大 N，实测 C1 谷底 ≤3.1M 后自适应下移"
-                      "（见文件头【网格自适应记录】）；最大 D≈239.5M ≤306M 训练池一次通过 ≤ 设计书 ~110M 预算"
-                      "的超出已在案（为保 iso-FLOP 口径 D=C/(6N) 严格成立，数据池充足无重复）"),
-        "argv": " ".join(sys.argv[1:]),
-    }
-    with open(out_json, "w", encoding="utf-8") as f:
-        json.dump(report, f, ensure_ascii=False, indent=2)
-
-    t_all = time.perf_counter()
-    for lname, c_nom, cfgs in LEVELS:
-        if lname not in level_names:
-            continue
-        for name, n_layer, n_embd, n_head in cfgs:
-            if name in done:
-                continue
-            result = run_point(name, lname, c_nom, n_layer, n_embd, n_head, device, train_stream,
-                               steps_override=300 if args.smoke else None,
-                               eval_every=100 if args.smoke else EVAL_EVERY)
-            report["points"].append(result)
-            report["points"].sort(key=lambda p: (p["level"], p["N"]))
-            analyze(report)
-            with open(out_json, "w", encoding="utf-8") as f:
-                json.dump(report, f, ensure_ascii=False, indent=2)
-            print(f"[进度] {len(report['points'])} 点完成，累计 {(time.perf_counter()-t_all)/60:.1f} min", flush=True)
-
-    analyze(report)
-    with open(out_json, "w", encoding="utf-8") as f:
-        json.dump(report, f, ensure_ascii=False, indent=2)
-    print(f"\n[全部完成] {len(report['points'])} 点 / 总 {(time.perf_counter()-t_all)/60:.1f} min -> {out_json}", flush=True)
-    for p in report["points"]:
-        print(f"  {p['name']} C={p['C_nominal']:.0e} N={p['N']:>10,d} D={p['D_tokens']:>11,d} "
-              f"steps={p['steps']:>6,d} eval_final={p['eval_final']}", flush=True)
-    print("\n[每档谷底与斜率]", flush=True)
-    print(json.dumps({"level_fits": report["level_fits"], "slope_fit": report["slope_fit"]},
-                     ensure_ascii=False, indent=2), flush=True)
+        report={"meta":{"run_identity":identity,"precision":"bf16/fp32" if a.device=="mps" else "fp32",
+                        "protocol":"位置一次通过；各点不同N/D/日程/形状，不能称严格单因素",
+                        "smoke_note":"300步独立日程，不是iso-FLOP点" if a.smoke else None},"points":[]}
+    save_json(target,report)
+    done={p["name"] for p in report["points"] if usable_point(p)}
+    for level,budget,cfgs in LEVELS:
+        if level not in names:continue
+        for point,layers,width,heads in (cfgs[:3] if a.smoke else cfgs):
+            if point in done:continue
+            result=run_point(point,level,budget,layers,width,heads,a.device,stream,
+                             steps_override=300 if a.smoke else None,
+                             eval_every=100 if a.smoke else EVAL_EVERY,out_name=name)
+            report["points"]=[p for p in report["points"] if p["name"]!=point]+[result]
+            report["points"].sort(key=lambda p:(p["level"],p["N"]))
+            if not a.smoke:analyze(report)
+            save_json(target,report)
+            if not result["completed"]:raise RuntimeError("本点未完成，保留断点；不继续假报全网格成功")
+    print(f"[本次所选范围结束] {target}")
 
 
 if __name__ == "__main__":

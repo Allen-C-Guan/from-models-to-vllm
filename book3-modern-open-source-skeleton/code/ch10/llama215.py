@@ -15,12 +15,12 @@
 #                        —— 参数逐项账 assert 207,119,360 + 随机 token 初始 loss 自检（ln V + sigma^2/2）
 #   HF 结构对拍（分钟级）：python llama215.py --parity
 #                        —— 同 config 随机权重 strict 直搬 HF LlamaForCausalLM，CPU fp32 对拍 logits
-#   TinyLlama 实权重对拍：python llama215.py --tinyllama
+#   TinyLlama 实权重对拍：python llama215.py --tinyllama --snapshot /本地完整快照目录
 #                        —— 载入 TinyLlama_v1.1（Apache-2.0，HF 缓存实物）真权重到本类，对拍 + 贪心续写
 # 产物：对拍 JSON 落 log/book3-ch10/{llama215_parity, llama215_tinyllama}_{out}.json（不入库）。
 # 依赖链：ch02/ch03/ch04/ch06 四章教学重写件（各自与 llama_slots 正身逐位一致——对拍已在前章验收）
 #       ＋ 00-feasibility/llama_slots.py（LLaMAConfig 鸭子类型正身）——五个目录见文件内 sys.path 段；
-#       transformers 5.18.0 仅在对拍段 import。
+#       transformers仅在对拍段import；实际版本写入报告，本轮5.14.1。
 import argparse
 import json
 import math
@@ -43,7 +43,7 @@ from rope import apply_rope, build_rope_cache              # noqa: E402  位置�
 from gqa import GroupedQueryAttention                       # noqa: E402  注意力插槽（第 6 章）
 from llama_slots import LLaMAConfig                        # noqa: E402  config 鸭子类型正身（组件库）
 
-REPO_ROOT = os.path.abspath(os.path.join(BOOK3, "..", ".."))
+REPO_ROOT = os.getcwd()  # 从工作区根目录启动；数据与产物路径可显式传入。
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book3-ch10")
 SEED = 20261002                                            # 全书统一种子
 
@@ -51,6 +51,20 @@ SEED = 20261002                                            # 全书统一种子
 LLAMA_215M = dict(vocab_size=32000, hidden_size=1024, intermediate_size=2816,
                   num_hidden_layers=12, num_attention_heads=16, num_key_value_heads=8,
                   max_position_embeddings=8192, rope_theta=10000.0, rms_norm_eps=1e-5)
+
+
+def validate_config(cfg):
+    for key in ('vocab_size','hidden_size','intermediate_size','num_hidden_layers',
+                'num_attention_heads','num_key_value_heads','head_dim','max_position_embeddings'):
+        if type(getattr(cfg,key)) is not int or getattr(cfg,key)<=0:
+            raise ValueError(f'{key}必须为正整数')
+    if cfg.hidden_size!=cfg.num_attention_heads*cfg.head_dim or cfg.head_dim%2 or cfg.num_attention_heads%cfg.num_key_value_heads:
+        raise ValueError('整机需d=h*head_dim、偶数head_dim、查询头数为KV头数的整数倍')
+    for key in ('rope_theta','rms_norm_eps'):
+        if not math.isfinite(getattr(cfg,key)) or getattr(cfg,key)<=0:
+            raise ValueError(f'{key}必须为有限正数')
+    if not math.isfinite(cfg.initializer_range) or cfg.initializer_range<0:
+        raise ValueError('initializer_range必须为有限非负数')
 
 
 class Llama215DecoderLayer(nn.Module):
@@ -78,7 +92,7 @@ class Llama215Backbone(nn.Module):
     """embed_tokens + L 层 DecoderLayer + 终态 RMSNorm。命名对齐 HF LlamaModel（model.*）。
 
     入口无位置查表（wpe 已在第 4 章拆除）：位置信息由每层注意力内的 apply_rope 现做，
-    cos/sin 表在 forward 里按当前窗长现算——n 任意大，无查表上限。
+    cos/sin按当前窗长现算，无学习式位置表硬上限；实际长度仍受内存、数值与训练范围限制。
     """
 
     def __init__(self, cfg: LLaMAConfig):
@@ -101,21 +115,23 @@ class Llama215Backbone(nn.Module):
 class Llama215(nn.Module):
     """LLaMA 式整机（207M 定版）：wte + L x [pre-RMSNorm -> GQA | pre-RMSNorm -> SwiGLU]
     + 终态 RMSNorm + untied lm_head。前向接口与 Book2 GPT2 一致：idx (B,n) -> logits (B,n,V)；
-    给 targets 时返回逐 token 交叉熵（fp32 口径，对齐 HF）。
+    targets须已右移一位；返回fp32交叉熵在全部有效目标上的均值标量。
 
     state_dict 键与 HF LlamaForCausalLM 完全同名（model.embed_tokens.weight /
     model.layers.i.self_attn.q_proj.weight / ... / model.norm.weight / lm_head.weight），
-    strict 直搬即结构对拍（--parity）；换 cfg 实例化即载 TinyLlama 等同型真权重（--tinyllama）。
+    strict搬运检查键与形状，随后比较指定输入的数值；只支持本组件可表达的同型配置。
     cfg 缺省 = 215M 定版；init_std 缺省 = config initializer_range 0.02（Book2 式 (10.3) 的纪律）。
     """
 
     def __init__(self, cfg: LLaMAConfig = None, init_std: float | None = None):
         super().__init__()
         cfg = cfg or LLaMAConfig(**LLAMA_215M)
+        validate_config(cfg)
         self.cfg = cfg
         self.model = Llama215Backbone(cfg)                                    # 命名对齐 HF（model.*）
         self.lm_head = nn.Linear(cfg.hidden_size, cfg.vocab_size, bias=False)  # untied（第 5 章附加一刀）
-        std = init_std or cfg.initializer_range
+        std = cfg.initializer_range if init_std is None else init_std
+        if not math.isfinite(std) or std < 0:raise ValueError("init_std必须为有限非负数")
         self.apply(lambda m: self._init(m, std))
 
     @staticmethod
@@ -135,6 +151,8 @@ class Llama215(nn.Module):
         return n
 
     def forward(self, idx, targets=None):
+        if idx.ndim != 2 or min(idx.shape) <= 0:raise ValueError("idx须为非空(B,n)")
+        if targets is not None and targets.shape != idx.shape:raise ValueError("targets须与idx同形且预先右移")
         B, n = idx.shape                                               # (B,n)
         x = self.model(idx)                                            # (B,n,C)（backbone 含 RoPE 现算）
         logits = self.lm_head(x)                                       # (B,n,C)·(C,V) -> (B,n,V)
@@ -147,6 +165,7 @@ class Llama215(nn.Module):
 
 def hand_account(cfg: LLaMAConfig):
     """参数逐项手算（无 bias、untied、无 wpe）。返回 (明细 dict, 总数)——assert 的对账另一侧。"""
+    validate_config(cfg)
     d, L, V, f = cfg.hidden_size, cfg.num_hidden_layers, cfg.vocab_size, cfg.intermediate_size
     attn = d * d * 2 + d * cfg.head_dim * cfg.num_key_value_heads * 2      # q/o 全宽 + k/v 按 h_kv 缩（GQA）
     mlp = 3 * d * f                                                        # gate/up/down 三投影（SwiGLU）
@@ -171,11 +190,9 @@ def self_test():
     print(f"[参数账] 手算 = {hand:,}   实测 = {total:,}   non-emb = {m.n_params(True):,}")
     assert total == hand == 207_119_360, f"参数逐项对账失败：{total} != {hand} != 207,119,360"
 
-    # 初始 loss 自检（随机 token，CPU fp32，next-token 目标）：untied 下 E[L0] = ln V + sigma^2/2，
-    # sigma^2 = d*s^2（末态 RMSNorm 后 ||h||=sqrt(d)、每维 RMS=1，lm_head 行 N(0,s^2) → logit 方差
-    # = s^2*||h||^2 = d*s^2 = 1024*0.02^2 = 0.4096）。绑定头的自泄漏路径（Book2 式 (10.3) 的
-    # 「复读机」方向：E[z_target] > 0 偷走概率质量）在 untied 独立初始化下不存在——E[z_t] 实测归零。
-    # 注：窗长取 256（训练窗 1024 的缩小版）——窗太短时 E[z_t] 的抽样噪声变大，方差账不变。
+    # 独立输出头：二阶近似E[loss]≈lnV+Var(logits)/2，并非精确等式。
+    # 末层RMSNorm增益初值1，典型||h||²≈d，输出头每行方差s²，故logit方差≈ds²。
+    # 目标logit样本均值可非零；不能称为信息泄漏，也不能将一次测量当严格期望。
     g = torch.Generator().manual_seed(SEED)
     x = torch.randint(0, cfg.vocab_size, (2, 256), generator=g)         # (2,256)
     xp, yp = x[:, :-1], x[:, 1:]                                        # next-token 目标（训练口径）
@@ -187,136 +204,136 @@ def self_test():
     sig2_pred = cfg.hidden_size * cfg.initializer_range ** 2
     print(f"[初始 loss] 实测 {loss.item():.4f} | ln V = {ln_v:.4f} | 预言 ln V + d*s^2/2 = "
           f"{ln_v + sig2_pred / 2:.4f}（sigma^2 = {sig2_pred:.4f}，实测 logit 方差 {var:.4f}）"
-          f" | E[z_target] = {z_t.mean().item():+.4f}（泄漏项，untied 下应为 0）")
+          f" | E[z_target] = {z_t.mean().item():+.4f}（目标logit样本均值，期望近似为0）")
     assert abs(loss.item() - (ln_v + sig2_pred / 2)) < 0.05, "初始 loss 偏离 ln V + d*s^2/2 的预言"
-    assert abs(z_t.mean().item()) < 0.05, "E[z_target] 显著非零——untied 不该有自泄漏"
+    assert abs(z_t.mean().item()) < 0.05, "目标logit样本均值偏离本自测容差；检查尺度与目标构造"
     assert loss.item() - ln_v < 1.0, "初始 loss 距 ln V 超过 1 nat——初始化或前向有病"
-    print("llama215 自测全部通过（参数逐位 207,119,360；初始 loss = ln V + d*s^2/2 千分位咬合）")
+    print("llama215自测通过（参数207,119,360；初始loss位于指定近似容差内）")
 
 
-# ---------------- HF 结构对拍：同 config 随机权重 strict 直搬（探针 E 链路，207M 档） ----------------
-def parity_hf(out_name="run1"):
-    from transformers import LlamaConfig, LlamaForCausalLM
+# ---------------- 可复查的参数搬运与指定输入数值检查 ----------------
+def output_path(kind, out_name, out_dir=None):
+    from pathlib import Path
+    if Path(out_name).name != out_name or out_name in ('', '.', '..'):
+        raise ValueError('out-name须为单个文件名')
+    path=Path(out_dir or OUT_DIR)/f'llama215_{kind}_{out_name}.json'
+    if path.exists():raise FileExistsError('已有同名产物，请更换out-name')
+    path.parent.mkdir(parents=True,exist_ok=True)
+    return path
 
+
+def save_report(path,report):
+    with path.open('x',encoding='utf-8') as f:
+        json.dump(report,f,ensure_ascii=False,indent=2,allow_nan=False)
+    if report['verdict']!='PASS':raise AssertionError(f'数值检查失败，详见{path}')
+    return report
+
+
+def parity_hf(out_name='run1',out_dir=None,config=None,batch=2,length=128):
+    """CPU fp32指定输入对拍；config可缩小以检查接口，不将小档结果写成207M实测。"""
+    from transformers import LlamaConfig,LlamaForCausalLM
+    path=output_path('parity',out_name,out_dir)
+    if batch<1 or length<1:raise ValueError('batch/length须正')
+    c=dict(LLAMA_215M if config is None else config)
     torch.manual_seed(SEED)
-    ours = Llama215()                                                   # 215M 定版
-    c = LLAMA_215M
-    hf_cfg = LlamaConfig(vocab_size=c["vocab_size"], hidden_size=c["hidden_size"],
-                         intermediate_size=c["intermediate_size"],
-                         num_hidden_layers=c["num_hidden_layers"],
-                         num_attention_heads=c["num_attention_heads"],
-                         num_key_value_heads=c["num_key_value_heads"],
-                         max_position_embeddings=c["max_position_embeddings"],
-                         rope_theta=c["rope_theta"], rms_norm_eps=c["rms_norm_eps"],
-                         tie_word_embeddings=False, attention_bias=False, mlp_bias=False,
-                         attention_dropout=0.0)
-    hf = LlamaForCausalLM(hf_cfg).eval()
-    hf.load_state_dict(ours.state_dict(), strict=True, assign=True)     # 键不一致直接抛错——本身就是验收
-    print(f"[搬运] ours {ours.n_params():,} -> HF LlamaForCausalLM（strict=True 通过）")
-
-    g = torch.Generator().manual_seed(SEED)
-    x = torch.randint(0, c["vocab_size"], (2, 128), generator=g)        # (2,128)
-    t0 = time.perf_counter()
+    ours=Llama215(LLaMAConfig(**c)).eval()
+    hf_cfg=LlamaConfig(**c,tie_word_embeddings=False,attention_bias=False,mlp_bias=False,attention_dropout=0.)
+    hf_cfg._attn_implementation='eager'
+    hf=LlamaForCausalLM(hf_cfg).eval()
+    hf.load_state_dict(ours.state_dict(),strict=True,assign=True)
+    g=torch.Generator().manual_seed(SEED)
+    tokens=torch.randint(0,ours.cfg.vocab_size,(batch,length+1),generator=g)
+    x,y=tokens[:,:-1],tokens[:,1:]  # 两边都用同一批next-token目标，而非x,x。
+    started=time.perf_counter()
     with torch.no_grad():
-        logits_ours, loss_ours = ours(x, x)                             # (2,128,V)
-        logits_hf = hf(x).logits                                        # (2,128,V)
-    delta = (logits_ours - logits_hf).abs().max().item()
-    argmax_agree = (logits_ours.argmax(-1) == logits_hf.argmax(-1)).float().mean().item()
-    top5_agree = (logits_ours.topk(5, -1).indices.sort(-1).values
-                  == logits_hf.topk(5, -1).indices.sort(-1).values).float().mean().item()
-    loss_hf = F.cross_entropy(logits_hf.reshape(-1, c["vocab_size"]).float(), x.reshape(-1)).item()
+        lo,loss=ours(x,y);lh=hf(x).logits
+    delta=float((lo-lh).abs().max())
+    argmax=float((lo.argmax(-1)==lh.argmax(-1)).float().mean())
+    k=min(5,ours.cfg.vocab_size)
+    same_set=(lo.topk(k,-1).indices.sort(-1).values==lh.topk(k,-1).indices.sort(-1).values).all(-1)
+    topk=float(same_set.float().mean())
+    hf_loss=float(F.cross_entropy(lh.reshape(-1,ours.cfg.vocab_size).float(),y.reshape(-1)))
+    torch.manual_seed(SEED+1)
+    other=Llama215(LLaMAConfig(**c)).eval()
+    with torch.no_grad():sanity=float((other(x)[0]-lh).abs().max())
+    loss_gap=abs(float(loss)-hf_loss)
+    passed=all(math.isfinite(v) for v in (delta,argmax,topk,sanity,loss_gap)) and delta<1e-4 and argmax==1 and topk==1 and loss_gap<1e-4 and sanity>.1
+    report=dict(seed=SEED,config=vars(ours.cfg),torch_version=str(torch.__version__),
+                transformers_version=__import__('transformers').__version__,precision='CPU fp32 / HF eager',
+                input_shape=list(x.shape),target_protocol='next-token shift by one',
+                parity=dict(ours_params=ours.n_params(),max_abs_diff_logit=delta,argmax_agreement=argmax,
+                            top5_set_agreement=topk,top_k=k,loss_abs_diff=loss_gap,
+                            sanity_unshared_max_abs_diff=sanity,wall_sec=time.perf_counter()-started),
+                verdict='PASS' if passed else 'FAIL')
+    print(report['parity'])
+    return save_report(path,report)
 
-    # sanity：两个独立随机初始化的模型 logits 应显著不同（证明搬运真的发生了）
-    torch.manual_seed(SEED + 1)
-    other = Llama215()
+
+def compatible_config(hc):
+    """仅接受本组件线可表达的无偏置、untied、默认RoPE Llama；未知变体不能静默近似。"""
+    rope=getattr(hc,'rope_parameters',None) or getattr(hc,'rope_scaling',None) or {}
+    if hc.model_type!='llama' or hc.tie_word_embeddings or getattr(hc,'attention_bias',False) or getattr(hc,'mlp_bias',False):
+        raise ValueError('仅支持Llama无偏置untied配置')
+    if hc.hidden_act!='silu' or rope.get('rope_type',rope.get('type','default'))!='default':
+        raise ValueError('不支持此激活或RoPE缩放；不能只读theta便忽略其他字段')
+    if getattr(hc,'head_dim',hc.hidden_size//hc.num_attention_heads)!=hc.hidden_size//hc.num_attention_heads:
+        raise ValueError('本整机不支持独立head_dim')
+    theta=rope.get('rope_theta',getattr(hc,'rope_theta',10000.))
+    return LLaMAConfig(vocab_size=hc.vocab_size,hidden_size=hc.hidden_size,intermediate_size=hc.intermediate_size,
+                      num_hidden_layers=hc.num_hidden_layers,num_attention_heads=hc.num_attention_heads,
+                      num_key_value_heads=hc.num_key_value_heads,max_position_embeddings=hc.max_position_embeddings,
+                      rope_theta=theta,rms_norm_eps=hc.rms_norm_eps,initializer_range=hc.initializer_range)
+
+
+def parity_tinyllama(out_name='run1',snapshot=None,out_dir=None):
+    """只读取显式本地快照；模型与tokenizer来自同一目录。逐步比较两个模型的贪心选择。"""
+    from pathlib import Path
+    from transformers import AutoConfig,AutoModelForCausalLM,AutoTokenizer
+    if snapshot is None or not Path(snapshot).is_dir():raise ValueError('请用--snapshot提供已有本地完整快照，本程序不自动下载权重')
+    path=output_path('tinyllama',out_name,out_dir);snapshot=Path(snapshot).resolve()
+    hc=AutoConfig.from_pretrained(snapshot,local_files_only=True,trust_remote_code=False)
+    cfg=compatible_config(hc)
+    hf=AutoModelForCausalLM.from_pretrained(snapshot,dtype=torch.float32,local_files_only=True,
+                                          trust_remote_code=False,attn_implementation='eager').eval()
+    ours=Llama215(cfg).eval();ours.load_state_dict(hf.state_dict(),strict=True)
+    tok=AutoTokenizer.from_pretrained(snapshot,local_files_only=True,trust_remote_code=False)
+    ids_in_vocab=list(tok.get_vocab().values())
+    if not ids_in_vocab or min(ids_in_vocab)<0 or max(ids_in_vocab)>=cfg.vocab_size:
+        raise ValueError('tokenizer ID超出模型词表')
+    prompt='The capital of France is';ids=tok(prompt,return_tensors='pt').input_ids
+    gen=ids.clone();deltas=[];argmax=[];greedy_match=[]
+    # 两模型在相同前缀比较；若选择不同，即失败，不再把单边生成说成逐token一致。
     with torch.no_grad():
-        sanity = (other(x)[0] - logits_hf).abs().max().item()
-
-    report = {"seed": SEED, "config": LLAMA_215M, "transformers_version": __import__("transformers").__version__,
-              "parity": {"ours_params": ours.n_params(),
-                         "max_abs_diff_logit": delta, "argmax_agreement": argmax_agree,
-                         "top5_agreement": top5_agree, "loss_abs_diff": abs(loss_ours.item() - loss_hf),
-                         "sanity_unshared_max_abs_diff": sanity,
-                         "wall_sec": round(time.perf_counter() - t0, 1)},
-              "verdict": "PASS" if (delta < 1e-4 and argmax_agree == 1.0 and sanity > 0.1) else "FAIL"}
-    print(f"[对拍] max|Δlogits| = {delta:.3e} | argmax 一致率 = {argmax_agree:.4f} | "
-          f"top-5 一致率 = {top5_agree:.4f} | |Δloss| = {abs(loss_ours.item() - loss_hf):.3e} | "
-          f"sanity(未搬运对照) = {sanity:.3f}")
-    print(f"[对拍] 判定 = {report['verdict']}")
-    os.makedirs(OUT_DIR, exist_ok=True)
-    with open(os.path.join(OUT_DIR, f"llama215_parity_{out_name}.json"), "w", encoding="utf-8") as f:
-        json.dump(report, f, ensure_ascii=False, indent=2)
-    return report
-
-
-# ---------------- TinyLlama_v1.1 实权重对拍（Apache-2.0；HF 缓存实物，条件性） ----------------
-def parity_tinyllama(out_name="run1"):
-    """真权重三步：① HF 加载缓存实物；② state_dict strict 搬进本类（同型不同档）；
-    ③ 同输入对拍 logits + 本类贪心续写一段——「四插槽整机跑真权重」的存在性证明。"""
-    from transformers import AutoModelForCausalLM, AutoTokenizer
-
-    t0 = time.perf_counter()
-    hf = AutoModelForCausalLM.from_pretrained("TinyLlama/TinyLlama_v1.1", dtype=torch.float32).eval()
-    print(f"[载入] TinyLlama_v1.1（HF 缓存实物，fp32，{time.perf_counter() - t0:.1f}s，"
-          f"{sum(p.numel() for p in hf.parameters()):,} 参数）")
-    hc = hf.config
-    theta = getattr(hc, "rope_theta", None)
-    if theta is None:                                   # transformers 5.x 把 rope 参数收进 rope_parameters 子对象
-        theta = hc.rope_parameters.get("rope_theta", 10000.0)
-    cfg = LLaMAConfig(vocab_size=hc.vocab_size, hidden_size=hc.hidden_size,
-                      intermediate_size=hc.intermediate_size, num_hidden_layers=hc.num_hidden_layers,
-                      num_attention_heads=hc.num_attention_heads,
-                      num_key_value_heads=hc.num_key_value_heads,
-                      max_position_embeddings=hc.max_position_embeddings,
-                      rope_theta=theta, rms_norm_eps=hc.rms_norm_eps)
-    ours = Llama215(cfg).eval()
-    ours.load_state_dict(hf.state_dict(), strict=True)                  # 201 张量 strict 直搬
-    print(f"[搬运] HF state_dict -> Llama215({cfg.hidden_size}/{cfg.num_hidden_layers}层/"
-          f"h={cfg.num_attention_heads}/h_kv={cfg.num_key_value_heads}) strict=True 通过")
-
-    tok = AutoTokenizer.from_pretrained("TinyLlama/TinyLlama_v1.1")
-    prompt = "The capital of France is"
-    ids = tok(prompt, return_tensors="pt").input_ids                    # (1,n)
-    with torch.no_grad():
-        lo = ours(ids)[0]                                               # (1,n,V)
-        lh = hf(ids).logits                                             # (1,n,V)
-    delta = (lo - lh).abs().max().item()
-    argmax_agree = (lo.argmax(-1) == lh.argmax(-1)).float().mean().item()
-
-    # 本类贪心续写（无 KV cache 全量重算，12 token——教学演示不计性能）
-    gen = ids.clone()
-    for _ in range(12):
-        with torch.no_grad():
-            nxt = ours(gen)[0][:, -1].argmax(-1, keepdim=True)          # (1,1)
-        gen = torch.cat([gen, nxt], dim=1)
-    cont = tok.decode(gen[0, ids.shape[1]:])
-
-    report = {"model": "TinyLlama/TinyLlama_v1.1", "license": "Apache-2.0",
-              "config": {"d": cfg.hidden_size, "L": cfg.num_hidden_layers, "h": cfg.num_attention_heads,
-                         "h_kv": cfg.num_key_value_heads, "d_ff": cfg.intermediate_size,
-                         "V": cfg.vocab_size, "theta": cfg.rope_theta, "eps": cfg.rms_norm_eps},
-              "parity": {"max_abs_diff_logit": delta, "argmax_agreement": argmax_agree,
-                         "prompt": prompt, "greedy_continuation_ours": cont,
-                         "wall_sec": round(time.perf_counter() - t0, 1)},
-              "verdict": "PASS" if (delta < 1e-4 and argmax_agree == 1.0) else "FAIL"}
-    print(f"[对拍] max|Δlogits| = {delta:.3e} | argmax 一致率 = {argmax_agree:.4f}")
-    print(f"[贪心] {prompt!r} -> {cont!r}（v1.1 为 3T/3.9T 中途 base 检查点，greedy 退化属正常；对拍只看数值）")
-    print(f"[对拍] 判定 = {report['verdict']}")
-    os.makedirs(OUT_DIR, exist_ok=True)
-    with open(os.path.join(OUT_DIR, f"llama215_tinyllama_{out_name}.json"), "w", encoding="utf-8") as f:
-        json.dump(report, f, ensure_ascii=False, indent=2)
-    return report
+        for step in range(12):
+            lo=ours(gen)[0];lh=hf(gen,use_cache=False).logits
+            deltas.append(float((lo-lh).abs().max()))
+            argmax.append(float((lo.argmax(-1)==lh.argmax(-1)).float().mean()))
+            a=lo[:,-1].argmax(-1,keepdim=True);b=lh[:,-1].argmax(-1,keepdim=True)
+            same=torch.equal(a,b);greedy_match.append(same)
+            if not same:break
+            gen=torch.cat([gen,a],dim=1)
+    passed=len(greedy_match)==12 and all(greedy_match) and all(math.isfinite(d) and d<1e-4 for d in deltas) and all(a==1 for a in argmax)
+    import hashlib
+    fingerprints={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in snapshot.iterdir()
+                  if p.is_file() and p.name in ('config.json','tokenizer.json','tokenizer.model','tokenizer_config.json','special_tokens_map.json')}
+    report=dict(snapshot=str(snapshot),small_file_hashes=fingerprints,params=ours.n_params(),
+                tensors=len(ours.state_dict()),config=vars(cfg),transformers_version=__import__('transformers').__version__,
+                parity=dict(max_abs_diff_by_step=deltas,argmax_agreement_by_step=argmax,greedy_matches=greedy_match,
+                            prompt=prompt,greedy_continuation_ours=tok.decode(gen[0,ids.shape[1]:])),
+                note='固定提示、最多12次选择；不评价生成质量，不从短输出推断训练阶段',
+                verdict='PASS' if passed else 'FAIL')
+    print(report['parity'])
+    return save_report(path,report)
 
 
-if __name__ == "__main__":
-    ap = argparse.ArgumentParser(description="LLaMA 式 207M 整机：自测 / HF 结构对拍 / TinyLlama 实权重对拍")
-    ap.add_argument("--parity", action="store_true", help="HF 结构对拍（CPU fp32，分钟级）")
-    ap.add_argument("--tinyllama", action="store_true", help="TinyLlama_v1.1 实权重对拍（CPU fp32）")
-    ap.add_argument("--out-name", default="run1", help="产物 JSON 后缀（防覆写）")
-    args = ap.parse_args()
-    if args.parity:
-        parity_hf(args.out_name)
-    if args.tinyllama:
-        parity_tinyllama(args.out_name)
-    if not (args.parity or args.tinyllama):
-        self_test()
+if __name__=='__main__':
+    ap=argparse.ArgumentParser(description='207M整机自测、随机权重与显式本地快照对拍')
+    ap.add_argument('--parity',action='store_true')
+    ap.add_argument('--tinyllama',action='store_true')
+    ap.add_argument('--snapshot',help='已有本地模型和tokenizer同一快照目录')
+    ap.add_argument('--out-name',default='run1')
+    ap.add_argument('--out-dir',default=OUT_DIR)
+    args=ap.parse_args()
+    if args.parity:parity_hf(args.out_name,args.out_dir)
+    if args.tinyllama:parity_tinyllama(args.out_name,args.snapshot,args.out_dir)
+    if not (args.parity or args.tinyllama):self_test()

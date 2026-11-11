@@ -156,8 +156,8 @@ class Transformer(nn.Module):
         return self.decode(ys, state)[:, -1]
 
     def cross_attention_weights(self, src, tgt, layer: int = -1):
-        """导出指定解码层的 cross-attn 对齐矩阵（图 9.2 素材）：layer 支持负索引（-1=末层，默认）与
-        非负索引（0=首层）——非负统一换算成负索引再匹配；8 头平均，取 batch 0。
+        """导出指定解码层的cross-attn矩阵。调用前置eval以关闭dropout。
+        layer支持负索引（-1=末层）与非负索引（0=首层），内部统一成非负索引；所有头平均，取batch 0。
         src (1,S)、tgt (1,T) → 返回 (T, S)。"""
         index = layer if layer >= 0 else len(self.dec_layers) + layer
         if not 0 <= index < len(self.dec_layers):

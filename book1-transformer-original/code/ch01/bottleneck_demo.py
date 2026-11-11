@@ -12,11 +12,12 @@
     B 整句精确率（严格指标）——自由贪心解码，须自行产出全部符号并停在对的位置。
 所属章节：drafts/Book1-Transformer原典/ch01-前史动机.md
 运行方式：source env.sh && python code/ch01/bottleneck_demo.py
-          （CPU 约 2 分钟；数据落 log/Book1-ch01/，图落 drafts/.../figures/）
+          （历史CPU约2分钟；数据与新图落本册log/Book1-ch01/，可用BOOK1_LOG_ROOT覆盖）
 """
 import json
 import os
 import time
+from pathlib import Path
 
 import matplotlib
 
@@ -153,7 +154,8 @@ def main() -> None:
                         for h in (32, 128) for m, _ in heads)
         print(f"{lo:>2}-{hi:<4}{cells}")
 
-    out = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "log", "Book1-ch01"))
+    book_root = Path(__file__).resolve().parents[2]
+    out = Path(os.environ.get("BOOK1_LOG_ROOT", book_root / "log")).expanduser() / "Book1-ch01"
     os.makedirs(out, exist_ok=True)
     with open(os.path.join(out, "bottleneck_results.json"), "w", encoding="utf-8") as f:
         json.dump(results, f, ensure_ascii=False, indent=1)
@@ -178,9 +180,7 @@ def main() -> None:
     ax.set_ylim(-0.03, 1.03)
     ax.legend(frameon=False, fontsize=8)
     fig.tight_layout()
-    fig_path = os.path.normpath(os.path.join(
-        os.path.dirname(__file__), "..", "..", "..", "drafts", "Book1-Transformer原典",
-        "figures", "fig-1-4-capacity-wall-curve.png"))
+    fig_path = out / "fig-1-4-capacity-wall-curve.png"
     fig.savefig(fig_path, dpi=300)
     print(f"图已保存：{fig_path}\n数据已保存：{os.path.join(out, 'bottleneck_results.json')}")
 

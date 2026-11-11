@@ -1,15 +1,14 @@
-"""ch4.5 问答探针：post-LN vs pre-LN 的初始化梯度剖面（为何主路/旁路之差致命）
+"""用途：比较post/pre-LN初始化梯度剖面的小型MLP探针；不是训练稳定性实验。
+所属章节：Book2第4章4.5节；运行：在本册目录 python code/ch04/grad_ln_position_probe.py。
 
-机制（逐站反向雅可比）：
-  pre : g_l = g_{l+1}·(I + J_F·J_LN)        —— 恒等项裸露在主干上，梯度直通
-  post: g_l = g_{l+1}·J_LN(s_l)·(I + J_F)   —— 恒等项被 J_LN 罩住，每站过闸
-其中 J_LN 的谱尺度 ~ γ/σ(s_l)：除以该站「归一化前」的 std，且杀死共同模方向。
-=> post 的梯度尺度与前向统计量倒数耦合、逐站乘法复合；pre 与前向统计解耦。
-
-探针设计：12 层、d=384、单子层 MLP 塔（GELU，4x），隔离 LN 位置这一个变量
-（注意力版即书里 6 层塔，机制同型）。初始化 N(0, w_std)，嵌入 std 可扫。
-量：每站 ‖∂L/∂x_l‖（token 平均的 L2 范数，g_l/g_12 归一显示形状）与主干前向 std。
-配置四档：嵌入 1 / 22.6（原典 √d 口径）/ 0.03（GPT-2 式小嵌入），及权重放大 0.1。
+采用行向量梯度约定：g_l = g_{l+1} J，故
+  pre : J = I + J_F(LN(x)) J_LN(x)
+  post: J = J_LN(x+F(x)) (I + J_F(x))
+pre中的局部I绕过LN，但分支及末端LN仍依赖前向统计，不能称为完全解耦。
+这里是12层、d=384、无注意力的MLP塔，损失为随机目标的均方误差；
+pre配置还加末端LN，所以比较的是两套LN配置，并非只移动一处算子。
+输出各位置梯度L2范数的均值，以及整张激活的样本标准差。
+22.6保留为历史大尺度构造值，不是sqrt(384)，也不代表完整原典嵌入初始化。
 """
 import torch
 import torch.nn.functional as F
@@ -22,6 +21,8 @@ def ln(v, gamma, beta):
 
 
 def run(wiring, emb_std=1.0, w_std=0.02, L=12, d=384, ffr=4, n=64, seed=0):
+    if wiring not in ("pre", "post"):
+        raise ValueError("wiring须为pre或post")
     g = torch.Generator().manual_seed(seed)
     P = lambda *s: (torch.randn(*s, generator=g) * w_std).requires_grad_(True)
     blocks = [dict(W1=P(d, d * ffr), b1=torch.zeros(d * ffr).requires_grad_(True),

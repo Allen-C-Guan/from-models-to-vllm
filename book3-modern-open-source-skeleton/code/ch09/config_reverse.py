@@ -1,292 +1,219 @@
-# config_reverse.py —— Book3 ch9：Llama 4 双镜像 config 逆向（「无论文模型怎么读」五步全程演练）
-# 用途：下载 unsloth/RedHatAI 双镜像 config.json（KB 级，走 env.sh 的 HF_HOME 缓存；下载失败自动回落
-#       调研期缓存镜像并在产物 JSON 标来源）→ STEP1 认家族 → STEP2 结构推断表打印（表 9.1 数字源）
-#       → STEP3 参数手算 assert（式 9.1 手算 vs transformers meta 建模 vs 第三方转述口径；总账+活账两本）
-#       → STEP4 外围 token id 锚点（词表构成推断）→ STEP5 证据分级表；
-#       另绘 图 9.1 Llama 4 Scout 结构推断图（实线=config 逆向，虚线=转述级标注）。
-# 所属章节：Book3 第 9 章 §9.2-9.4（正文表 9.1/9.2 与式 9.1 的机器可读版；ch5 五步法的 2025 档升级）
-# 运行方式：cd 工作区根目录 && source env.sh && python code/ch09/config_reverse.py \
-#           [--model scout|maverick] [--out-name run1] [--no-figure]
-# 产物：log/book3-ch09/config_reverse_{model}_{out-name}.json（不入库）；
-#       figures/fig-9-1-llama4-inferred-structure.png（默认 --model scout 时绘制）
-# 耗时：CPU 秒级（config 下载含重试；meta 建模需 transformers/torch，缺库自动跳过该列）。
-# 注：本章无随机过程（纯 config 读取与确定性算术），种子 20261002 仅按全书纪律占位。
+# config_reverse.py —— Book3第9章：从固定配置快照核对结构与两本参数账。
+# 运行：source env.sh && python <本文件路径> --model scout --out-name run1
+# 只取config/index小文件；不下载权重，不执行远程代码。产物默认写工作区log。
 import argparse
+import copy
+import hashlib
 import json
-import os
+from pathlib import Path
+import re
 
-SEED = 20261002
-REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-OUT_DIR = os.path.join(REPO, "log", "book3-ch09")
-FIG_DIR = os.path.join(REPO, "figures")
-FALLBACK = {  # 调研期落盘的镜像缓存（2026-10-03 抓取；HF 不可达时回落，产物 JSON 标来源）
-    ("scout", "unsloth"): "log/book3-research/hf-llama4-scout.json",
-    ("scout", "RedHatAI"): "log/book3-research/hf-llama4-scout-redhat.json",
-    ("maverick", "unsloth"): "log/book3-research/hf-llama4-maverick.json",
+SNAPSHOTS = {
+    'scout': [('unsloth/Llama-4-Scout-17B-16E-Instruct', 'afd8e498c87bda51c7ea8ec68ea2f7c066e6340b'),
+              ('RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic', 'fc1b4f4cea92cfc13570f504a209eb4d4ca81534')],
+    'maverick': [('unsloth/Llama-4-Maverick-17B-128E-Instruct', '86c5ecb6f2fbddf604c60120125fb202e09f2556')],
 }
-MIRRORS = {  # meta-llama 原仓 gated 401 —— 一律走社区镜像双源交叉
-    "scout": [("unsloth", "unsloth/Llama-4-Scout-17B-16E-Instruct"),
-              ("RedHatAI", "RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic")],
-    "maverick": [("unsloth", "unsloth/Llama-4-Maverick-17B-128E-Instruct")],
-}
-RELAY = {"scout": dict(total=109e9, active=17e9, ctx="10M"),
-         "maverick": dict(total=400e9, active=17e9, ctx="1M")}  # 第三方转述官方 blog（原页已下线）
-CORE_FIELDS = ["hidden_size", "num_hidden_layers", "num_attention_heads", "num_key_value_heads",
-               "head_dim", "num_local_experts", "num_experts_per_tok", "intermediate_size",
-               "intermediate_size_mlp", "max_position_embeddings", "vocab_size", "rope_theta",
-               "rms_norm_eps", "tie_word_embeddings"]
+CORE_FIELDS = ('hidden_size', 'num_hidden_layers', 'num_attention_heads', 'num_key_value_heads',
+               'head_dim', 'num_local_experts', 'num_experts_per_tok', 'intermediate_size',
+               'intermediate_size_mlp', 'max_position_embeddings', 'vocab_size', 'rms_norm_eps',
+               'tie_word_embeddings', 'moe_layers', 'no_rope_layers', 'use_qk_norm',
+               'attention_bias', 'attention_chunk_size', 'floor_scale', 'attn_scale',
+               'attn_temperature_tuning', 'rope_parameters')
 
 
-def fetch(model):
-    """双镜像下载 config.json（KB 级）；失败回落调研期缓存。返回 [(源名, config dict, 来源标注)]。"""
-    got = []
-    for src, repo_id in MIRRORS[model]:
-        cfg, tag = None, ""
-        try:
-            from huggingface_hub import hf_hub_download
-            path = hf_hub_download(repo_id, "config.json")
-            cfg, tag = json.load(open(path, encoding="utf-8")), f"HF 在线下载：{repo_id}"
-        except Exception as e:  # 网络阻断/缺库 —— 回落本地缓存镜像（来源降级如实标注）
-            fb = os.path.join(REPO, FALLBACK[(model, src)])
-            if os.path.exists(fb):
-                cfg = json.load(open(fb, encoding="utf-8"))
-                tag = f"调研期缓存镜像 {FALLBACK[(model, src)]}（在线失败：{type(e).__name__}）"
-        if cfg is not None:
-            got.append((src, cfg, tag))
-            print(f"[fetch] {src:8s} {tag}")
-    assert got, "双镜像均不可得（在线与缓存皆失败）"
-    return got
+def load_json(path, **source):
+    data = Path(path).read_bytes()
+    return json.loads(data), dict(source, path=str(Path(path).resolve()),
+                                  sha256=hashlib.sha256(data).hexdigest())
+
+
+def fetch(model, cache_dir, local_only=False):
+    """按不可变revision读取所有列出的镜像；缺项即失败，不冒称完成交叉检查。"""
+    from huggingface_hub import hf_hub_download
+    result = []
+    for repo, revision in SNAPSHOTS[model]:
+        path = hf_hub_download(repo, 'config.json', revision=revision,
+                               cache_dir=str(cache_dir), local_files_only=local_only)
+        result.append(load_json(path, repo=repo, revision=revision, file='config.json'))
+    return result
 
 
 def effective(cfg):
-    """经 transformers 5.18.0 的 Llama4Config 读『生效值』：空 no_rope_layers 会被默认 3:1 接管。"""
+    """读取当前安装库的生效配置；版本随报告保存，不假定等于序列化版本。"""
     from transformers.models.llama4 import Llama4Config
-    return Llama4Config.from_dict(cfg).text_config
-
-
-def infer_rows(t):
-    """STEP2 结构推断表：字段 → 值 → 部件（表 9.1 的机器可读版）。"""
-    moe_n = len(t.moe_layers)
-    return [
-        ("architectures", "Llama4ForConditionalGeneration", "原生多模态整机（含视觉塔与投影）"),
-        ("hidden_size / layers", f"{t.hidden_size} / {t.num_hidden_layers}", "残差流宽 d / Block 数 L"),
-        ("heads / KV heads / head_dim", f"{t.num_attention_heads} / {t.num_key_value_heads} / {t.head_dim}",
-         f"GQA 分组沿用：h×d_k = {t.num_attention_heads * t.head_dim} = d"),
-        ("num_local_experts / per_tok", f"{t.num_local_experts} / {t.num_experts_per_tok}",
-         f"前馈插槽→专家群：{t.num_local_experts} 份里每 token 取 {t.num_experts_per_tok} 份"),
-        ("moe_layers", f"{moe_n}/{t.num_hidden_layers} 层（step {t.interleave_moe_layer_step}）",
-         "专家层布局：Scout 全层 / Maverick 奇数层（偶数层稠密）"),
-        ("intermediate_size / _mlp", f"{t.intermediate_size} / {t.intermediate_size_mlp}",
-         "专家宽 f / 稠密层宽 f_mlp（Scout 的稠密宽闲置）"),
-        ("no_rope_layers", f"{sum(t.no_rope_layers)} RoPE + {len(t.no_rope_layers) - sum(t.no_rope_layers)} NoPE",
-         "位置编码插槽 3:1 交错：每 4 层仅第 4 层旋转；NoPE 层=chunked_attention"),
-        ("attention_chunk_size", str(t.attention_chunk_size), "NoPE 层的分块注意力窗（块内注意、块间不看）"),
-        ("rope_theta / rope_scaling",
-         (f"{t.rope_parameters.get('rope_theta'):.0f} / llama3 x{t.rope_parameters.get('factor'):g}"
-          if t.rope_parameters.get("rope_type") != "default"
-          else f"{t.rope_parameters.get('rope_theta'):.0f} / null"),
-         "θ 继承 Llama3；llama3 型分段缩放（快针不动、慢针压 1/factor）——Scout 有 / Maverick 无"),
-        ("max_position_embeddings", f"{t.max_position_embeddings:,}", "声明上下文（Scout 10M / Maverick 1M）"),
-        ("vocab_size / tie", f"{t.vocab_size:,} / {t.tie_word_embeddings}", "出入口：嵌入与 lm_head 各一份（untied 沿用）"),
-        ("use_qk_norm", str(t.use_qk_norm), "RoPE 层 Q/K 过一道无参数 RMS 归一化（类名L2Norm）（源码级，不入参数账）"),
-        ("attn_temperature_tuning / floor_scale / attn_scale",
-         f"{t.attn_temperature_tuning} / {t.floor_scale} / {t.attn_scale}",
-         "推理期注意力温度缩放的 config 事实（与第 7 章温度配方同族旋钮——只登记不展开机制）"),
-        ("rms_norm_eps / attention_bias", f"{t.rms_norm_eps} / {t.attention_bias}", "pre-RMSNorm 与无偏置：LLaMA 遗产未动"),
-    ]
+    if cfg.get('model_type') != 'llama4' or not isinstance(cfg.get('text_config'), dict):
+        raise ValueError('本例只支持带text_config的Llama4整机配置')
+    return Llama4Config.from_dict(copy.deepcopy(cfg)).text_config
 
 
 def param_account(t):
-    """STEP3 参数手算（式 9.1/9.2）——总账与活账两本，逐项整数账；混排机型按层型分册。"""
-    d, L, hkv, dk = t.hidden_size, t.num_hidden_layers, t.num_key_value_heads, t.head_dim
-    V, tied = t.vocab_size, t.tie_word_embeddings
-    E, k, f, f_mlp = t.num_local_experts, t.num_experts_per_tok, t.intermediate_size, t.intermediate_size_mlp
-    attn = 2 * d * d + 2 * d * hkv * dk                      # q/o 全宽 + k/v 按 KV 组缩（式 5.2 同款）
-    moe_ffn = d * E + 3 * d * f * (E + 1)                    # router + E 份路由专家 + 1 份共享（同宽 f，源码级）
-    dense_ffn = 3 * d * f_mlp                                # 稠密层门控前馈（SwiGLU 三矩阵沿用）
-    n_moe = len(t.moe_layers)
-    text = V * d * (2 - tied) + L * (attn + 2 * d) + n_moe * moe_ffn + (L - n_moe) * dense_ffn + d
-    act_moe = attn + 2 * d + d * E + 3 * d * f * (1 + k)     # 专家层每 token：注意力+双 norm+router+共享+k 份专家
-    act_dense = attn + 2 * d + 3 * d * f_mlp                 # 稠密层每 token：无 router，整份稠密前馈（式 9.2 层型分册）
-    active = (n_moe * act_moe + (L - n_moe) * act_dense      # 活账按层型分账——router 只长在专家层上
-              + V * d * (2 - tied) + d)                      # 活账含出入口两份（对齐官方 17B 口径）
-    return dict(attn_per_layer=attn, moe_ffn_per_layer=moe_ffn, dense_ffn_per_layer=dense_ffn,
-                n_moe_layers=n_moe, text_total=text, moe_layer_active=act_moe,
-                dense_layer_active=act_dense, layer_active=act_moe,
-                active_total=active, total_over_active=round(text / active, 2))
+    """式9.1/9.2：仅计本章无偏置、每层两个RMS增益、共享专家宽等于f的结构。"""
+    d, L, h, hkv, dk = t.hidden_size, t.num_hidden_layers, t.num_attention_heads, t.num_key_value_heads, t.head_dim
+    V, E, k, f, fm = t.vocab_size, t.num_local_experts, t.num_experts_per_tok, t.intermediate_size, t.intermediate_size_mlp
+    if any(type(x) is not int or x <= 0 for x in (d, L, h, hkv, dk, V, E, k, f, fm)):
+        raise ValueError('尺寸必须为正整数')
+    if h % hkv or k > E or t.attention_bias:
+        raise ValueError('查询头数须为KV头数的整数倍、k不超过E，且本公式不支持attention bias')
+    layers = t.moe_layers
+    if len(set(layers)) != len(layers) or any(type(i) is not int or not 0 <= i < L for i in layers):
+        raise ValueError('专家层索引重复或越界')
+    if len(t.no_rope_layers) != L or any(i not in (0, 1) for i in t.no_rope_layers):
+        raise ValueError('旋转层布局与层数不符')
+    attn = 2*d*h*dk + 2*d*hkv*dk  # Q/O可能不是d×d，保持一般头宽的整数账。
+    moe = d*E + 3*d*f*(E+1)
+    dense = 3*d*fm
+    n = len(layers)
+    ends = V*d*(2-int(t.tie_word_embeddings)) + d
+    act_moe = attn + 2*d + d*E + 3*d*f*(1+k)
+    act_dense = attn + 2*d + dense
+    total = ends + L*(attn+2*d) + n*moe + (L-n)*dense
+    active = ends + n*act_moe + (L-n)*act_dense
+    return dict(attn_per_layer=attn, moe_ffn_per_layer=moe, dense_ffn_per_layer=dense,
+                n_moe_layers=n, text_total=total, moe_layer_active=act_moe,
+                dense_layer_active=act_dense, active_total=active, total_over_active=total/active)
+
+
+def infer_rows(t):
+    """字段到结构；旋转布尔语义已对照v4.52.4使用点。"""
+    n = sum(t.no_rope_layers)
+    rope = t.rope_parameters
+    return [
+        ('hidden/layers', [t.hidden_size,t.num_hidden_layers], '残差流宽/层数'),
+        ('heads/KV/head_dim', [t.num_attention_heads,t.num_key_value_heads,t.head_dim], '每KV组对应h/hkv个查询头'),
+        ('experts/top_k', [t.num_local_experts,t.num_experts_per_tok], '路由份数/每token选中份数，另有共享一份'),
+        ('moe_layers', t.moe_layers, '索引从0开始；空表与缺省值分别处理'),
+        ('FFN widths', [t.intermediate_size,t.intermediate_size_mlp], '专家/稠密层宽'),
+        ('no_rope_layers', [n,len(t.no_rope_layers)-n], '旋转/不旋转；值1对应RoPE'),
+        ('attention_chunk_size', t.attention_chunk_size, '旋转层按绝对位置分块，块内因果；NoPE层全局因果'),
+        ('rope_parameters', rope, '保留全部阈值；Scout两阈值相等，不冒称有平滑过渡区'),
+        ('context', t.max_position_embeddings, '声明窗口，不等于任务能力验证'),
+        ('vocab/tied', [t.vocab_size,t.tie_word_embeddings], '词表大小/出入口是否共享'),
+        ('use_qk_norm', t.use_qk_norm, '若启用，仅旋转层Q/K作无参数均方根缩放'),
+        ('temperature/floor/scale', [t.attn_temperature_tuning,t.floor_scale,t.attn_scale], 'NoPE层按查询位置缩放Q，非YaRN常数缩放'),
+        ('norm_eps/attention_bias', [t.rms_norm_eps,t.attention_bias], 'RMS epsilon/注意力偏置'),
+    ]
 
 
 def meta_count(cfg):
-    """transformers meta 设备建模计数（不下载权重、不占内存）——手算的独立对拍方。"""
+    """只构造meta模型，无参数存储；仍使用Python对象和张量元数据内存。"""
     import torch
-    torch.manual_seed(SEED)
     from transformers.models.llama4 import Llama4Config, Llama4ForConditionalGeneration
-    with torch.device("meta"):
-        m = Llama4ForConditionalGeneration(Llama4Config.from_dict(cfg))
-    vis = sum(p.numel() for n, p in m.named_parameters() if "vision" in n or "multi_modal" in n)
-    tot = sum(p.numel() for p in m.parameters())
-    return dict(text_total=tot - vis, vision_total=vis, grand_total=tot)
+    with torch.device('meta'):
+        model = Llama4ForConditionalGeneration(Llama4Config.from_dict(copy.deepcopy(cfg)))
+    total = sum(p.numel() for p in model.parameters())
+    vision = sum(p.numel() for name,p in model.named_parameters()
+                 if 'vision_model.' in name or 'multi_modal_projector.' in name)
+    if vision <= 0:
+        raise ValueError('当前库视觉模块命名与计数约定不符，需重新核对')
+    return dict(text_total=total-vision, vision_total=vision, grand_total=total)
 
 
-def index_total(model):
-    """safetensors index 的 total_size/2（只下载 KB-MB 级索引、不碰权重）——第三方实物对拍方。"""
-    from huggingface_hub import hf_hub_download
-    p = hf_hub_download(MIRRORS[model][0][1], "model.safetensors.index.json")
-    ts = json.load(open(p, encoding="utf-8"))["metadata"]["total_size"]
-    return ts // 2  # 全 bf16 落盘（Llama 4 检查点无 F32 缓冲混装——与 Llama-2-7b 的 2,048 幻影对照）
+def index_check(index, grand_total):
+    """索引总字节不是张量元素数。只检查两字节假设的相容性，不推断dtype。"""
+    total = index['metadata']['total_size']
+    if type(total) is not int or total <= 0 or not isinstance(index['weight_map'], dict):
+        raise ValueError('索引格式错误')
+    compatible = total == 2*grand_total
+    if not compatible:
+        raise ValueError(f'索引字节{total}与参数数目{grand_total}的两字节假设不符，须检查dtype/缓冲/量化')
+    return dict(total_size_bytes=total, compatible_with_two_bytes_per_parameter=True,
+                dtype_verified=False, tensor_headers_read=False)
 
 
 def draw_fig9_1(t, acct, meta, path):
-    """图 9.1：Llama 4 Scout 结构推断图（自绘示意级；实线=config 逆向双镜像，虚线=转述级标注）。"""
+    """Scout示意：完整主路径与视觉入口；不从粗粒度规模反推结构。"""
+    if (t.hidden_size,t.num_hidden_layers,t.num_local_experts) != (5120,48,16):
+        raise ValueError('图9.1仅适用于本章Scout配置')
     import matplotlib
-    matplotlib.use("Agg")
+    matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     from matplotlib.patches import FancyBboxPatch
-    BLUE, ORANGE, TEAL, GRID, TICK, DARK, MUTED = "#2a78d6", "#eb6834", "#1baf7a", "#e1e0d9", "#898781", "#0b0b0b", "#52514e"
-    plt.rcParams.update({"font.size": 8.5, "text.color": DARK, "font.family": "DejaVu Sans"})
-
-    def box(ax, x, y, w, h, text, ec=DARK, fc="white", lw=1.1, fs=7.2, ls="-", tc=None):
-        ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.02", fc=fc, ec=ec, lw=lw, linestyle=ls))
-        ax.text(x + w / 2, y + h / 2, text, ha="center", va="center", fontsize=fs, color=tc or DARK)
-
-    fig, ax = plt.subplots(figsize=(8.6, 5.0), dpi=300)
-    ax.set_xlim(0, 17); ax.set_ylim(0, 10.6); ax.axis("off")
-    ax.text(8.5, 10.25, "Llama 4 Scout: structure inferred from config.json (config and reference implementation)",
-            ha="center", fontsize=9.5, fontweight="bold")
-
-    # ---- 主列：文本整机（config 逆向，实线）；视觉通路在左侧汇入输入侧 ----
-    box(ax, 4.6, 9.0, 7.6, 0.95, "Embedding  V=202,048 x d=5120  (untied, tie=false)", ec=BLUE, fc="#f2f7fd")
-    box(ax, 4.6, 6.35, 7.6, 2.25, "", ec=BLUE, fc="#f2f7fd")
-    ax.text(4.85, 8.32, "x 48 blocks", fontsize=7.4, fontweight="bold", color=DARK)
-    ax.text(4.85, 7.15, "RMSNorm -> Attention: 40 Q heads / 8 KV heads, head_dim 128\n"
-                        "     q:(B,40,n,128)  k,v:(B,8,n,128)  ->  o:(B,n,5120)\n"
-                        "     first 3 of 4: RoPE (theta=5e5, llama3-type x16) + RMS qk-norm (no params)\n"
-                        "     every 4th layer: NoPE + full attention; other layers chunked, chunk=8192\n"
-                        "RMSNorm -> FFN slot = router (16 -> 1) + shared expert + 16 experts, f=8192\n"
-                        "     (B,n,5120) -> gate/up (B,n,8192) x 2 -> * -> down (B,n,5120)",
-            fontsize=6.5, color=DARK, va="center")
-    box(ax, 4.6, 5.15, 7.6, 0.8, "Final RMSNorm  (d=5120, eps=1e-5)", ec=BLUE, fc="#f2f7fd")
-    box(ax, 4.6, 3.85, 7.6, 0.9, "LM head  5120 -> 202,048  (untied)", ec=BLUE, fc="#f2f7fd")
-    for y0, y1 in [(9.0, 8.6), (6.35, 5.95), (5.15, 4.75)]:
-        ax.annotate("", xy=(8.4, y1), xytext=(8.4, y0), arrowprops=dict(arrowstyle="->", color=DARK, lw=1.2))
-    ax.text(8.75, 8.8, "text tokens (B, n, 5120)", fontsize=6.6, color=MUTED, va="center")
-
-    # ---- 左列：视觉通路（config 逆向，实线），在输入侧汇入 ----
-    box(ax, 0.4, 8.55, 3.6, 1.1, "Vision tower (config: vision_config)\n34 layers, d=1408, patch 14, 336px", ec=TEAL, fc="#eefaf5")
-    box(ax, 0.4, 7.35, 3.6, 0.8, "Multi-modal projector\n4096 -> 5120", ec=TEAL, fc="#eefaf5")
-    ax.annotate("", xy=(2.2, 7.35), xytext=(2.2, 8.55), arrowprops=dict(arrowstyle="->", color=DARK, lw=1.2))
-    ax.annotate("", xy=(7.2, 8.78), xytext=(4.0, 7.75),
-                arrowprops=dict(arrowstyle="->", color=TEAL, lw=1.4,
-                                connectionstyle="arc3,rad=0.22"))
-    ax.text(2.6, 6.95, "image tokens (B, n_img, 5120)\njoin the token stream", fontsize=6.6, color=MUTED, ha="center")
-
-    # ---- 右列：转述级标注（虚线） —— 证据等级降级 ----
-    relay = [
-        (9.0, "~109B total params"),
-        (7.9, "17B activated params"),
-        (6.8, "~30T training tokens"),
-        (5.7, "10M token context"),
-        (4.6, "\"iRoPE\": interleaved attention\nlayers without positional\nembeddings + full attention\nwith RoPE (official blog, relayed)"),
-    ]
-    for y, txt in relay:
-        box(ax, 13.1, y - 0.42, 3.6, 0.95, txt, ec=ORANGE, ls="--", lw=1.2, fs=6.6, tc="#9c4413")
-    ax.text(14.9, 3.55, "{third-party relay of the\ndelisted official blog}", ha="center", fontsize=6.4, color=MUTED)
-
-    # ---- 图例 ----
-    box(ax, 4.6, 2.3, 3.6, 0.72, "solid = config reverse\n(dual mirror, unsloth+RedHatAI)", ec=BLUE, fs=6.6)
-    box(ax, 8.6, 2.3, 3.6, 0.72, "dashed = relayed claims\n(evidence level downgraded)", ec=ORANGE, ls="--", fs=6.6, tc="#9c4413")
-    ax.text(8.5, 1.5, f"hand-computed from config: text {acct['text_total']:,} + vision {meta['vision_total']:,}"
-                      f" = {meta['grand_total']:,}  |  per-token active {acct['active_total']:,}",
-            ha="center", fontsize=7.0, color=MUTED)
-
-    fig.tight_layout()
-    fig.savefig(path)
-    plt.close(fig)
+    plt.rcParams.update({'font.family':'DejaVu Sans','font.size':8})
+    fig,ax=plt.subplots(figsize=(10,6),dpi=300)
+    ax.set(xlim=(0,12),ylim=(0,10));ax.axis('off')
+    def box(x,y,w,h,label,color='#2a78d6'):
+        ax.add_patch(FancyBboxPatch((x,y),w,h,boxstyle='round,pad=0.04',facecolor='white',edgecolor=color))
+        ax.text(x+w/2,y+h/2,label,ha='center',va='center',fontsize=7.5)
+    def arrow(x,y,X,Y):
+        ax.annotate('',xy=(X,Y),xytext=(x,y),arrowprops=dict(arrowstyle='->',color='#52514e'))
+    ax.text(6,9.7,'Llama 4 Scout: config + reference implementation',ha='center',fontsize=12)
+    box(.2,8.3,3.1,.8,'Text IDs (B,n)\nEmbedding -> (B,n,5120)')
+    box(.2,5.9,3.1,1.7,'Image tile (T,3,336,336)\n34-layer vision tower\n(T,577,1408), then remove CLS\nshuffle: (T,144,5632)', '#1baf7a')
+    box(.2,4.2,3.1,1,'Adapter -> (T,144,4096)\nProject -> (T,144,5120)', '#1baf7a')
+    arrow(1.75,5.9,1.75,5.2)
+    box(4.3,8.3,7.3,.8,'Merge image features at image-token slots -> x (B,n,5120)')
+    arrow(3.3,8.7,4.3,8.7);arrow(3.3,4.7,4.05,4.7);arrow(4.05,4.7,4.05,8.5);arrow(4.05,8.5,4.3,8.5)
+    box(4.7,4.05,6.9,3.5,'48 blocks: z = x + Attention(RMSNorm(x))\ny = z + MoE(RMSNorm(z))\nQ (B,40,n,128); K/V (B,8,n,128) -> (B,n,5120)\nMoE: one routed expert + one shared; f=8192\n\nAttention pattern within these 48 blocks:\n1-3 of each 4: RoPE + QK RMS + chunked causal (8192)\n4th: NoPE + full causal + position-dependent Q scale')
+    arrow(7.9,8.3,7.9,7.55)
+    box(4.7,2.5,6.9,.8,'Final RMSNorm -> untied LM head\n(B,n,5120) -> logits (B,n,202048)')
+    arrow(7.9,4.05,7.9,3.3)
+    ax.text(6,1.7,f"Text {acct['text_total']:,} + vision/projector {meta['vision_total']:,}",ha='center',fontsize=8)
+    ax.text(6,1.25,f"Total {meta['grand_total']:,}; active text accounting {acct['active_total']:,}",ha='center',fontsize=8)
+    ax.text(6,.65,'Official model-card claims: 109B total / 17B active / ~40T training / 10M context',ha='center',fontsize=8)
+    ax.text(6,.22,'Schematic; not a throughput or maximum-context test. Each image tile contributes 144 image features.',ha='center',fontsize=7,color='#52514e')
+    fig.tight_layout();fig.savefig(path);plt.close(fig)
 
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--model", choices=["scout", "maverick"], default="scout")
-    ap.add_argument("--out-name", default="run1")
-    ap.add_argument("--no-figure", action="store_true")
-    args = ap.parse_args()
-    os.makedirs(OUT_DIR, exist_ok=True)
-
-    mirrors = fetch(args.model)
-    base = mirrors[0][1]
-    t = effective(base)
-
-    print("\n== STEP1 认家族 ==")
-    print(f"model_type={base['model_type']}  architectures={base['architectures']}  "
-          f"transformers_version={base.get('transformers_version')}")
-    if len(mirrors) > 1:  # 双镜像交叉：核心字段逐项比对 + 分歧字段的默认语义验证
-        other = effective(mirrors[1][1])
-        diff = [k for k in CORE_FIELDS if getattr(t, k, None) != getattr(other, k, None)]
-        raw_empty = mirrors[1][1]["text_config"].get("no_rope_layers") == []
-        same = t.no_rope_layers == other.no_rope_layers and t.layer_types == other.layer_types
-        print(f"双镜像核心字段分歧：{diff or '无（逐项一致）'}")
-        print(f"镜像B no_rope_layers 原始值为空表：{raw_empty} → 经 config 类默认接管后与镜像A生效值一致：{same}")
-
-    print("\n== STEP2 结构推断表（字段 → 值 → 部件） ==")
-    for f, v, part in infer_rows(t):
-        print(f"  {f:30s} {v:40s} {part}")
-
-    print("\n== STEP3 参数账 assert（式 9.1：总账 + 活账） ==")
-    acct = param_account(t)
-    for kk, vv in acct.items():
-        print(f"  {kk:20s} {vv:,.2f}" if isinstance(vv, float) else f"  {kk:20s} {vv:,d}")
-    meta = None
-    try:
-        meta = meta_count(base)
-        print(f"  {'meta建模(对拍方)':18s} text={meta['text_total']:,} vision={meta['vision_total']:,} "
-              f"grand={meta['grand_total']:,}")
-        assert acct["text_total"] == meta["text_total"], "手算与 meta 建模不一致！"
-        print("  [assert] 手算 = meta 建模：逐位一致 ✓")
-    except ImportError:
-        print("  [skip] 无 transformers/torch，meta 对拍列跳过")
-    try:
-        idx = index_total(args.model)
-        meta_match = (meta is None) or (idx == meta["grand_total"])
-        print(f"  {'index实物(对拍方)':18s} total_size/2 = {idx:,}"
-              f"{'  == 手算+视觉：三方逐位一致 ✓' if idx == acct['text_total'] + (meta['vision_total'] if meta else 0) and meta_match else '  ≠ 手算（需归因）'}")
-    except Exception as e:
-        print(f"  [skip] index 远程读取失败（{type(e).__name__}），实物对拍列跳过")
-    r = RELAY[args.model]
-    vis_b = meta["vision_total"] / 1e9 if meta else 0.87
-    print(f"  第三方转述：总量 ~{r['total'] / 1e9:g}B / 激活 ~{r['active'] / 1e9:g}B —— 对照手算 "
-          f"{acct['text_total'] / 1e9:.1f}B(text) + {vis_b:.2f}B(vision) 与活账 {acct['active_total'] / 1e9:.2f}B"
-          f"（转述仅两位有效数字，四舍五入可容）")
-
-    print("\n== STEP4 外围 token id 锚点（词表构成推断） ==")
-    tc = base["text_config"]
-    for kk in ["bos_token_id", "pad_token_id", "boi_token_index", "eoi_token_index", "image_token_index"]:
-        print(f"  {kk:18s} {base.get(kk) if kk in base else tc.get(kk)}")
-    print("  → 特殊/多模态 token 集中在 200,000+ 区段：基础词表 ≈200,000 + 预留 ≈2,048（config 逆向推断）")
-
-    print("\n== STEP5 证据分级 ==")
-    print("  config 逆向(双镜像) > 官方源码(transformers 5.18.0 参考) > 第三方转述官方 blog > 厂商自报 > 社区")
-
-    step3 = dict(acct)
-    if meta:
-        step3.update(meta_text=meta["text_total"], vision_total=meta["vision_total"],
-                     grand_total=meta["grand_total"])
-    try:
-        step3["index_total_size_half"] = index_total(args.model)
-    except Exception:
-        pass
-    out = dict(model=args.model, mirrors=[{"src": s, "source": tag} for s, _, tag in mirrors],
-               step1=dict(model_type=base["model_type"], arch=base["architectures"],
-                          version=base.get("transformers_version")),
-               step2=infer_rows(t), step3=step3, step3_relay=r)
-    out_path = os.path.join(OUT_DIR, f"config_reverse_{args.model}_{args.out_name}.json")
-    json.dump(out, open(out_path, "w", encoding="utf-8"), ensure_ascii=False, indent=1, default=str)
-    print(f"\n[产物] {out_path}")
-
-    if not args.no_figure and meta is not None:
-        os.makedirs(FIG_DIR, exist_ok=True)
-        draw_fig9_1(t, acct, meta, os.path.join(FIG_DIR, "fig-9-1-llama4-inferred-structure.png"))
-        print("[图] figures/fig-9-1-llama4-inferred-structure.png")
+    ap=argparse.ArgumentParser()
+    ap.add_argument('--model',choices=SNAPSHOTS,default='scout')
+    ap.add_argument('--out-name',default='run1')
+    ap.add_argument('--out-dir',type=Path,default=Path('log/book3-ch09'))
+    ap.add_argument('--cache-dir',type=Path,default=Path('log/book3-ch09/hf-cache'))
+    ap.add_argument('--local-files-only',action='store_true')
+    ap.add_argument('--config',type=Path,help='显式本地底本；不自动联网补其它镜像')
+    ap.add_argument('--compare-config',type=Path)
+    ap.add_argument('--index',type=Path,help='与底本同revision的本地索引')
+    ap.add_argument('--no-figure',action='store_true')
+    a=ap.parse_args()
+    if not re.fullmatch(r'[A-Za-z0-9_.-]+',a.out_name) or a.out_name in ('.','..'):
+        ap.error('out-name只允许简单文件名')
+    if not a.config and (a.compare_config or a.index):
+        ap.error('本地compare-config/index须配合本地config，防止混用revision')
+    out=a.out_dir/f'config_reverse_{a.model}_{a.out_name}.json'
+    figure=a.out_dir/f'fig-9-1-{a.out_name}.png'
+    if out.exists() or (not a.no_figure and figure.exists()):
+        raise FileExistsError('产物已存在，请选择新out-name')
+    a.out_dir.mkdir(parents=True,exist_ok=True)
+    if a.config:
+        mirrors=[load_json(a.config,mode='explicit-local')]
+        if a.compare_config:mirrors.append(load_json(a.compare_config,mode='explicit-local-comparison'))
+        idx=load_json(a.index,mode='explicit-local-same-revision-required') if a.index else None
+    else:
+        mirrors=fetch(a.model,a.cache_dir,a.local_files_only)
+        from huggingface_hub import hf_hub_download
+        repo,revision=SNAPSHOTS[a.model][0]
+        p=hf_hub_download(repo,'model.safetensors.index.json',revision=revision,
+                          cache_dir=str(a.cache_dir),local_files_only=a.local_files_only)
+        idx=load_json(p,repo=repo,revision=revision,file='model.safetensors.index.json')
+    cfg=mirrors[0][0];t=effective(cfg)
+    expected_experts = 16 if a.model == 'scout' else 128
+    if t.num_local_experts != expected_experts:
+        raise ValueError('config专家数与--model标签不符')
+    acct=param_account(t);meta=meta_count(cfg)
+    if acct['text_total']!=meta['text_total']:raise AssertionError('手算与当前库meta模型不一致')
+    diffs=[]
+    for other,_ in mirrors[1:]:
+        ot=effective(other)
+        diffs.extend(k for k in CORE_FIELDS if getattr(t,k)!=getattr(ot,k))
+    if diffs:raise AssertionError('镜像结构字段不一致：'+str(diffs))
+    import transformers
+    report=dict(model=a.model,transformers_runtime=transformers.__version__,
+                raw_configs=[c for c,_ in mirrors],sources=[s for _,s in mirrors],
+                compared_config_count=len(mirrors),equal_fields=list(CORE_FIELDS) if len(mirrors)>1 else [],
+                structure=infer_rows(t),account=acct,meta=meta,
+                index=index_check(idx[0],meta['grand_total']) if idx else {'status':'not supplied'},
+                index_source=idx[1] if idx else None,
+                peripheral={'token_ids':{k:cfg.get(k,t.to_dict().get(k)) for k in
+                            ['bos_token_id','pad_token_id','boi_token_index','eoi_token_index','image_token_index']},
+                            'tokenizer_contents_verified':False,'generation_config_verified':False},
+                limits=['参数一致不等于前向等价或能力验证','索引未逐张量核dtype','本例仅模型结构，不评测训练和推理速度'])
+    if not a.no_figure:
+        if a.model!='scout':raise ValueError('Maverick请使用--no-figure；图9.1仅Scout')
+        draw_fig9_1(t,acct,meta,figure)
+    with out.open('x',encoding='utf-8') as f:json.dump(report,f,ensure_ascii=False,indent=2)
+    print('手算与meta模型一致；已记录配置数：',len(mirrors))
+    print('索引：',report['index']);print('产物：',out)
 
 
-if __name__ == "__main__":
-    main()
+if __name__=='__main__':main()

@@ -23,7 +23,7 @@ WARMUP = 4000
 
 class NoamLR:
     """原论文式 (3) 的 Noam 调度（ch8 8.1）。factor=1、warmup=4000 为论文 base 口径。
-    之所以先升后降：post-LN 下初始大学习率会放大残差和的尺度抖动——warmup 是「止痛药」（欠账 F5）。"""
+    预热限制训练初期的更新尺度；其效果与初始化、归一化及数据/批量有关，不是稳定性保证。"""
 
     def __init__(self, optimizer, d_model: int, warmup: int = WARMUP, factor: float = 1.0):
         self.opt, self.d, self.warmup, self.factor, self.step_num = optimizer, d_model, warmup, factor, 0

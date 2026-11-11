@@ -1,11 +1,11 @@
 """两篇润色样稿的CPU双精度核验。历史表格重算不等于训练复现。"""
 from pathlib import Path
-import argparse, json, math, re
+import argparse, json, math, re, os
 import numpy as np
 import torch
 from scipy.optimize import least_squares, minimize_scalar, brentq
 ROOT = Path(__file__).resolve().parents[2]
-OUT = ROOT/'log/book2-polish-verification'
+OUT = Path(os.environ.get('BOOK2_LOG_ROOT', 'log'))/'book2-polish-verification'
 OUT.mkdir(parents=True,exist_ok=True)
 N = np.array([991616,3114432,7108352,14796160,19519872],dtype=float)
 LOSSES = np.array([5.101,4.862,4.710,4.571,4.501])

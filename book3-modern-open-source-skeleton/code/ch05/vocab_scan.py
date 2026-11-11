@@ -1,501 +1,371 @@
-# vocab_scan.py —— Book3 ch5 词表扫描：V ∈ {8192,16384,32768,49152} 四臂（分词器训练 + 语料重切 + 短训）
-# 用途：同一骨架（模块档 d=512/L=6/h=8，GPT-2 底座 tied embeddings，B=16/T=512）换词表大小四臂短训，
-#       产出「三权衡」实测：①嵌入占比（V×d/总参，tied 单份）②压缩率（同文本 bytes/token、tokens/word）
-#       ③速度（sec/step）+ 短训质量。跨臂质量比较的预注册口径 = bpb（bits per byte，按各臂压缩率
-#       归一）——nats/token 跨词表不可比（V 越大每 token 覆盖字节越多，loss 天然越高）。
-# 分词器纪律（沿用 Book2 ch8）：分词器只在独立分片 owt_tokenizer_corpus.txt（6000 篇/29MB，与 LM
-#       语料互斥）上训练；sp-BPE / byte_fallback / coverage=1.0，与 sp-8k 出身同配方，只变 vocab_size。
-# 各臂语料：v8192 直接复用 log/book2-ch08/{tokens.bin,eval.bin}（Book2 定稿遗产）；其余自切——
-#       owt_docs.jsonl 流首部逐篇编码（doc 间插 EOS）直至 ≥ 42M+1.2M token，尾 1.2M 留 eval；
-#       四臂同 token 预算=同算力（预注册比较轴），文本起点同为流首部。
-# 运行方式：python vocab_scan.py [--steps 1000] [--out-name fast] [--cells v8192,v16384,v32768,v49152]
-#           [--eval-every 500] [--workers 8]；本实验 fast=1000 步/臂（卷级大纲 ch5 契约，无 full 档）。
-# 产物（log/book3-ch05/，不入库）：vocab_scan_{out}.json + curve_v{V}_{out}.csv + ckpt_v{V}_{out}.pt
-#           + sp{V}_owt.model/.vocab（分词器）+ stream_v{V}_{train,eval}.bin（自切流）+ slice_meta_v{V}.json。
+# Book3第5章：词表四臂默认预算保留，输入/输出默认工作目录log；--help不训练。
+# 原bpb协议使用独立压缩样本，只作换算估计；同token数不等同算力或同原文。
+# 数据准备核来源/模型hash，EOF明确失败；断点核完整身份，非有限梯度更新前拒绝，成功权重保留。
 import argparse
 import csv
+import hashlib
 import json
 import math
 import os
+from pathlib import Path
 import sys
 import time
-from multiprocessing import Pool
+import tempfile
+import shutil
+import multiprocessing
+import sentencepiece as spm
 
 import numpy as np
-import sentencepiece as spm
 import torch
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-for _base in (os.path.join(HERE, "..", "..", "Book2-预训练革命", "ch10"),                              # 工作区布局
-              os.path.join(HERE, "..", "..", "..", "book2-pretraining-revolution", "code", "ch10")):  # 书仓快照布局
-    if os.path.isdir(_base):
-        sys.path.insert(0, os.path.abspath(_base))  # Book2 ch10 GPT-2 定版底座
-from model import GPT2, GPT2Config      # noqa: E402  Book2 ch10 定版底座（tied embeddings，ch5 主线）
+HERE=Path(__file__).resolve().parent
+for candidate in (HERE.parents[2]/'book2-pretraining-revolution/code/ch10',HERE.parents[1]/'Book2-预训练革命/ch10'):
+    if candidate.is_dir():
+        sys.path.insert(0,str(candidate));break
+else:raise ImportError('找不到配套Book2第10章模型，请保留相邻书目录布局')
+from model import GPT2,GPT2Config
 
-# ---------------- 固定口径 ----------------
-SEED = 20261002
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
-OUT_DIR = os.path.join(REPO_ROOT, "log", "book3-ch05")
-TOK_TXT = os.path.join(REPO_ROOT, "log", "book2-scaling", "owt_tokenizer_corpus.txt")  # 分词器独立分片
-DOCS_JSONL = os.path.join(REPO_ROOT, "log", "book2-scaling", "owt_docs.jsonl")         # LM 主语料
-BOOK2_DIR = os.path.join(REPO_ROOT, "log", "book2-ch08")
-
-ARMS = {"v8192": 8192, "v16384": 16384, "v32768": 32768, "v49152": 49152}   # 臂名 -> V
-# 49152 = 192×256（256 倍数口径的「GPT-2 粗档」≈50257；papers/03 §2 谱系锚 GPT-2 50257）
-TRAIN_TARGET = 42_000_000     # 自切训练池目标（≥5000 步×8192 tok 的余量，本实验 fast 只用前 8.2M）
-EVAL_TOKENS = 1_200_000       # 自切 eval 池（对齐 Book2 ch08 eval.bin 体量）
-SAMPLE_DOCS = 2000            # 压缩率固定样本（首 2000 篇文本，四臂同文本才可比）
-
-BATCH, BLOCK = 16, 512        # B/T（统一模块档；8192 tok/步）
-TPB = BATCH * BLOCK
-EVAL_BATCHES = 49
-PEAK_LR, MIN_LR_RATIO, WARMUP, WDECL, TAIL = 1e-3, 0.1, 100, 0.1, 300
-N_LAYER, N_EMBD, N_HEAD, N_POSITIONS = 6, 512, 8, 1024
-
-_SP = None      # worker 内持有分词器
+SEED=20261002
+OUT_DIR=str(Path.cwd()/'log/book3-ch05')
+BOOK2_DIR=str(Path.cwd()/'log/book2-ch08')
+TOK_TXT=str(Path.cwd()/'log/book2-scaling/owt_tokenizer_corpus.txt')
+DOCS_JSONL=str(Path.cwd()/'log/book2-scaling/owt_docs.jsonl')
+BATCH=16;BLOCK=512;TPB=BATCH*BLOCK;EVAL_BATCHES=49
+PEAK_LR=1e-3;MIN_LR_RATIO=.1;WARMUP=100;WDECL=.1;TAIL=300
+N_LAYER,N_EMBD,N_HEAD,N_POSITIONS=6,512,8,1024
+ARMS={'v8192':8192,'v16384':16384,'v32768':32768,'v49152':49152}
+TRAIN_TARGET=42_000_000;EVAL_TOKENS=1_200_000;SAMPLE_DOCS=2000
+_SP=None
 
 
-def _init_worker(model_path):
-    global _SP
-    _SP = spm.SentencePieceProcessor()
-    _SP.Load(model_path)
+def file_identity(path):
+    h=hashlib.sha256();path=Path(path)
+    with path.open('rb') as f:
+        for chunk in iter(lambda:f.read(1024*1024),b''):h.update(chunk)
+    return dict(bytes=path.stat().st_size,sha256=h.hexdigest())
+
+
+def save_json(path,value):
+    payload=json.dumps(value,ensure_ascii=False,indent=2,allow_nan=False)+'\n'
+    temp=Path(str(path)+'.tmp');temp.write_text(payload);os.replace(temp,path)
+
+
+def _init_worker(model_path,docs_path):
+    global _SP,DOCS_JSONL
+    DOCS_JSONL=docs_path;_SP=spm.SentencePieceProcessor(model_file=model_path)
 
 
 def _encode_range(job):
-    """编码 jsonl 行区间 [start,end) -> uint16 part 文件（doc 间插 EOS，Book2 ch8 同口径）。"""
-    start, end, part_path = job
-    sp = _SP
-    buf, n_tok, n_unk, n_doc = [], 0, 0, 0
-    with open(DOCS_JSONL, "r", encoding="utf-8") as f:
-        for i, line in enumerate(f):
-            if i < start:
-                continue
-            if i >= end:
-                break
-            line = line.strip()
-            if not line:
-                continue
-            ids = sp.encode(json.loads(line)["text"], out_type=int, add_eos=True)  # EOS 结尾
-            buf.extend(ids)
-            n_tok += len(ids)
-            n_unk += sum(1 for t in ids if t == 0)
-            n_doc += 1
-            if len(buf) > 4_000_000:                       # 分批落盘控内存
-                with open(part_path, "ab") as g:
-                    g.write(np.asarray(buf, dtype=np.uint16).tobytes())
-                buf = []
-    if buf:
-        with open(part_path, "ab") as g:
-            g.write(np.asarray(buf, dtype=np.uint16).tobytes())
-    return part_path, n_tok, n_unk, n_doc
+    """按原文行区间编码，文档后加EOS；worker显式接收原文路径，不依赖fork继承。"""
+    start,end,path=job;buf=[];tokens=unknown=docs=0
+    with open(path,'xb') as output,open(DOCS_JSONL,encoding='utf-8') as source:
+        for i,line in enumerate(source):
+            if i<start:continue
+            if i>=end:break
+            if not line.strip():continue
+            text=json.loads(line)['text'];ids=_SP.encode(text,out_type=int,add_eos=True)
+            if ids and (min(ids)<0 or max(ids)>65535):raise ValueError('token ID不能以uint16保存')
+            buf.extend(ids);tokens+=len(ids);unknown+=sum(v==_SP.unk_id() for v in ids);docs+=1
+            if len(buf)>=4_000_000:output.write(np.asarray(buf,dtype=np.uint16).tobytes());buf=[]
+        if buf:output.write(np.asarray(buf,dtype=np.uint16).tobytes())
+    return str(path),tokens,unknown,docs
 
 
 def ensure_tokenizer(V):
-    """分词器训练（存在即复用）：sp-BPE / byte_fallback / coverage=1.0——sp-8k 同配方只变 V。"""
-    prefix = os.path.join(OUT_DIR, f"sp{V}_owt")
-    model_path = prefix + ".model"
-    if os.path.exists(model_path):
-        return model_path
-    print(f"[分词器] 训练 sp-{V}（独立分片 {TOK_TXT}，bpe/byte_fallback/coverage=1.0）…", flush=True)
-    t0 = time.perf_counter()
-    spm.SentencePieceTrainer.Train(
-        input=TOK_TXT, model_prefix=prefix, vocab_size=V,
-        model_type="bpe", character_coverage=1.0, byte_fallback=True,
-    )
-    sp = spm.SentencePieceProcessor()
-    sp.Load(model_path)
-    assert sp.GetPieceSize() == V, f"词表 {sp.GetPieceSize()} != {V}"
-    print(f"[分词器] sp-{V} 完成（{time.perf_counter()-t0:.1f}s）", flush=True)
-    return model_path
+    if not isinstance(V,int) or not 1<=V<=65536:raise ValueError('uint16词表大小须在1—65536')
+    folder=Path(OUT_DIR);folder.mkdir(parents=True,exist_ok=True);prefix=folder/f'sp{V}_owt'
+    model=Path(str(prefix)+'.model');vocab=Path(str(prefix)+'.vocab');metadata=Path(str(prefix)+'.identity.json')
+    identity=dict(V=V,corpus=file_identity(TOK_TXT),sentencepiece=spm.__version__,model_type='bpe',byte_fallback=True,character_coverage=1.)
+    if model.exists() or vocab.exists() or metadata.exists():
+        if not (model.exists() and vocab.exists() and metadata.exists()):raise FileExistsError('分词器产物不完整或缺身份，使用新out-dir')
+        previous=json.loads(metadata.read_text())
+        if previous['identity']!=identity or previous['model']!=file_identity(model):raise ValueError('已有分词器身份不匹配')
+        return str(model)
+    with tempfile.TemporaryDirectory(prefix=f'tokenizer-v{V}-',dir=folder) as tmp:
+        temporary=Path(tmp)/'sp'
+        spm.SentencePieceTrainer.Train(input=str(TOK_TXT),model_prefix=str(temporary),vocab_size=V,model_type='bpe',character_coverage=1.,byte_fallback=True)
+        sp=spm.SentencePieceProcessor(model_file=str(temporary)+'.model')
+        if sp.get_piece_size()!=V or sp.eos_id()<0:raise ValueError('词表大小或EOS不符')
+        shutil.copyfile(str(temporary)+'.model',model);shutil.copyfile(str(temporary)+'.vocab',vocab)
+    save_json(metadata,dict(identity=identity,model=file_identity(model)))
+    return str(model)
 
 
-def estimate_docs_needed(sp_path, target_tokens):
-    """用首 200 篇估计 tokens/doc，算覆盖 target（+20% 余量）所需行数。"""
-    sp = spm.SentencePieceProcessor()
-    sp.Load(sp_path)
-    n_tok, n_doc = 0, 0
-    with open(DOCS_JSONL, "r", encoding="utf-8") as f:
-        for i, line in enumerate(f):
-            if i >= 200:
-                break
-            line = line.strip()
-            if not line:
-                continue
-            n_tok += len(sp.encode(json.loads(line)["text"], out_type=int, add_eos=True))
-            n_doc += 1
-    per_doc = n_tok / max(1, n_doc)
-    return int(target_tokens / per_doc * 1.2) + 1000
+def estimate_docs_needed(sp_path,target_tokens):
+    sp=spm.SentencePieceProcessor(model_file=sp_path);tokens=docs=0
+    with open(DOCS_JSONL,encoding='utf-8') as f:
+        for i,line in enumerate(f):
+            if i>=200:break
+            if not line.strip():continue
+            tokens+=len(sp.encode(json.loads(line)['text'],out_type=int,add_eos=True));docs+=1
+    if not docs or not tokens:raise ValueError('前200行无可编码文本，不能估计流容量')
+    return int(target_tokens/(tokens/docs)*1.2)+1000
 
 
-def slice_stream(V, sp_path, workers):
-    """自切 LM 流：编码流首部直至 ≥ TRAIN_TARGET+EVAL_TOKENS，尾 EVAL_TOKENS 留 eval。"""
-    train_bin = os.path.join(OUT_DIR, f"stream_v{V}_train.bin")
-    eval_bin = os.path.join(OUT_DIR, f"stream_v{V}_eval.bin")
-    meta_path = os.path.join(OUT_DIR, f"slice_meta_v{V}.json")
-    if os.path.exists(train_bin) and os.path.exists(eval_bin) and os.path.exists(meta_path):
-        with open(meta_path, encoding="utf-8") as f:
-            return json.load(f)
-
-    target = TRAIN_TARGET + EVAL_TOKENS
-    parts_dir = os.path.join(OUT_DIR, f"tmp_parts_v{V}")
-    if os.path.exists(parts_dir):                     # 清理旧 part（断点重跑口径：全量重算，编码确定性）
-        for p in os.listdir(parts_dir):
-            os.remove(os.path.join(parts_dir, p))
-    os.makedirs(parts_dir, exist_ok=True)
-    t0 = time.perf_counter()
-    need_from = 0
-    need_lines = estimate_docs_needed(sp_path, target)
-    chunks, total_tok, total_unk, total_doc = [], 0, 0, 0
-    while True:   # 分块推进直至达标（估不准时自动续块）
-        jobs = []
-        w = workers
-        nchunk = max(1, (need_lines - need_from + w - 1) // w)
-        for k in range(need_from, need_lines, nchunk):
-            jobs.append((k, min(k + nchunk, need_lines), os.path.join(parts_dir, f"part_{k:08d}.bin")))
-        with Pool(len(jobs), initializer=_init_worker, initargs=(sp_path,)) as pool:
-            results = pool.map(_encode_range, jobs)
-        chunks.extend(results)
-        total_tok += sum(r[1] for r in results)
-        total_unk += sum(r[2] for r in results)
-        total_doc += sum(r[3] for r in results)
-        print(f"  [切流 v{V}] 行 [0:{need_lines}) 完成，累计 {total_tok:,} tok（{total_doc:,} 篇）",
-              flush=True)
-        if total_tok >= target:
-            break
-        need_from, need_lines = need_lines, need_lines + estimate_docs_needed(sp_path,
-                                                                              target - total_tok)
-    # 按行序拼接（与 Book2 ch8 的 order-preserving 拼接同法）
-    stream = np.empty(total_tok, dtype=np.uint16)
-    pos = 0
-    for part_path, n_tok, _, _ in chunks:
-        with open(part_path, "rb") as f:
-            arr = np.frombuffer(f.read(), dtype=np.uint16)
-        stream[pos:pos + n_tok] = arr
-        pos += n_tok
-    assert pos == total_tok
-    eval_arr = stream[-EVAL_TOKENS:].copy()
-    train_arr = stream[:-EVAL_TOKENS].copy()
-    train_arr.tofile(train_bin)
-    eval_arr.tofile(eval_bin)
-    for part_path, _, _, _ in chunks:
-        os.remove(part_path)
-    os.rmdir(parts_dir)
-    # ---- 切片参数校验（任务书「参数带校验」）----
-    assert int(train_arr.max()) < V and int(eval_arr.max()) < V, "切片校验失败：id 越界词表"
-    assert len(train_arr) >= TRAIN_TARGET, f"切片校验失败：训练池 {len(train_arr):,} < {TRAIN_TARGET:,}"
-    assert len(eval_arr) == EVAL_TOKENS
-    meta = {"V": V, "tokenizer": sp_path, "docs_encoded": total_doc, "unk_tokens": total_unk,
-            "unk_rate": total_unk / total_tok, "train_tokens": int(len(train_arr)),
-            "eval_tokens": int(len(eval_arr)), "train_bin": train_bin, "eval_bin": eval_bin,
-            "protocol": ("owt_docs.jsonl 流首部逐篇编码（EOS 分隔），尾 1.2M 留 eval；"
-                         "四臂同 token 预算=同算力，文本起点同为流首部"),
-            "wallclock_sec": round(time.perf_counter() - t0, 1)}
-    with open(meta_path, "w", encoding="utf-8") as f:
-        json.dump(meta, f, ensure_ascii=False, indent=2)
-    print(f"  [切流 v{V}] train {len(train_arr):,} tok / eval {len(eval_arr):,} tok / "
-          f"unk {total_unk}（{meta['wallclock_sec']}s）", flush=True)
-    return meta
+def slice_stream(V,sp_path,workers):
+    """保持历史“估计行块直至足额、尾部留eval”方案；EOF明确失败，不声称各臂原文对齐。"""
+    if workers<=0 or TRAIN_TARGET<=0 or EVAL_TOKENS<=0:raise ValueError('workers和池目标须为正')
+    if not 1<=V<=65536:raise ValueError('uint16词表超界')
+    folder=Path(OUT_DIR);folder.mkdir(parents=True,exist_ok=True)
+    train=folder/f'stream_v{V}_train.bin';ev=folder/f'stream_v{V}_eval.bin';meta_path=folder/f'slice_meta_v{V}.json'
+    identity=dict(V=V,tokenizer=file_identity(sp_path),source=file_identity(DOCS_JSONL),train_target=TRAIN_TARGET,eval_tokens=EVAL_TOKENS,
+                  workers=workers,slice_rule='ordered_estimated_line_chunks_tail_eval_v2',runner=file_identity(__file__))
+    if any(p.exists() for p in (train,ev,meta_path)):
+        if not all(p.exists() for p in (train,ev,meta_path)):raise FileExistsError('已有流不完整或缺身份，使用新out-dir')
+        meta=json.loads(meta_path.read_text())
+        if meta.get('identity')!=identity or meta.get('train_file')!=file_identity(train) or meta.get('eval_file')!=file_identity(ev):raise ValueError('切流缓存来源或内容不匹配')
+        return meta
+    target=TRAIN_TARGET+EVAL_TOKENS;start=0;end=estimate_docs_needed(sp_path,target);total=unknown=docs=0;parts=[];begin=time.perf_counter()
+    with tempfile.TemporaryDirectory(prefix=f'encode-v{V}-',dir=folder) as tmp:
+        tmp=Path(tmp)
+        while total<target:
+            stride=max(1,(end-start+workers-1)//workers)
+            jobs=[(i,min(i+stride,end),tmp/f'part-{i}.bin') for i in range(start,end,stride)]
+            if workers==1:
+                _init_worker(sp_path,str(DOCS_JSONL));rows=list(map(_encode_range,jobs))
+            else:
+                with multiprocessing.get_context('spawn').Pool(min(workers,len(jobs)),initializer=_init_worker,initargs=(sp_path,str(DOCS_JSONL))) as pool:rows=pool.map(_encode_range,jobs)
+            gained=sum(v[1] for v in rows)
+            if gained==0:raise ValueError(f'原文已耗尽，仅有{total}个token，未达到声明目标{target}')
+            parts.extend(rows);total+=gained;unknown+=sum(v[2] for v in rows);docs+=sum(v[3] for v in rows)
+            if total<target:start,end=end,end+estimate_docs_needed(sp_path,target-total)
+        combined=tmp/'combined.bin'
+        with combined.open('xb') as dest:
+            for path,ntok,_,_ in parts:
+                if Path(path).stat().st_size!=2*ntok:raise ValueError('part长度与记录不符')
+                with open(path,'rb') as src:shutil.copyfileobj(src,dest,length=1024*1024)
+        data=np.memmap(combined,dtype=np.uint16,mode='r')
+        if len(data)!=total or int(data.max())>=V:raise ValueError('拼流计数或ID范围错误')
+        n_train=total-EVAL_TOKENS
+        # 分块写临时文件，全部验证后才发布这次自建产物；不整流额外复制进内存。
+        for name,lo,hi in [('train',0,n_train),('eval',n_train,total)]:
+            with (tmp/name).open('xb') as f:
+                for k in range(lo,hi,1_000_000):f.write(data[k:min(k+1_000_000,hi)].tobytes())
+        del data
+        os.replace(tmp/'train',train);os.replace(tmp/'eval',ev)
+    meta=dict(identity=identity,V=V,tokenizer=str(sp_path),train_bin=str(train),eval_bin=str(ev),train_tokens=n_train,eval_tokens=EVAL_TOKENS,
+              train_file=file_identity(train),eval_file=file_identity(ev),docs_encoded=docs,unk_tokens=unknown,unk_rate=unknown/total,
+              wallclock_sec=time.perf_counter()-begin,protocol='原文行顺序编码并加EOS，尾部按token切分；不是文档边界切分，也不保证跨词表同评估文本')
+    save_json(meta_path,meta);return meta
 
 
 def measure_compression(sp_path):
-    """固定样本压缩率（首 SAMPLE_DOCS 篇，四臂同文本）：bytes/token 与 tokens/word。"""
-    sp = spm.SentencePieceProcessor()
-    sp.Load(sp_path)
-    n_tok, n_bytes, n_words = 0, 0, 0
-    with open(DOCS_JSONL, "r", encoding="utf-8") as f:
-        for i, line in enumerate(f):
-            if i >= SAMPLE_DOCS:
-                break
-            line = line.strip()
-            if not line:
-                continue
-            text = json.loads(line)["text"]
-            n_tok += len(sp.encode(text, out_type=int, add_eos=True))
-            n_bytes += len(text.encode("utf-8"))
-            n_words += len(text.split())
-    return {"sample_docs": SAMPLE_DOCS, "sample_bytes": n_bytes, "sample_tokens": n_tok,
-            "bytes_per_token": n_bytes / n_tok, "tokens_per_word": n_tok / max(1, n_words)}
+    """首SAMPLE_DOCS行中的实际有效文档；raw UTF-8字节/含EOS token，不是eval实际B/T。"""
+    sp=spm.SentencePieceProcessor(model_file=sp_path);tokens=byte_count=words=docs=0
+    with open(DOCS_JSONL,encoding='utf-8') as f:
+        for i,line in enumerate(f):
+            if i>=SAMPLE_DOCS:break
+            if not line.strip():continue
+            text=json.loads(line)['text'];tokens+=len(sp.encode(text,out_type=int,add_eos=True))
+            byte_count+=len(text.encode('utf-8'));words+=len(text.split());docs+=1
+    if tokens<=0 or byte_count<=0:raise ValueError('压缩样本没有有效token或原始字节')
+    return dict(sample_docs=docs,sample_line_limit=SAMPLE_DOCS,sample_bytes=byte_count,sample_tokens=tokens,
+                bytes_per_token=byte_count/tokens,tokens_per_word=tokens/words if words else None,
+                source=file_identity(DOCS_JSONL),tokenizer=file_identity(sp_path),add_eos=True,
+                note='样本独立于评估池；原始字节与分词归一化后的内容可能不同，bpb换算仅为估计')
 
 
-def lr_at(step, total):
-    if step <= WARMUP:
-        return PEAK_LR * step / WARMUP
-    prog = (step - WARMUP) / max(1, total - WARMUP)
-    return PEAK_LR * (MIN_LR_RATIO + (1 - MIN_LR_RATIO) * 0.5 * (1 + math.cos(math.pi * prog)))
+def lr_at(step,total):
+    if WARMUP>0 and step<=WARMUP:return PEAK_LR*step/WARMUP
+    progress=(step-WARMUP)/max(1,total-WARMUP)
+    return PEAK_LR*(MIN_LR_RATIO+(1-MIN_LR_RATIO)*.5*(1+math.cos(math.pi*progress)))
 
 
 class TrainStream:
-    """tokens 流首部按步号顺序切块（一次通过；四臂按步号取同 token 数的批）。"""
-
-    def __init__(self, path):
-        self.arr = np.memmap(path, dtype=np.uint16, mode="r")
-        self.max_step = (len(self.arr) - 1) // TPB
-
-    def batch(self, step, device):
-        off = (step - 1) * TPB
-        span = np.asarray(self.arr[off:off + TPB + 1], dtype=np.int64)       # (8193,)
-        x = torch.from_numpy(span[:-1].reshape(BATCH, BLOCK)).to(device)     # (16,512)
-        y = torch.from_numpy(span[1:].reshape(BATCH, BLOCK)).to(device)      # (16,512)
-        return x, y
+    """第k步的输入/目标均为(BATCH,BLOCK)，目标右移一位；位置一次通过不证明文本去重。"""
+    def __init__(self,path):
+        self.path=str(path)
+        if Path(path).stat().st_size%2:raise ValueError('uint16流字节数须为偶数')
+        self.arr=np.memmap(path,dtype=np.uint16,mode='r');self.max_step=(len(self.arr)-1)//TPB
+    def batch(self,step,device):
+        if not 1<=step<=self.max_step:raise ValueError('训练步数越过流容量')
+        start=(step-1)*TPB;span=np.asarray(self.arr[start:start+TPB+1],dtype=np.int64)
+        return (torch.from_numpy(span[:-1].reshape(BATCH,BLOCK)).to(device),
+                torch.from_numpy(span[1:].reshape(BATCH,BLOCK)).to(device))
 
 
-def build_eval_batches(eval_bin, device):
-    """固定 eval 窗集：各臂自己的 eval 池内固定种子抽 49 批 (16,512)（窗位协议跨臂一致）。"""
-    ev = np.memmap(eval_bin, dtype=np.uint16, mode="r")
-    gen = torch.Generator().manual_seed(SEED)
-    offs = torch.randint(0, len(ev) - BLOCK - 1, (EVAL_BATCHES * BATCH,), generator=gen).numpy()
-    xs, ys = [], []
-    for o in offs:
-        xs.append(np.asarray(ev[o:o + BLOCK], dtype=np.int64))
-        ys.append(np.asarray(ev[o + 1:o + BLOCK + 1], dtype=np.int64))
-    x = torch.from_numpy(np.stack(xs).reshape(EVAL_BATCHES, BATCH, BLOCK)).to(device)  # (49,16,512)
-    y = torch.from_numpy(np.stack(ys).reshape(EVAL_BATCHES, BATCH, BLOCK)).to(device)
-    return x, y
+def build_eval_batches(eval_bin,device):
+    """全部合法起点中固定抽49批×16窗；不同池、种子或抽样版本不能称同窗。"""
+    ev=np.memmap(eval_bin,dtype=np.uint16,mode='r')
+    if len(ev)<BLOCK+1:raise ValueError('评估池不足一个输入/目标窗口')
+    gen=torch.Generator().manual_seed(SEED)
+    starts=torch.randint(0,len(ev)-BLOCK,(EVAL_BATCHES*BATCH,),generator=gen).tolist()
+    x=torch.tensor(np.stack([ev[o:o+BLOCK] for o in starts]).astype(np.int64)).reshape(EVAL_BATCHES,BATCH,BLOCK)
+    y=torch.tensor(np.stack([ev[o+1:o+BLOCK+1] for o in starts]).astype(np.int64)).reshape(EVAL_BATCHES,BATCH,BLOCK)
+    return x.to(device),y.to(device)
 
 
 @torch.no_grad()
-def eval_loss(model, ex, ey):
-    model.eval()
-    losses = []
-    for i in range(EVAL_BATCHES):
-        _, loss = model(ex[i], ey[i])
-        losses.append(loss.item())
-    model.train()
-    mean = sum(losses) / len(losses)
-    se = (sum((l - mean) ** 2 for l in losses) / (len(losses) - 1)) ** 0.5 / math.sqrt(len(losses))
-    return mean, se
+def eval_loss(model,ex,ey,return_batches=False):
+    """等长窗口均值及批间SE；相关/重叠窗不保证独立，单批不能估SE。退出恢复原模式。"""
+    if ex.shape!=ey.shape or len(ex)==0:raise ValueError('评估输入/目标形状不符或无批')
+    before=model.training;model.eval()
+    try:losses=[float(model(ex[i],ey[i])[1]) for i in range(len(ex))]
+    finally:model.train(before)
+    if not all(math.isfinite(v) for v in losses):raise FloatingPointError('非有限评估损失')
+    mean=sum(losses)/len(losses)
+    se=float(np.std(losses,ddof=1)/math.sqrt(len(losses))) if len(losses)>1 else None
+    return (mean,se,losses) if return_batches else (mean,se)
 
 
 def build_arm(V):
-    """四臂模型：同种子建底座，只变 vocab_size（wte 行数；tied head 同表）。"""
+    """固定种子、只改词表几何；不同V会改变RNG消耗，不承诺主体初值逐位相同。"""
     torch.manual_seed(SEED)
-    cfg = GPT2Config(vocab_size=V, n_positions=N_POSITIONS,
-                     n_layer=N_LAYER, n_embd=N_EMBD, n_head=N_HEAD)
-    m = GPT2(cfg)
-    hand = 23_633_920 + (V - 8192) * N_EMBD      # 模块档基线（ch2 定账）+ 词表行差量（tied 单份）
-    n_total = m.n_params()
-    assert n_total == hand, f"参数对账失败：{n_total} != {hand}（V={V}）"
-    return m
+    model=GPT2(GPT2Config(vocab_size=V,n_positions=N_POSITIONS,n_layer=N_LAYER,n_embd=N_EMBD,n_head=N_HEAD))
+    expected=V*N_EMBD+N_POSITIONS*N_EMBD+N_LAYER*(12*N_EMBD**2+13*N_EMBD)+2*N_EMBD
+    assert model.n_params()==expected
+    return model
 
 
-def run_arm(arm, V, steps, eval_every, device, stream, ex, ey, report, out_json):
-    ckpt_path = os.path.join(OUT_DIR, f"ckpt_{arm}_{report['meta']['out_name']}.pt")
-    m = build_arm(V).to(device)
-    n_total = m.n_params()
-    n_nonemb = n_total - m.wte.weight.numel() - m.wpe.weight.numel()
-    opt = torch.optim.AdamW(m.parameters(), lr=PEAK_LR, betas=(0.9, 0.95), weight_decay=WDECL)
+def common_identity(steps,eval_every,device):
+    return dict(schema=2,seed=SEED,steps=steps,eval_every=eval_every,device=str(device),torch=str(torch.__version__),sentencepiece=spm.__version__,
+        model=[N_LAYER,N_EMBD,N_HEAD,N_POSITIONS],batch=BATCH,block=BLOCK,eval_batches=EVAL_BATCHES,
+        learning_rate=[PEAK_LR,MIN_LR_RATIO,WARMUP],weight_decay=WDECL,sampler='all_legal_starts_v2',
+        runner=file_identity(__file__),factory=file_identity(sys.modules[GPT2.__module__].__file__),docs=file_identity(DOCS_JSONL),
+        tokenizer_corpus=file_identity(TOK_TXT) if Path(TOK_TXT).is_file() else None)
 
-    train_losses, lrs, times, evals = [], [], [], []
-    start_step, elapsed_train, elapsed_eval = 0, 0.0, 0.0
-    resumed_from = None
-    if os.path.exists(ckpt_path):
-        ck = torch.load(ckpt_path, map_location=device, weights_only=False)
-        m.load_state_dict(ck["model"])
-        opt.load_state_dict(ck["opt"])
-        train_losses, lrs, times = ck["train_losses"], ck["lrs"], ck["times"]
-        evals = ck["evals"]
-        start_step, elapsed_train, elapsed_eval = ck["step"], ck["elapsed_train"], ck["elapsed_eval"]
-        resumed_from = start_step
-        print(f"  [{arm} 续跑] 自 step {start_step + 1}", flush=True)
 
-    m.train()
-    base_alloc = torch.mps.current_allocated_memory() / 2**20 if device.type == "mps" else 0.0
-    peak = base_alloc
-    diverged_at, reason = None, None
-    t_arm = time.perf_counter()
-    for step in range(start_step + 1, steps + 1):
-        lr = lr_at(step, steps)
-        for g in opt.param_groups:
-            g["lr"] = lr
-        x, y = stream.batch(step, device)
-        t0 = time.perf_counter()
-        with torch.autocast(device_type="mps", dtype=torch.bfloat16) if device.type == "mps" \
-                else torch.autocast("cpu", enabled=False):
-            _, loss = m(x, y)
-        opt.zero_grad(set_to_none=True)
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(m.parameters(), 1.0)
+def run_identity(arm,V,steps,eval_every,device,stream,report):
+    meta=report['meta'];ev=meta['slices'][arm]['eval_bin']
+    return dict(**common_identity(steps,eval_every,device),arm=arm,V=V,train=file_identity(stream.path),eval=file_identity(ev),
+                tokenizer=file_identity(meta['tokenizers'][arm]),compression=meta['compression'][arm])
+
+
+def usable(record):
+    return (record.get('completed') is True and not record.get('diverged') and
+            record.get('steps_done')==record.get('steps_planned') and record.get('steps_done',0)>0
+            and isinstance(record.get('eval_final'),(int,float)) and math.isfinite(record['eval_final']))
+
+
+def run_arm(arm,V,steps,eval_every,device,stream,ex,ey,report,out_json):
+    """有效身份下从eval边界恢复；CPU小模型续跑可测试，MPS不承诺逐位确定性。"""
+    device=torch.device(device)
+    if not 0<=WARMUP<steps or eval_every<=0 or steps>stream.max_step:raise ValueError('步数、warmup或评估间隔无效')
+    identity=run_identity(arm,V,steps,eval_every,device,stream,report)
+    name=report['meta']['out_name'];folder=Path(OUT_DIR);folder.mkdir(parents=True,exist_ok=True)
+    ckpt=folder/f'ckpt_{arm}_{name}.pt';curve=folder/f'curve_{arm}_{name}.csv'
+    if curve.exists() and not ckpt.exists():raise FileExistsError('同名曲线无可核断点，请改out-name')
+    model=build_arm(V).to(device)
+    opt=torch.optim.AdamW(model.parameters(),lr=PEAK_LR,betas=(.9,.95),weight_decay=WDECL)
+    train_losses=[];lrs=[];times=[];evals=[];start=0;train_time=eval_time=0.;memory=[]
+    if ckpt.exists():
+        saved=torch.load(ckpt,map_location=device,weights_only=True)
+        if saved.get('run_identity')!=identity:raise ValueError('断点配置/数据/实现身份不同，禁止混接')
+        model.load_state_dict(saved['model']);opt.load_state_dict(saved['opt'])
+        torch.set_rng_state(saved['cpu_rng'].cpu())
+        if device.type=='mps' and saved.get('mps_rng') is not None:torch.mps.set_rng_state(saved['mps_rng'].cpu())
+        start=saved['step'];train_losses=saved['train_losses'];lrs=saved['lrs'];times=saved['times'];evals=saved['evals']
+        train_time=saved['elapsed_train'];eval_time=saved['elapsed_eval'];memory=saved.get('memory_samples',[])
+        if not 0<=start<=steps or len(train_losses)!=start or len(lrs)!=start or len(times)!=start:raise ValueError('断点步数与曲线不符')
+    model.train();begin=time.perf_counter();failure=None
+    for step in range(start+1,steps+1):
+        lr=lr_at(step,steps)
+        for group in opt.param_groups:group['lr']=lr
+        x,y=stream.batch(step,device);t0=time.perf_counter()
+        with torch.autocast('mps',dtype=torch.bfloat16) if device.type=='mps' else torch.autocast('cpu',enabled=False):
+            _,loss=model(x,y)
+        value=float(loss.detach())
+        if not math.isfinite(value) or value>100:
+            failure={'step':step,'reason':'非有限或超过本实验阈值的loss，未更新'};break
+        opt.zero_grad(set_to_none=True);loss.backward()
+        norm=float(torch.nn.utils.clip_grad_norm_(model.parameters(),1.0))
+        if not math.isfinite(norm):failure={'step':step,'reason':'非有限梯度，未更新'};break
         opt.step()
-        if device.type == "mps":
-            torch.mps.synchronize()
-        times.append(time.perf_counter() - t0)
-        elapsed_train += times[-1]
-        lv = loss.item()
-        train_losses.append(lv)
-        lrs.append(lr)
-        if device.type == "mps":
-            peak = max(peak, torch.mps.current_allocated_memory() / 2**20)
-        if not math.isfinite(lv) or lv > 100.0:
-            diverged_at, reason = step, ("non-finite" if not math.isfinite(lv) else f"loss={lv:.1f}>100")
-            print(f"  [{arm} 发散] step {step}: {reason}", flush=True)
-            break
-        if step % 100 == 0 or step == 1:
-            print(f"  [{arm:7s}] step {step:5d}/{steps} train {lv:.4f} lr {lr:.2e} "
-                  f"({elapsed_train/(step - start_step + 1):.3f}s/step)", flush=True)
-        if step % eval_every == 0 or step == steps:
-            t0 = time.perf_counter()
-            el, se = eval_loss(m, ex, ey)
-            if device.type == "mps":
-                torch.mps.synchronize()
-            elapsed_eval += time.perf_counter() - t0
-            evals.append({"step": step, "eval_loss": round(el, 5), "eval_se": round(se, 5),
-                          "n_tokens": EVAL_BATCHES * TPB})
-            print(f"  [{arm:7s}] [eval] step {step}: eval loss {el:.4f} ± {se:.4f}", flush=True)
-            torch.save({"model": m.state_dict(), "opt": opt.state_dict(), "step": step,
-                        "train_losses": train_losses, "lrs": lrs, "times": times, "evals": evals,
-                        "elapsed_train": elapsed_train, "elapsed_eval": elapsed_eval}, ckpt_path)
-
-    steps_done = len(train_losses)
-    steady = times[20:] if len(times) > 20 else times
-    tail = train_losses[-min(TAIL, steps_done):]
-    emb_params = V * N_EMBD                     # tied：单份
-    rec = {
-        "arm": arm, "V": V,
-        "arm_def": f"GPT-2 底座（模块档，tied embeddings）只变 vocab_size={V}",
-        "config": {"d": N_EMBD, "L": N_LAYER, "h": N_HEAD, "V": V, "B": BATCH, "T": BLOCK,
-                   "n_positions": N_POSITIONS, "tied": True},
-        "params_total": n_total, "params_non_embedding": n_nonemb,
-        "embedding_params": emb_params,
-        "embedding_share": round(emb_params / n_total, 4),
-        "steps_done": steps_done, "steps_planned": steps, "resumed_from_step": resumed_from,
-        "tail300_train_loss": round(sum(tail) / len(tail), 5),
-        "last_step_loss": round(train_losses[-1], 5) if train_losses else None,
-        "min_train_loss": round(min(train_losses), 5) if train_losses else None,
-        "evals": evals,
-        "eval_final": evals[-1]["eval_loss"] if evals else None,
-        "eval_final_se": evals[-1]["eval_se"] if evals else None,
-        "sec_per_step_steady": round(sum(steady) / len(steady), 4),
-        "sec_step_std": round(float(np.std(steady)), 4),
-        "mem_peak_delta_mb": round(peak - base_alloc, 1),
-        "wallclock_sec": round(time.perf_counter() - t_arm, 1),
-        "diverged": diverged_at is not None, "diverged_at_step": diverged_at, "divergence_reason": reason,
-        "precision": "train bf16 autocast / eval fp32",
-    }
-    curve_path = os.path.join(OUT_DIR, f"curve_{arm}_{report['meta']['out_name']}.csv")
-    with open(curve_path, "w", newline="", encoding="utf-8") as cf:
-        w = csv.writer(cf)
-        w.writerow(["step", "train_loss", "lr"])
-        for i, (lv, lr) in enumerate(zip(train_losses, lrs), 1):
-            w.writerow([i, f"{lv:.6g}", f"{lr:.6g}"])
-    if steps_done >= steps and os.path.exists(ckpt_path):
-        os.remove(ckpt_path)
-    report["arms"][arm] = rec
-    with open(out_json, "w", encoding="utf-8") as f:
-        json.dump(report, f, ensure_ascii=False, indent=2)
-    print(f"  [{arm} 完成] steps {steps_done} | tail300 {rec['tail300_train_loss']} | "
-          f"eval_final {rec['eval_final']} | {rec['sec_per_step_steady']}s/step", flush=True)
-    del m, opt
-    if device.type == "mps":
-        torch.mps.empty_cache()
-    return rec
+        if device.type=='mps':torch.mps.synchronize()
+        elapsed=time.perf_counter()-t0;times.append(elapsed);train_time+=elapsed;train_losses.append(value);lrs.append(lr)
+        if device.type=='mps':memory.append(torch.mps.current_allocated_memory()/2**20)
+        if step==1 or step%100==0:print(f'[{arm}] {step}/{steps} loss={value:.4f} 累计训练秒/步={train_time/len(times):.4f}',flush=True)
+        if step%eval_every==0 or step==steps:
+            t0=time.perf_counter();el,se,batches=eval_loss(model,ex,ey,True)
+            if device.type=='mps':torch.mps.synchronize()
+            eval_time+=time.perf_counter()-t0
+            evals.append(dict(step=step,eval_loss=round(el,5),eval_se=round(se,5) if se is not None else None,
+                              batch_losses=batches,n_tokens=ey.numel(),se_definition='批均值的样本std/sqrt(批数)，不保证独立'))
+            saved=dict(model=model.state_dict(),opt=opt.state_dict(),step=step,train_losses=train_losses,lrs=lrs,times=times,evals=evals,
+                elapsed_train=train_time,elapsed_eval=eval_time,run_identity=identity,cpu_rng=torch.get_rng_state(),
+                mps_rng=torch.mps.get_rng_state() if device.type=='mps' else None,memory_samples=memory)
+            torch.save(saved,str(ckpt)+'.tmp');os.replace(str(ckpt)+'.tmp',ckpt)
+    count=len(train_losses);steady=times[20:] if len(times)>20 else times;tail=train_losses[-TAIL:]
+    completed=failure is None and count==steps and bool(evals) and evals[-1]['step']==steps
+    record=dict(arm=arm,V=V,embedding_params=V*N_EMBD,embedding_share=V*N_EMBD/model.n_params(),run_identity=identity,params_total=model.n_params(),params_non_embedding=model.n_params(non_embedding=True),
+        config=dict(d=N_EMBD,L=N_LAYER,h=N_HEAD,V=V,B=BATCH,T=BLOCK),steps_done=count,steps_planned=steps,
+        resumed_from_step=start or None,completed=completed,diverged=failure is not None,failure=failure,
+        tail300_train_loss=round(sum(tail)/len(tail),5) if tail else None,tail300_def=f'最后min({TAIL},已完成步数)步的均值',
+        last_step_loss=train_losses[-1] if train_losses else None,min_train_loss=min(train_losses) if train_losses else None,
+        evals=evals,eval_final=evals[-1]['eval_loss'] if completed else None,eval_final_se=evals[-1]['eval_se'] if completed else None,
+        sec_per_step_steady=sum(steady)/len(steady) if steady else None,sec_step_std=float(np.std(steady)) if steady else None,
+        sec_per_step_all=train_time/count if count else None,wallclock_sec=time.perf_counter()-begin,
+        wallclock_scope='本次调用片段；累计训练与eval分别记录',elapsed_train=train_time,eval_overhead_sec=eval_time,
+        max_current_mib_after_step=max(memory) if memory else None,memory_scope='更新后离散current读数，非训练峰值',
+        precision='MPS bf16 autocast训练/fp32 eval' if device.type=='mps' else 'CPU fp32训练/eval',checkpoint=str(ckpt))
+    with curve.open('w',newline='') as f:
+        writer=csv.writer(f);writer.writerow(['step','train_loss','lr']);writer.writerows(zip(range(1,count+1),train_losses,lrs))
+    report['arms'][arm]=record;save_json(out_json,report)
+    print(f'[{arm} {"完成" if completed else "未完成"}] {count}/{steps}，eval={record["eval_final"]}',flush=True)
+    del model,opt
+    if device.type=='mps':torch.mps.empty_cache()
+    return record
 
 
 def add_tradeoff_summary(report):
-    """三权衡汇总：嵌入占比 / 压缩率 / 速度 + bpb 质量排序（预注册跨臂口径）。"""
-    rows = []
-    for arm, r in report["arms"].items():
-        comp = report["meta"]["compression"][arm]
-        if r["eval_final"] is None:
-            continue
-        bpb = r["eval_final"] / (math.log(2) * comp["bytes_per_token"])   # nats/tok -> bits/byte
-        rows.append({"arm": arm, "V": r["V"], "embedding_share": r["embedding_share"],
-                     "bytes_per_token": round(comp["bytes_per_token"], 4),
-                     "tokens_per_word": round(comp["tokens_per_word"], 4),
-                     "eval_nats_per_token": r["eval_final"],
-                     "eval_bpb": round(bpb, 5), "sec_per_step": r["sec_per_step_steady"]})
-    report["tradeoff_table"] = rows
-    report["tradeoff_note"] = ("跨臂质量唯一可比口径 = eval_bpb（按各臂同文本 bytes/token 归一）；"
-                               "eval_nats_per_token 跨词表不可比；四臂同 token 预算=同算力（预注册比较轴）")
+    rows=[]
+    for arm,record in report['arms'].items():
+        if not usable(record):continue
+        comp=report['meta']['compression'][arm];beta=comp['bytes_per_token']
+        if not math.isfinite(beta) or beta<=0:raise ValueError('压缩系数无效')
+        rows.append(dict(arm=arm,V=record['V'],embedding_share=record['embedding_share'],bytes_per_token=beta,
+            tokens_per_word=comp['tokens_per_word'],eval_nats_per_token=record['eval_final'],
+            eval_bpb=record['eval_final']/(math.log(2)*beta),sec_per_step=record['sec_per_step_steady'],
+            bpb_scope='独立压缩样本系数的换算估计，不是同一评分文本的总NLL/字节'))
+    report['tradeoff_table']=rows
+    report['tradeoff_note']='同token预算不等同算力或同原文；bpb为估计，跨臂验证流与可见字节上下文不同；不作纯词表因果结论'
 
 
 def main():
-    ap = argparse.ArgumentParser(description="ch5 词表扫描：V=8k/16k/32k/49k 四臂（三权衡实测）")
-    ap.add_argument("--steps", type=int, default=1000, help="每臂步数（本实验 fast=1000，无 full 档）")
-    ap.add_argument("--out-name", type=str, default=None)
-    ap.add_argument("--cells", type=str, default="v8192,v16384,v32768,v49152")
-    ap.add_argument("--eval-every", type=int, default=500)
-    ap.add_argument("--workers", type=int, default=8, help="语料编码并行 worker 数")
-    args = ap.parse_args()
-    out_name = args.out_name or ("fast" if args.steps <= 1500 else "full")
-    arms = [c.strip() for c in args.cells.split(",")]
-    for a in arms:
-        if a not in ARMS:
-            raise SystemExit(f"未知臂 {a}（可选 {'/'.join(ARMS)}）")
-
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-    os.makedirs(OUT_DIR, exist_ok=True)
-
-    # ---- 阶段 1：分词器 + 自切流 + 压缩率（存在即复用）----
-    tokenizers, slices, compression = {}, {}, {}
+    global OUT_DIR,BOOK2_DIR,TOK_TXT,DOCS_JSONL,WARMUP,SEED
+    ap=argparse.ArgumentParser(description='词表四臂扫描；明确数据身份，bpb仅样本压缩系数换算估计')
+    ap.add_argument('--steps',type=int,default=1000);ap.add_argument('--out-name',default='fast');ap.add_argument('--cells',default=','.join(ARMS))
+    ap.add_argument('--eval-every',type=int,default=500);ap.add_argument('--warmup',type=int,default=WARMUP);ap.add_argument('--seed',type=int,default=SEED)
+    ap.add_argument('--workers',type=int,default=8);ap.add_argument('--out-dir',type=Path,default=Path(OUT_DIR))
+    ap.add_argument('--book2-dir',type=Path,default=Path(BOOK2_DIR));ap.add_argument('--tokenizer-corpus',type=Path,default=Path(TOK_TXT));ap.add_argument('--docs',type=Path,default=Path(DOCS_JSONL))
+    ap.add_argument('--device',choices=['cpu','mps'],default='mps' if torch.backends.mps.is_available() else 'cpu');a=ap.parse_args()
+    OUT_DIR=str(a.out_dir);BOOK2_DIR=str(a.book2_dir);TOK_TXT=str(a.tokenizer_corpus);DOCS_JSONL=str(a.docs);WARMUP=a.warmup;SEED=a.seed
+    if not 0<=WARMUP<a.steps or a.eval_every<=0 or a.workers<=0:raise ValueError('日程、评估间隔与workers无效')
+    if Path(a.out_name).name!=a.out_name or a.out_name in ('','.','..'):raise ValueError('out-name须单个名称')
+    arms=a.cells.split(',')
+    if not arms or len(set(arms))!=len(arms) or any(x not in ARMS for x in arms):raise ValueError('无效或重复实验臂')
+    common=common_identity(a.steps,a.eval_every,a.device);path=a.out_dir/f'vocab_scan_{a.out_name}.json'
+    if path.exists():
+        report=json.loads(path.read_text())
+        if report.get('meta',{}).get('run_identity')!=common:raise ValueError('报告配置/来源/实现身份不同，请使用新输出名或目录')
+    else:report=dict(meta=dict(out_name=a.out_name,run_identity=common,slices={},compression={},tokenizers={}),arms={})
+    a.out_dir.mkdir(parents=True,exist_ok=True)
     for arm in arms:
-        V = ARMS[arm]
-        if arm == "v8192":
-            tokenizers[arm] = os.path.join(BOOK2_DIR, "sp8k_owt.model")     # Book2 遗产直接复用
-            slices[arm] = {"train_bin": os.path.join(BOOK2_DIR, "tokens.bin"),
-                           "eval_bin": os.path.join(BOOK2_DIR, "eval.bin"),
-                           "train_tokens": 306_117_199, "eval_tokens": 1_200_000,
-                           "protocol": "Book2 ch08 定稿遗产直接复用（同切片协议出身）"}
+        V=ARMS[arm]
+        if arm=='v8192':
+            tokenizer=str(a.book2_dir/'sp8k_owt.model');tb=a.book2_dir/'tokens.bin';eb=a.book2_dir/'eval.bin'
+            if any(p.stat().st_size%2 for p in (tb,eb)):raise ValueError('旧uint16流字节长度不正确')
+            prepared=dict(train_bin=str(tb),eval_bin=str(eb),train_tokens=tb.stat().st_size//2,eval_tokens=eb.stat().st_size//2,
+                          train_file=file_identity(tb),eval_file=file_identity(eb),protocol='读取现有Book2流，不沿用固定token计数常量')
         else:
-            tokenizers[arm] = ensure_tokenizer(V)
-            slices[arm] = slice_stream(V, tokenizers[arm], args.workers)
-        compression[arm] = measure_compression(tokenizers[arm])
-        print(f"[压缩率] {arm}: {compression[arm]['bytes_per_token']:.3f} B/tok, "
-              f"{compression[arm]['tokens_per_word']:.3f} tok/word（首 {SAMPLE_DOCS} 篇同文本）",
-              flush=True)
-
-    out_json = os.path.join(OUT_DIR, f"vocab_scan_{out_name}.json")
-    if os.path.exists(out_json):
-        with open(out_json, encoding="utf-8") as f:
-            report = json.load(f)
-        report.setdefault("arms", {})
-        print(f"[续跑] 已有报告载入：臂 {sorted(report['arms'])}", flush=True)
-    else:
-        report = {"arms": {}}
-    report["meta"] = {
-        "date": time.strftime("%Y-%m-%d %H:%M:%S"), "seed": SEED, "device": str(device),
-        "torch": torch.__version__, "out_name": out_name,
-        "experiment": "ch5 词表扫描：同骨架（tied GPT-2 模块档）换词表大小四臂——三权衡实测",
-        "module_tier": f"d={N_EMBD}/L={N_LAYER}/h={N_HEAD}，B={BATCH}/T={BLOCK}（8192 tok/步）",
-        "vocab_arms": {a: ARMS[a] for a in arms},
-        "vocab_note": ("49152=192×256（256 倍数口径的 GPT-2 粗档 ≈50257，papers/03 §2 谱系锚）；"
-                       "分词器全部在独立分片训练（bpe/byte_fallback/coverage=1.0，sp-8k 同配方）"),
-        "corpus": ("v8192=Book2 ch08 遗产；其余=owt_docs.jsonl 流首部自切（尾 1.2M eval，"
-                   f"训练池目标 {TRAIN_TARGET:,} tok 留 5000 步余量）"),
-        "slices": slices, "compression": compression,
-        "optimizer": f"AdamW(betas=0.9,0.95,wd={WDECL}) + grad_clip 1.0（Book2 五件套）",
-        "schedule": f"lr {PEAK_LR} 余弦降至 {PEAK_LR*MIN_LR_RATIO:.0e}，warmup={WARMUP}；四臂统一日程",
-        "data_protocol": "各臂自己的流首部顺序分块一次通过（同 token 预算=同算力，预注册比较轴）",
-        "eval_protocol": (f"每 {args.eval_every} 步+终步：各臂 eval 池固定 49 窗 (16,512) fp32；"
-                          "跨臂质量比较口径 = bpb（见 tradeoff_note）"),
-        "precision": "train bf16 autocast / eval fp32",
-        "ckpt": "每 eval 边界存 ckpt，臂完成即删；中断后重跑同命令自动续跑",
-        "argv": " ".join(sys.argv[1:]),
-    }
-    with open(out_json, "w", encoding="utf-8") as f:
-        json.dump(report, f, ensure_ascii=False, indent=2)
-
-    t_all = time.perf_counter()
-    for arm in arms:
-        done = report["arms"].get(arm)
-        if done and done["steps_done"] >= args.steps:
-            print(f"[跳过] 臂 {arm} 已完成（{done['steps_done']} 步）", flush=True)
-            continue
-        stream = TrainStream(slices[arm]["train_bin"])
-        if args.steps > stream.max_step:
-            raise SystemExit(f"{arm} 步数 {args.steps} 超出一次通过上限 {stream.max_step}")
-        ex, ey = build_eval_batches(slices[arm]["eval_bin"], device)
-        print(f"\n===== 臂 {arm}（V={ARMS[arm]}，{args.steps} 步） =====", flush=True)
-        run_arm(arm, ARMS[arm], args.steps, args.eval_every, device, stream, ex, ey, report, out_json)
-        del stream, ex, ey
-    add_tradeoff_summary(report)
-    with open(out_json, "w", encoding="utf-8") as f:
-        json.dump(report, f, ensure_ascii=False, indent=2)
-    print(f"\n[全部完成] 总耗时 {(time.perf_counter()-t_all)/60:.1f} min -> {out_json}", flush=True)
-    for row in report.get("tradeoff_table", []):
-        print(f"  {row['arm']:7s} V={row['V']:5d} 嵌入占比={row['embedding_share']*100:5.2f}%  "
-              f"{row['bytes_per_token']:.3f}B/tok  bpb={row['eval_bpb']:.4f}  "
-              f"{row['sec_per_step']}s/step", flush=True)
+            tokenizer=ensure_tokenizer(V);prepared=slice_stream(V,tokenizer,a.workers)
+        sp=spm.SentencePieceProcessor(model_file=tokenizer)
+        if sp.get_piece_size()!=V:raise ValueError('词表实物大小与模型不符')
+        compression=measure_compression(tokenizer)
+        for key,value in [('slices',prepared),('compression',compression),('tokenizers',tokenizer)]:
+            previous=report['meta'][key].get(arm)
+            if previous is not None and previous!=value:raise ValueError('同名实验臂的准备产物已变化')
+            report['meta'][key][arm]=value
+        stream=TrainStream(prepared['train_bin'])
+        if a.steps>stream.max_step:raise ValueError('训练预算超出流容量')
+        identity=run_identity(arm,V,a.steps,a.eval_every,a.device,stream,report)
+        done=report['arms'].get(arm,{})
+        if done and done.get('run_identity')!=identity:raise ValueError('实验臂身份变化')
+        if usable(done):continue
+        ex,ey=build_eval_batches(prepared['eval_bin'],a.device)
+        result=run_arm(arm,V,a.steps,a.eval_every,a.device,stream,ex,ey,report,path)
+        if not usable(result):raise RuntimeError('实验臂失败，保留有效断点，不汇总为成功结果')
+    add_tradeoff_summary(report);save_json(path,report);print(path)
 
 
-if __name__ == "__main__":
-    main()
+if __name__=='__main__':main()

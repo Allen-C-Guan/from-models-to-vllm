@@ -5,24 +5,25 @@
 #       (2) 两套命名账（几何标签齐全，防混用）：207M 候选（L=12,h=16,h_kv=8,d_k=64）@2048=48MiB
 #           （MHA 反事实 96 / MQA 6）；216M 等参数三兄弟（L=16,h=16,d_k=64，V=8k）@2048=128/32/8MiB
 #           （每 token 64/16/4 KiB）——三兄弟参数账逐位 assert（attn+FFN 每层 12,451,840 三臂逐位相同，
-#           仿 LLaMA2 A.2.1 的 FFN 补齐协议；登记数 216,006,656 为不含 RMSNorm 口径，含 13 处 norm
+#           仿 LLaMA2 A.2.1 的 FFN 补齐协议；登记数 216,006,656 为不含 RMSNorm 口径，含 33 处 norm
 #           精确值 216,040,448——两口径都报，防回流）；
 #       (3) 实测对拍：真实分配 (1,L,n,h_kv,d_k) fp16 张量对（逐层布局），MPS current_allocated_memory
 #           差值 vs 手算逐 case 对拍（含 207M@2048 与三兄弟 @2048 三个命名 case）。
 #       （证据等级约定：本表数字一律自算自测，不引二手汇总——ch6「显存账本第一次手算」的章级口径。）
 # 所属章节：Book3 ch6（KV 账本 + F4/F16/N7 回收的实验正身）。
 # 运行方式：python kv_probe.py [--out-name kv_probe]     （秒级，MPS 或 CPU）
-#   产物：log/book3-ch06/kv_probe_{out}.json（不入库）
+#   产物：log/book3-ch06/{out-name}.json（不入库）
 import argparse
 import json
 import os
 import time
+from pathlib import Path
 
 import torch
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
-OUT_DIR = os.path.join(REPO_ROOT, "log", "book3-ch06")
+OUT_DIR = str(Path.cwd()/"log/book3-ch06")
 SEED = 20261002
 
 # 三档模型的注意力几何（来源：GPT-2 官方 config / 本册 207M 候选（plan 定版 cand1）/ LLaMA2-7B 官方 config）
@@ -46,6 +47,9 @@ BROTHERS_GEOM = {"d": 1024, "L": 16, "h": 16, "d_k": 64, "V": 8192, "untied": Tr
 
 def kv_bytes(L, n, h_kv, d_k, bytes_per=DTYPE_BYTES, batch=1):
     """KV cache 字节手算：K 与 V 各一份，形状 (B,L,n,h_kv,d_k)。"""
+    vals=(L,n,h_kv,d_k,bytes_per,batch)
+    if any(not isinstance(v,int) or isinstance(v,bool) for v in vals) or n<0 or min(L,h_kv,d_k,bytes_per,batch)<=0:
+        raise ValueError("几何须为整数；长度非负，其余为正")
     return 2 * L * n * h_kv * d_k * bytes_per * batch
 
 
@@ -68,8 +72,12 @@ def measure_case(L, n, h_kv, d_k, device):
     """逐 case 实测：逐层构造 (1,h_kv,n,d_k) 的 K/V 张量对（真实 cache 布局），MPS 分配差 vs 手算。"""
     hand = kv_bytes(L, n, h_kv, d_k)
     if device.type != "mps":
-        return {"hand_bytes": hand, "mps_alloc_delta_bytes": None, "match": None,
-                "note": "CPU 口径不测分配（逐字节账 numel 直接核对）"}
+        # meta只核形状×元素字节，不宣称真实分配或CPU进程峰值。
+        probe=torch.empty((1,h_kv,n,d_k),dtype=torch.float16,device='meta')
+        payload=2*L*probe.numel()*probe.element_size()
+        assert payload==hand
+        return {"hand_bytes":hand,"tensor_payload_bytes":payload,"payload_match":True,
+                "mps_alloc_delta_bytes":None,"match":None,"note":"meta形状载荷核算；未运行MPS分配"}
     torch.mps.empty_cache()
     torch.mps.synchronize()
     before = torch.mps.current_allocated_memory()
@@ -86,9 +94,15 @@ def measure_case(L, n, h_kv, d_k, device):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out-name", default="kv_probe")
+    ap.add_argument("--out-dir",type=Path,default=Path(OUT_DIR))
+    ap.add_argument("--device",choices=["cpu","mps"],default="mps" if torch.backends.mps.is_available() else "cpu")
     args = ap.parse_args()
+    if Path(args.out_name).name!=args.out_name or args.out_name in ("",".",".."):raise ValueError("无效输出名称")
+    out=args.out_dir/(args.out_name+".json")
+    if out.exists():raise FileExistsError("输出已存在，使用新out-name")
+    args.out_dir.mkdir(parents=True,exist_ok=True)
     torch.manual_seed(SEED)
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    device = torch.device(args.device)
     t0 = time.perf_counter()
 
     # ---- (1) 手算表：三档模型 × 三方案 × 三窗长 ----
@@ -140,7 +154,7 @@ def main():
     named_brothers = {
         "geometry": f"216M 等参数三兄弟：d=1024/L={BROTHERS_GEOM['L']}/h=16/d_k=64/V=8192 untied",
         "arms": brothers,
-        "param_convention_note": ("登记数 216,006,656 = 不含 13 处 RMSNorm（33,792 参数）的 papers/04 §7.3 "
+        "param_convention_note": ("登记数 216,006,656 = 不含 33 处 RMSNorm（33,792 参数）的 papers/04 §7.3 "
                                   "口径；含 norm 精确值 216,040,448——引用时注明口径，防回流"),
         "kv_note": "每 token 64/16/4 KiB（任务书原文「64/32/8KiB」勘正——@2048 才是 128/32/8 MiB）",
     }
@@ -151,21 +165,19 @@ def main():
         rec = {"case": f"207M 几何 (1,L=12,h_kv=8,d_k=64) n={n}", "n": n,
                **measure_case(12, n, 8, 64, device)}
         measured.append(rec)
-        print(f"[实测] 207M 几何 n={n:5d}  手算 {rec['hand_bytes']/2**20:8.1f} MiB  "
-              f"MPS 差 {(rec['mps_alloc_delta_bytes'] or 0)/2**20:8.1f} MiB  "
+        print(f"[核验] 207M 几何 n={n:5d}  手算 {rec['hand_bytes']/2**20:8.1f} MiB  "
+              f"MPS差字节={rec['mps_alloc_delta_bytes']}（None=未测） "
               f"match={rec['match']}", flush=True)
     for b in BROTHERS:
         rec = {"case": f"三兄弟 {b['name']} (1,L=16,h_kv={b['h_kv']},d_k=64) n=2048", "n": 2048,
                **measure_case(16, 2048, b["h_kv"], 64, device)}
         measured.append(rec)
-        print(f"[实测] 三兄弟 {b['name']:5s} @2048  手算 {rec['hand_bytes']/2**20:8.1f} MiB  "
-              f"MPS 差 {(rec['mps_alloc_delta_bytes'] or 0)/2**20:8.1f} MiB  "
+        print(f"[核验] 三兄弟 {b['name']:5s} @2048  手算 {rec['hand_bytes']/2**20:8.1f} MiB  "
+              f"MPS差字节={rec['mps_alloc_delta_bytes']}（None=未测） "
               f"match={rec['match']}", flush=True)
 
     n_match = sum(1 for r in measured if r["match"] is True)
     n_meas = sum(1 for r in measured if r["match"] is not None)
-    os.makedirs(OUT_DIR, exist_ok=True)
-    out = os.path.join(OUT_DIR, f"{args.out_name}.json")
     with open(out, "w", encoding="utf-8") as f:
         json.dump({"date": time.strftime("%Y-%m-%d %H:%M:%S"), "seed": SEED, "device": str(device),
                    "dtype_bytes": DTYPE_BYTES, "formula": "2*L*n*h_kv*d_k*bytes（B=1）",

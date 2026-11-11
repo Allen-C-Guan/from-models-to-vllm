@@ -1,21 +1,23 @@
 # fit_scaling.py —— Book2 ch8 Kaplan 单曲线拟合：L(N) = L∞ + A·N^(-α) 双拟合 + bootstrap CI
-# 所属章节：Book2 第 8 章 §8.3（drafts/Book2-预训练革命/ch08-ScalingLaws.md 表 8.3 数据源）
+# 所属章节：Book2 第8章8.5节（drafts/Book2-预训练革命/ch08-ScalingLaws.md 表 8.3 数据源）
 # 设计书：research/Book2-预训练革命/notes/01-实验可行性.md §4「双拟合方案（含/不含不可约项 E）」。
 #   * 拟合 A（E=L∞ 自由，3 参数）：scipy curve_fit（有界 trf）；
 #   * 拟合 B（固定 L∞=0，2 参数）：log-log 线性 OLS（ln L = ln A - α·ln N）；
 #   * r² 一律在 L 尺度上算（两拟合同尺可比）；bootstrap 500 次（case 重采样，抽签退化则跳过并计数）；
-#   * 判定「E 在本动态范围可否辨识」：L∞ 的 bootstrap CI 是否含 0/贴边界、Δr² 是否边际、α 两拟合是否漂移。
+#   * 诊断下界稳定性：报告贴边比例、条件重采样区间与参数变化，不以启发式阈值证明可辨识性。
 # 运行方式：python fit_scaling.py [--in family_fast.json] [--out fit_kaplan] [--bootstrap 500]
 # 产物：log/book2-ch08/{fit_kaplan.json, fit_curves.csv}
 
 import argparse
 import json
 import os
+from pathlib import Path
+import hashlib
 
 import numpy as np
 from scipy import optimize
 
-REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+REPO_ROOT = os.getcwd()
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book2-ch08")
 SEED = 20261002
 
@@ -28,7 +30,7 @@ def r2_on_L(y, yhat):
     y = np.asarray(y, dtype=float)
     ss_res = float(np.sum((y - yhat) ** 2))
     ss_tot = float(np.sum((y - y.mean()) ** 2))
-    return 1.0 - ss_res / ss_tot if ss_tot > 0 else float("nan")
+    return 1.0 - ss_res / ss_tot if ss_tot > 0 else None
 
 
 def fit_free(N, L):
@@ -38,7 +40,7 @@ def fit_free(N, L):
             kaplan, N, L, p0=[min(L) * 0.9, 10.0, 0.3],
             bounds=([0.0, 1e-8, 0.01], [10.0, 1e4, 5.0]), maxfev=200000)
         return p, r2_on_L(L, kaplan(N, *p))
-    except Exception:
+    except (RuntimeError, ValueError, FloatingPointError):
         return None, None
 
 
@@ -55,25 +57,53 @@ def main():
     ap.add_argument("--in", dest="inp", default="family_fast.json")
     ap.add_argument("--out", default="fit_kaplan")
     ap.add_argument("--bootstrap", type=int, default=500)
+    ap.add_argument("--log-dir", default=OUT_DIR)
     args = ap.parse_args()
+    if args.bootstrap < 0:
+        ap.error("--bootstrap不能为负数")
+    if Path(args.out).name != args.out or args.out in ("", ".", ".."):
+        ap.error("--out须为一个名称，不含目录")
+    out_dir = os.path.abspath(args.log_dir)
+    input_path = Path(args.inp)
+    if not input_path.is_absolute():
+        input_path = Path(out_dir) / input_path
+    out_json = os.path.join(out_dir, f"{args.out}.json")
+    csv = os.path.join(out_dir, f"{args.out}_curves.csv")
+    if any(Path(path).exists() for path in (out_json, csv)):
+        raise FileExistsError("拟合产物已存在，请指定新的--out名称")
+    if not input_path.is_file():
+        raise FileNotFoundError(input_path)
 
-    with open(os.path.join(OUT_DIR, args.inp), encoding="utf-8") as f:
+    with input_path.open(encoding="utf-8") as f:
         report = json.load(f)
     pts = sorted(report["points"], key=lambda p: p["N"])
+    bad = [p.get("name","unknown") for p in pts
+           if p.get("diverged") or p.get("completed") is False or p.get("eval_final") is None
+           or (p.get("steps_planned") is not None and p.get("steps") != p["steps_planned"])]
+    if bad:
+        raise ValueError(f"未完成或无效终点不进入拟合：{bad}")
     N = np.array([p["N"] for p in pts], dtype=float)
     L = np.array([p["eval_final"] for p in pts], dtype=float)
     names = [p["name"] for p in pts]
-    assert len(pts) >= 3, "点数不足以拟合"
-    print("拟合输入（eval_final，fp32，401,408 token/点）：")
+    if (len(pts) < 3 or len(np.unique(N)) < 3 or not np.isfinite(N).all()
+            or not np.isfinite(L).all() or (N <= 0).any() or (L <= 0).any()):
+        raise ValueError("需要至少三个不同、有限、正的参数量，以及有限正的损失")
+    if len(np.unique(N)) != len(N):
+        raise ValueError("本脚本每个尺寸需一个终点；重复尺寸须先明确选择或聚合规则")
+    if np.ptp(L) == 0:
+        raise ValueError("损失完全相同，无法报告有意义的R²与下界稳定性")
+    print("拟合输入：最终eval_loss；设备、评估量与实现条件应查看输入报告，不预设固定协议")
     for n, nn, ll in zip(names, N, L):
         print(f"  {n:>3s}  N={nn:>10,.0f}  L={ll:.4f}")
 
     # ---- 两个拟合 ----
     pA, r2A = fit_free(N, L)
     pB, r2B = fit_fixed0(N, L)
+    if pA is None or not np.isfinite(pA).all() or not np.isfinite(pB).all():
+        raise RuntimeError("拟合未得到有限参数，未写出结果")
     residA = L - kaplan(N, *pA)
     residB = L - kaplan(N, *pB)
-    # 相邻点局部 log-log 斜率（描述性：随 N 增大幂律是否变平——L∞ 存在的指纹）
+    # 相邻尺寸的描述性log-log斜率；不能单凭它证明正下界或单模型收敛。
     local_slope = (np.diff(np.log(L)) / np.diff(np.log(N))).tolist()
 
     # ---- bootstrap（case 重采样；退化抽签跳过并计数） ----
@@ -90,7 +120,8 @@ def main():
                 draws["skipped_A"] += 1
             else:
                 draws["alpha_A"].append(p[2]); draws["Linf_A"].append(p[0]); draws["A_A"].append(p[1])
-                if p[0] <= 1e-6 or p[2] <= 0.0101 or p[0] >= 9.999:   # 贴参数边界 = 不稳定
+                if (p[0] <= 1e-6 or p[2] <= 0.0101 or p[0] >= 9.999
+                        or p[1] <= 1.01e-8 or p[1] >= 9999. or p[2] >= 4.999):
                     draws["unstable_A_bounds"] += 1
         else:
             draws["skipped_A"] += 1
@@ -112,28 +143,34 @@ def main():
     aB_lo, aB_hi, aB_med = ci(draws["alpha_B"])
     AB_lo, AB_hi, AB_med = ci(draws["A_B"])
 
-    # ---- E 可辨识性判定 ----
+    # ---- 下界稳定性诊断；不将阈值启发式当作可辨识性证明 ----
     span = float(L.max() - L.min())
-    e_ci_width = (e_hi - e_lo) if e_hi is not None else float("nan")
+    e_ci_width = (e_hi - e_lo) if e_hi is not None else None
     checks = {
-        "Linf_CI_contains_zero": e_lo is not None and e_lo <= 0.0,
-        "Linf_CI_width_vs_L_span": e_ci_width / span if span > 0 else float("nan"),
+        "Linf_interval_touches_lower_bound": bool(e_lo <= 1e-6) if e_lo is not None else None,
+        "Linf_interval_width_vs_L_span": e_ci_width / span if e_ci_width is not None else None,
         "delta_r2_free_minus_fixed": r2A - r2B,
-        "alpha_shift_free_minus_fixed": pA[2] - pB[2],
+        "alpha_shift_free_minus_fixed": float(pA[2] - pB[2]),
+        "log10_N_span": float(np.log10(N.max()/N.min())),
+        "loss_span": span,
     }
-    identifiable = (
-        (not checks["Linf_CI_contains_zero"])
-        and checks["Linf_CI_width_vs_L_span"] < 0.5
-        and checks["delta_r2_free_minus_fixed"] > 0.01
-    )
-    verdict = ("可辨识" if identifiable else
-               "不可辨识（本动态范围 N 仅跨 1.4 个数量级、L 降幅有限：L∞ 与 (A,α) 强相关，"
-               "三参数拟合自由度不足——与 Kaplan 原文需 6+ 数量级 N 支撑 L∞ 的观察同因）")
+    if not draws["Linf_A"]:
+        verdict = "未得到自由下界的有效重采样区间；不能据此判断下界稳定"
+    elif checks["Linf_interval_touches_lower_bound"] or checks["Linf_interval_width_vs_L_span"] >= .5:
+        verdict = "存在贴边或宽区间信号：此组尺寸点不能稳定约束损失下界"
+    else:
+        verdict = "本次启发式诊断未见上述不稳信号；不等于证明下界可辨识或外推可靠"
 
     out = {
-        "meta": {"date": report["meta"]["date"], "seed": SEED,
-                 "input": args.inp, "loss_def": "每点最终一次 eval loss（401,408 token，fp32 前向）",
-                 "fit_domain": "N=非嵌入参数（6ND 口径同族）", "bootstrap": "case 重采样 500 次（5 点有放回）"},
+        "meta": {"date": report.get("meta",{}).get("date"), "seed": SEED,
+                 "input": str(input_path), "input_sha256": hashlib.sha256(input_path.read_bytes()).hexdigest(),
+                 "loss_def": "输入报告中的最终eval_loss；原协议元数据一并保留",
+                 "source_meta": report.get("meta",{}),
+                 "fit_domain": "N沿用输入定义，本脚本不推断是否排除了嵌入",
+                 "fit_objectives": {"free": "raw-loss squared residual",
+                                    "fixed0": "log-loss squared residual"},
+                 "bootstrap": f"case重采样{args.bootstrap}次，每次从{len(N)}个尺寸点有放回抽取",
+                 "uncertainty_scope": "条件于当前尺寸点；不包含训练重跑或新语料的不确定性"},
         "points": [{"name": n, "N": float(nn), "L": float(ll)}
                    for n, nn, ll in zip(names, N, L)],
         "fit_free": {"params": {"L_inf": pA[0], "A": pA[1], "alpha": pA[2]},
@@ -151,14 +188,12 @@ def main():
         "local_loglog_slopes": local_slope,
         "identifiability": {"checks": checks, "verdict": verdict},
     }
-    out_json = os.path.join(OUT_DIR, f"{args.out}.json")
-    with open(out_json, "w", encoding="utf-8") as f:
-        json.dump(out, f, ensure_ascii=False, indent=2)
+    with open(out_json, "x", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, indent=2, allow_nan=False)
 
     # ---- 曲线数据（ch8 作图直接可用）：log 网格 + 两拟合曲线 + 实测点 ----
     grid = np.logspace(np.log10(N.min() * 0.9), np.log10(N.max() * 1.1), 120)
-    csv = os.path.join(OUT_DIR, f"{args.out}_curves.csv")
-    with open(csv, "w", encoding="utf-8") as f:
+    with open(csv, "x", encoding="utf-8") as f:
         f.write("kind,N,L\n")
         for nn, ll in zip(N, L):
             f.write(f"measured,{nn:.0f},{ll:.6f}\n")
@@ -166,14 +201,17 @@ def main():
             f.write(f"fit_free,{nn:.1f},{kaplan(nn, *pA):.6f}\n")
             f.write(f"fit_fixed0,{nn:.1f},{kaplan(nn, *pB):.6f}\n")
 
-    print(f"\n拟合 A（L∞ 自由）：L∞={pA[0]:.4f}  A={pA[1]:.4f}  α={pA[2]:.4f}  r²={r2A:.5f}")
-    print(f"  bootstrap α 95% CI [{aA_lo:.4f}, {aA_hi:.4f}]（跳过 {draws['skipped_A']}/500，贴界 {draws['unstable_A_bounds']}）")
-    print(f"  bootstrap L∞ 95% CI [{e_lo:.4f}, {e_hi:.4f}]")
-    print(f"拟合 B（L∞=0）：A={pB[1]:.4f}  α={pB[2]:.4f}  r²={r2B:.5f}")
-    print(f"  bootstrap α 95% CI [{aB_lo:.4f}, {aB_hi:.4f}]（跳过 {draws['skipped_B']}/500）")
-    print(f"局部 log-log 斜率：{[round(s, 3) for s in local_slope]}")
-    print(f"E 可辨识性：{verdict}")
-    print(f"checks: {json.dumps({k: (round(v, 4) if isinstance(v, float) else v) for k, v in checks.items()})}")
+    def interval(lo, hi):
+        return "未估计" if lo is None or hi is None else f"[{lo:.4f}, {hi:.4f}]"
+    print(f"拟合A（原loss目标）：E={pA[0]:.4f} A={pA[1]:.4f} alpha={pA[2]:.4f} r²={r2A:.5f}")
+    print(f"  条件case重采样alpha区间 {interval(aA_lo,aA_hi)}；"
+          f"跳过{draws['skipped_A']}/{args.bootstrap}，贴界{draws['unstable_A_bounds']}")
+    print(f"  下界区间 {interval(e_lo,e_hi)}")
+    print(f"拟合B（log-loss目标，E=0）：A={pB[1]:.4f} alpha={pB[2]:.4f} r²={r2B:.5f}")
+    print(f"  条件case重采样alpha区间 {interval(aB_lo,aB_hi)}；跳过{draws['skipped_B']}/{args.bootstrap}")
+    print(f"局部log-log斜率：{[round(v,3) for v in local_slope]}")
+    print("下界稳定性诊断：", verdict)
+    print("checks:", json.dumps(checks,ensure_ascii=False))
     print(f" -> {out_json} / {csv}")
 
 

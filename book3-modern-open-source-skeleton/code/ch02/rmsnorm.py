@@ -1,136 +1,105 @@
-# rmsnorm.py —— Book3 ch02 教学重写件：RMSNorm 的手写实现、性质验证与双对拍
-# 用途：①给出可 import 的 RMSNorm(hidden_size, eps)（插槽 import 契约，ch10 整机将 import 本件）；
-#       ②四个性质探针（平移/缩放不变性、零均值下与 LayerNorm 恒等、RMS^2 = sigma^2 + mu^2 手算算例）；
-#       ③双对拍：与 00-feasibility/llama_slots.RMSNorm（组件库正身）CPU fp32 逐位一致 +
-#         与 HF transformers 5.18.0 LlamaRMSNorm 逐位一致（eps 1e-6/1e-5 两档——对拍隐形开关）。
-# 所属章节：Book3 第 2 章 §2.3（公式）/§2.5（改装第一例）/§2.7（eps 代际）
-# 运行方式：cd code/ch02 && python rmsnorm.py     （CPU fp32，秒级，无命令行参数）
-# 产物：全部打印到 stdout（正文引用的自测数字来源）；不写文件、不落 log。
-# 依赖链：llama_slots.py（组件库正身）+ transformers 5.18.0（仅对照）；torch 2.13。
-import os
+# Book3第2章：LLaMA式无偏置RMSNorm、性质探针与同条件对拍。
+# 在已有环境中调用；只运行CPU局部检查，不训练、不下载权重。
+# 默认结果写当前工作目录log；公式不变性与有限精度近似分开报告。
+import argparse
+import json
+import math
+from pathlib import Path
 import sys
 
 import torch
 import torch.nn as nn
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.abspath(os.path.join(HERE, "..", "00-feasibility")))
-from llama_slots import RMSNorm as SlotRMSNorm            # noqa: E402  组件库正身（对拍锚 1）
+HERE=Path(__file__).resolve().parent
+sys.path.insert(0,str(HERE.parent/'00-feasibility'))
+from llama_slots import RMSNorm as SlotRMSNorm
 
-SEED = 20261002                                            # 全书统一种子
+SEED=20261002
 
 
-# ---------------- 教学重写件（与 llama_slots.RMSNorm 逐位一致；注释按讲解顺序展开） ----------------
 class RMSNorm(nn.Module):
-    """RMSNorm：只重缩放、不重中心化的层归一化。输入 (B,n,C) -> 输出 (B,n,C)。
+    """输入(B,n,C)，统计量(B,n,1)，输出同形状；增益(C,)，无偏置。
 
-    计算图（对应正文图 2.1 右半）：
-        x (B,n,C)
-          -> 平方 (B,n,C) -> 末维均值 (B,n,1)          # 均方（二阶矩），不减均值
-          -> + eps -> rsqrt (B,n,1)                    # 分母 = 1/sqrt(mean(x^2)+eps)
-          -> 逐元素除 (B,n,C)
-          -> * weight(g) (C,) 广播                    # 唯一可学参数，无 bias
-    数值纪律（对齐官方 Meta 实现与 HF LlamaRMSNorm）：统计量在 fp32 中计算，
-    结束后转回输入 dtype 再乘 g——bf16 下 mean(x^2) 的累加误差是真实灾难，不是洁癖。
+    本复刻路径总在fp32算均方（float64输入也会降为fp32），先将归一化结果
+    转回输入dtype再乘增益。最终dtype还受增益dtype及类型提升影响。
+    eps=0时仅非零输入有定义；默认正eps在零点附近也改变函数及导数。
     """
-
-    def __init__(self, hidden_size, eps=1e-6):
+    def __init__(self,hidden_size,eps=1e-6):
         super().__init__()
-        self.weight = nn.Parameter(torch.ones(hidden_size))   # (C,) 增益 g，初始全 1
-        self.variance_epsilon = eps                           # 只加在方差上：rsqrt(mean(x^2)+eps)
+        if not isinstance(hidden_size,int) or hidden_size<=0:raise ValueError('hidden_size须为正整数')
+        if not math.isfinite(eps) or eps<0:raise ValueError('eps须为有限非负数')
+        self.weight=nn.Parameter(torch.ones(hidden_size))
+        self.variance_epsilon=eps
 
-    def forward(self, x):
-        dtype = x.dtype                                   # 记住原 dtype
-        x32 = x.float()                                   # (B,n,C) 上抛 fp32（统计量精度）
-        ms = x32.pow(2).mean(-1, keepdim=True)            # (B,n,C)->(B,n,1) 均方 = RMS^2
-        x32 = x32 * torch.rsqrt(ms + self.variance_epsilon)   # (B,n,C)*(B,n,1)->(B,n,C) 重缩放
-        return self.weight * x32.to(dtype)                # (C,)*(B,n,C)->(B,n,C)，回原 dtype 后乘 g
+    def forward(self,x):
+        if not x.is_floating_point() or x.ndim==0 or x.shape[-1]!=self.weight.numel():
+            raise ValueError('输入须为末维匹配的浮点张量')
+        dtype=x.dtype
+        x32=x.float()                                    # (...,C) -> (...,C)，fp32统计
+        ms=x32.pow(2).mean(-1,keepdim=True)              # (...,C) -> (...,1)
+        x32=x32*torch.rsqrt(ms+self.variance_epsilon)    # 广播缩放，仍为(...,C)
+        return self.weight*x32.to(dtype)               # (C,)广播；最终dtype由两乘数决定
 
 
-# ---------------- 性质探针（正文 §2.3 的「验证」步：直觉 -> 公式 -> 数字） ----------------
+@torch.no_grad()
 def probe_properties():
-    print("=" * 72)
-    print("探针 1-4：RMSNorm 四条性质（CPU fp32，种子 20261002）")
-    print("=" * 72)
+    """同一构造输入验证代数边界，不把有epsilon的近似叫精确尺度不变。"""
     torch.manual_seed(SEED)
-    B, n, C = 2, 5, 8                                     # 小数字，肉眼可核
-    x = torch.randn(B, n, C)                              # (2,5,8)
-    ln = nn.LayerNorm(C, eps=1e-6, elementwise_affine=True)
-    ln.bias.data.zero_()                                  # LN 置 beta=0，与 RMSNorm 只差算法本身
-    rms = RMSNorm(C, eps=1e-6)
-
-    # 探针 1：平移不变性——LN 有（re-centering），RMSNorm 没有（这正是砍掉的项）
-    c = 3.0                                               # 平移量
-    d_ln = (ln(x + c) - ln(x)).abs().max().item()
-    d_rms = (rms(x + c) - rms(x)).abs().max().item()
-    print(f"[1] 平移 +{c}:  max|LN(x+c)-LN(x)|   = {d_ln:.2e}  （=0：LN 对平移不敏感）")
-    print(f"              max|RMS(x+c)-RMS(x)| = {d_rms:.3e}  （>0：RMSNorm 放弃了 re-centering）")
-
-    # 探针 2：缩放不变性——两者都有（re-scaling）：整体乘 alpha 后输出不变
-    alpha = 2.5
-    d_ln_s = (ln(alpha * x) - ln(x)).abs().max().item()
-    d_rms_s = (rms(alpha * x) - rms(x)).abs().max().item()
-    print(f"[2] 缩放 x{alpha}:  max|LN(a·x)-LN(x)|   = {d_ln_s:.2e}")
-    print(f"              max|RMS(a·x)-RMS(x)| = {d_rms_s:.2e}  （都 ~0：RMS 线性性 RMS(ax)=a·RMS(x)）")
-
-    # 探针 3：零均值输入下 LN == RMSNorm（论文原话的数值版）
-    x0 = x - x.mean(-1, keepdim=True)                     # (2,5,8) 强制每格 mu=0
-    d_eq = (ln(x0) - rms(x0)).abs().max().item()
-    print(f"[3] 零均值:    max|LN(x0)-RMS(x0)|  = {d_eq:.2e}  （mu=0 时 sigma=RMS，两式合流）")
-
-    # 探针 4：恒等式 RMS^2 = sigma^2 + mu^2（逐格成立——「总幅度 = 漂移 + 波动」的代数面）
-    ms = x.pow(2).mean(-1)                                # (2,5) RMS^2
-    mu = x.mean(-1)                                       # (2,5)
-    var = x.var(-1, unbiased=False)                       # (2,5) sigma^2（总体方差）
-    gap = (ms - (var + mu ** 2)).abs().max().item()
-    print(f"[4] 恒等式:    max|RMS^2-(sigma^2+mu^2)| = {gap:.2e}  （B*n 个格子全部成立）")
-
-    # 手算算例（正文小数字例子）：a = [1,2,3,6]
-    a = torch.tensor([1.0, 2.0, 3.0, 6.0])
-    mu_a = a.mean()
-    var_a = a.var(unbiased=False)
-    ms_a = a.pow(2).mean()
-    print(f"[例] a=[1,2,3,6]:  mu={mu_a:.1f}  sigma^2={var_a:.2f}  RMS^2={ms_a:.2f}"
-          f"  ->  sigma^2+mu^2={var_a + mu_a ** 2:.2f}（={ms_a:.2f} ✓）")
-    print(f"    LN(a)   = {torch.nn.functional.layer_norm(a, (4,), eps=1e-6).tolist()}")
-    print(f"    RMS(a)  = {(a / torch.sqrt(ms_a + 1e-6)).tolist()}")
-    a0 = a - mu_a
-    print(f"    a-mu    = {a0.tolist()}（零均值化后 RMS^2={a0.pow(2).mean():.2f}=sigma^2，LN 与 RMS 合流）")
+    x=torch.randn(2,5,8);ln=nn.LayerNorm(8,eps=1e-6);rms=RMSNorm(8,eps=1e-6)
+    d_ln=float((ln(x+3)-ln(x)).abs().max());d_rms=float((rms(x+3)-rms(x)).abs().max())
+    assert d_ln<2e-6 and d_rms>.1
+    scaling={name:float((module(2.5*x)-module(x)).abs().max()) for name,module in [('LN',ln),('RMS',rms)]}
+    x0=x-x.mean(-1,keepdim=True);equal_error=float((ln(x0)-rms(x0)).abs().max());assert equal_error<1e-6
+    ms=x.square().mean(-1);mu=x.mean(-1);var=x.var(-1,unbiased=False)
+    moment_error=float((ms-var-mu.square()).abs().max());assert moment_error<1e-6
+    a=torch.tensor([1.,2.,3.,6.]);mean=float(a.mean());variance=float(a.var(unbiased=False));rms2=float(a.square().mean())
+    assert (mean,variance,rms2)==(3.,3.5,12.5)
+    # 纯RMS正齐次而非线性；负缩放翻方向，正eps破坏精确尺度不变。
+    pure=RMSNorm(8,eps=0);assert torch.allclose(pure(2.5*x),pure(x),atol=1e-6)
+    assert torch.allclose(pure(-x),-pure(x),atol=1e-6)
+    tiny=torch.full((1,8),1e-5);eps_norm=RMSNorm(8,eps=1e-5)
+    eps_counter=float((eps_norm(10*tiny)-eps_norm(tiny)).abs().max());assert eps_counter>.02
+    return dict(translation={'ln_max_error':d_ln,'rms_changed_by':d_rms},positive_scaling_with_eps=scaling,
+                zero_mean_max_error=equal_error,moment_identity_error=moment_error,
+                four_dim_example={'mean':mean,'variance':variance,'rms_squared':rms2,
+                    'LN':torch.nn.functional.layer_norm(a,(4,),eps=1e-6).tolist(),
+                    'RMS':(a/torch.sqrt(a.square().mean()+1e-6)).tolist()},
+                positive_eps_scale_counterexample=eps_counter,
+                interpretation='代数性质以正文条件为准；误差是此输入的浮点读数')
 
 
-# ---------------- 双对拍（正文 §2.5 改装的验收；eps 两档=§2.7 的隐形开关） ----------------
+@torch.no_grad()
 def probe_parity():
-    print()
-    print("=" * 72)
-    print("对拍：手写 RMSNorm vs llama_slots（正身） vs HF LlamaRMSNorm（CPU fp32 逐位）")
-    print("=" * 72)
-    from transformers.models.llama.modeling_llama import LlamaRMSNorm   # 5.18.0（对照锚 2）
-    torch.manual_seed(SEED)
-    B, n, C = 4, 64, 512
-    x = torch.randn(B, n, C)                              # (4,64,512)
-    for eps in (1e-6, 1e-5):                              # HF 默认 1e-6 / LLaMA2/3 全系 1e-5
-        ours = RMSNorm(C, eps=eps)
-        slot = SlotRMSNorm(C, eps=eps)
-        hf = LlamaRMSNorm(C, eps=eps)
-        w = torch.randn(C)                                # 同一份增益（默认全 1 测不出权重通路）
-        for m in (ours, slot, hf):
-            m.weight.data.copy_(w)
+    """同权重/同输入/同eps的有限对拍；assert容差，另外如实记录torch.equal。"""
+    from transformers.models.llama.modeling_llama import LlamaRMSNorm
+    torch.manual_seed(SEED);x=torch.randn(4,64,512);results=[]
+    for eps in (1e-6,1e-5):
+        ours=RMSNorm(512,eps);slot=SlotRMSNorm(512,eps);hf=LlamaRMSNorm(512,eps)
+        weight=torch.randn(512)
         with torch.no_grad():
-            y_ours, y_slot, y_hf = ours(x), slot(x), hf(x)
-        e1 = (y_ours - y_slot).abs().max().item()
-        e2 = (y_ours - y_hf).abs().max().item()
-        print(f"eps={eps:.0e}:  max|ours-slot| = {e1:.3e}  max|ours-HF| = {e2:.3e} "
-              f" 逐位一致={torch.equal(y_ours, y_slot) and torch.equal(y_ours, y_hf)}")
+            for m in (ours,slot,hf):m.weight.copy_(weight)
+            yo,ys,yh=ours(x),slot(x),hf(x)
+        assert torch.allclose(yo,ys,atol=1e-6,rtol=1e-6) and torch.allclose(yo,yh,atol=1e-6,rtol=1e-6)
+        results.append(dict(eps=eps,slot_max=float((yo-ys).abs().max()),hf_max=float((yo-yh).abs().max()),
+                            slot_bitwise=torch.equal(yo,ys),hf_bitwise=torch.equal(yo,yh)))
+    x16=torch.randn(64,256,dtype=torch.bfloat16)
+    m16=x16.square().mean(-1,keepdim=True);m32=x16.float().square().mean(-1,keepdim=True)
+    rel=float(((m16.float()-m32).abs()/m32).max())
+    promoted=RMSNorm(256)(x16)
+    return dict(parity=results,bf16_mean_square_relative_error=rel,input_dtype=str(x16.dtype),
+                gain_dtype='torch.float32',output_dtype=str(promoted.dtype),
+                interpretation='均方相对误差不等于归一化输出相对误差；rsqrt敏感度须区分绝对与相对量')
 
-    # bf16 不上抛 fp32 的反例（官方 .float() 纪律的理由；只演示、不进对拍口径）
-    x16 = torch.randn(64, 256, dtype=torch.bfloat16)
-    ms16 = x16.pow(2).mean(-1, keepdim=True)              # bf16 直接算均方
-    ms32 = x16.float().pow(2).mean(-1, keepdim=True)       # 上抛 fp32 再算（官方路径）
-    rel = ((ms16.float() - ms32).abs() / ms32).max().item()
-    print(f"[bf16 反例] 均方统计 bf16 直算 vs fp32 上抛：最大相对偏差 {rel:.2e}"
-          f"（rsqrt 会放大末位误差 -> 官方实现一律 .float()）")
+
+def main():
+    ap=argparse.ArgumentParser();ap.add_argument('--out',type=Path,default=Path.cwd()/'log/book3-ch02/rmsnorm-check.json');a=ap.parse_args()
+    if a.out.exists():raise FileExistsError('不覆盖已有核验：'+str(a.out))
+    import transformers
+    report=dict(torch=str(torch.__version__),transformers=transformers.__version__,device='cpu',
+                properties=probe_properties(),parity=probe_parity(),training_rerun=False)
+    a.out.parent.mkdir(parents=True,exist_ok=True)
+    with a.out.open('x') as f:json.dump(report,f,ensure_ascii=False,indent=2,allow_nan=False)
+    print(json.dumps(report,ensure_ascii=False,indent=2))
 
 
-if __name__ == "__main__":
-    probe_properties()
-    probe_parity()
+if __name__=='__main__':main()

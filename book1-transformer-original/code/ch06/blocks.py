@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-torch.manual_seed(2017)  # 固定种子（2017＝原论文年份，全部结果可复现）
+torch.manual_seed(2017)  # 固定种子；具体浮点读数仍可能随版本与后端变化。
 
 D_MODEL, D_FF, H, N_LAYER, VOCAB = 512, 2048, 8, 6, 37000  # Table 3 base 超参（词表取 §5.1 的 37k）
 
@@ -41,10 +41,12 @@ def split_heads(t):
 
 
 class MiniMHA(nn.Module):
-    """内联最小多头注意力（完整拆装见第 3 章；此处为自包含复用）。
+    """内联最小多头注意力（完整拆装见第 3 章；此处固定使用 base 的 512 维、8 头）。
     输入 x: (b, s_q, d_model)；cross 时另给 kv: (b, s_kv, d_model)；输出: (b, s_q, d_model)。"""
     def __init__(self, d_model=D_MODEL):
         super().__init__()
+        if d_model != D_MODEL:
+            raise ValueError("本章形状演示固定 d_model=512；通用维度实现见第3章。")
         self.in_proj = nn.Linear(d_model, 3 * d_model)  # W^Q W^K W^V 沿 dim0 打包
         self.out = nn.Linear(d_model, d_model)          # W^O
     def forward(self, x, kv=None, mask=None):
@@ -127,7 +129,7 @@ def main():
         ok2 = torch.allclose(mine(x), el(x), atol=1e-5)
     print(f"[对拍 2] 手写 EncoderLayerPostLN vs 官方层（同权重）：allclose={ok2} (atol=1e-5)")
 
-    # ---- 实验三：post-LN 输出的逐位置统计（LN 的「恒等尺度」眼见为实）----
+    # ---- 实验三：初始 gamma=1、beta=0 时的逐位置统计；eps 使方差不精确等于 1 ----
     with torch.no_grad():
         out = mine(x)
         m_absmax = out.mean(-1).abs().max().item()
@@ -151,8 +153,8 @@ def main():
               f"（正弦 PE 各维幅值上界为 1）")
         h = h + sinusoidal_pe(10); rec("+ 正弦 PE", h)
         q, k, v = enc[0].self_attn.in_proj(h).chunk(3, dim=-1)
-        rec("编码器第1层 Q/K/V（拼接前）", q)
-        qs = split_heads(q); rec("按头 reshape (b,h,s,dk)", qs)
+        rec("编码器第1层 Q/K/V（拆头前）", q)
+        qs = split_heads(q); rec("reshape 后换轴 (b,h,s,dk)", qs)
         sc = qs @ split_heads(k).transpose(-2, -1) / math.sqrt(D_MODEL // H)
         rec("注意力 scores", sc)
         ctx = torch.softmax(sc, dim=-1) @ split_heads(v)   # (1,8,10,10) @ (1,8,10,64) -> (1,8,10,64)

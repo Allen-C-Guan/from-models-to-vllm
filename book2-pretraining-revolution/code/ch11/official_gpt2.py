@@ -1,12 +1,11 @@
-# official_gpt2.py —— Book2 ch11 官方权重加载与对拍四步（11.2 节的全部数字来源）
-# 用途：openai-community/gpt2 官方 checkpoint 加载进 ch10/model.py 的手写 GPT2，四步验收：
-#   ①下载最小文件集（≈525MB，缓存命中即跳过）；②state_dict 键映射（三高危点：Conv1D 转置/tied 补绑/前缀剥除）；
-#   ③参数逐项对账（总参 124,439,808 / 非嵌入 85,056,000，checkpoint 张量逐组核对）；
-#   ④固定 7-prompt 集 logits 对拍（手写加载官方权重 vs HF 官方实现 vs 探针基线 gpt2_logits_baseline.pt，
-#     CPU fp32 / eager 注意力，报 max|Δ| / argmax 一致率 / top-5 命中率）+ 贪心 sanity 生成两条教例。
-# 所属章节：Book2 第 11 章 11.2 节（三高危点在 ch10 --parity-hf 随机权重上预演过，本章是官方权重的正片）。
-# 运行方式：cd 工作区根目录 && source env.sh && python "code/ch11/official_gpt2.py"
-# 产物：log/book2-ch11/official_parity.json + drafts/Book2-预训练革命/figures/fig-11-2-parity.png
+# official_gpt2.py —— Book2第11章：从同一快照加载权重/配置/分词器并核对固定输入。
+# 工作区激活env.sh后：python code/ch11/official_gpt2.py --help
+# --snapshot-dir可读取已有快照；网络获取记录所解析的目录与文件哈希，不预设历史键数。
+# 参数与映射采用真实断言；有限输入对拍不等于全输入数学等价证明。
+# 输出log，图为当前运行核算图，不覆盖正文历史图。
+import argparse
+import hashlib
+from pathlib import Path
 import json
 import os
 import sys
@@ -17,14 +16,14 @@ import torch
 
 # ---------------- 固定口径 ----------------
 SEED = 20261002                      # 全书统一种子
-REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+REPO_ROOT = os.getcwd()
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book2-ch11")
-FIG_DIR = os.path.join(REPO_ROOT, "figures")
-MODEL_ID = "openai-community/gpt2"   # 官方 124M（Modified MIT 许可——商用完整、生成内容免附注记）
+FIG_DIR = os.path.join(OUT_DIR,"figures")
+MODEL_ID = "openai-community/gpt2"   # 许可仅按公开LICENSE原文描述，正文不扩张解释。
 BASELINE_PT = os.path.join(REPO_ROOT, "log", "book2-feasibility", "gpt2_logits_baseline.pt")
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ch10"))
-from model import GPT2  # noqa: E402  ch10 定版模型（三插槽 Block；本章对拍的对象就是它）
+from model import GPT2,GPT2Config  # ch10教学模型；构造权重单元检查也可使用同结构小配置。
 
 # 固定 7-prompt 集（与探针(d)完全同一组：短事实/重复诱导/长段落/德语/代码风/算术/单字符——
 # ch11 对拍基线；覆盖 token 长度 1~31，跨语言与代码域）
@@ -40,96 +39,112 @@ PROMPTS = [
 
 
 # ---------------- 步骤①：最小文件集下载（缓存命中即跳过） ----------------
-def ensure_weights():
-    """只取 PyTorch 必需文件集（safetensors + tokenizer + config ≈525MB，勿拉全仓 1.6GB）。"""
-    from huggingface_hub import snapshot_download
-    t0 = time.perf_counter()
-    path = snapshot_download(MODEL_ID, allow_patterns=[
-        "model.safetensors", "config.json", "generation_config.json",
-        "vocab.json", "merges.txt", "tokenizer.json", "tokenizer_config.json"])
-    dt = time.perf_counter() - t0
-    files = {}
-    for fn in sorted(os.listdir(path)):
-        fp = os.path.join(path, fn)
-        if os.path.isfile(fp):
-            files[fn] = round(os.path.getsize(fp) / 1024 / 1024, 1)
-    total_mb = round(sum(files.values()), 1)
-    return {"snapshot_dir": path, "files_mb": files, "total_mb": total_mb,
-            "wallclock_sec": round(dt, 1), "note": "未鉴名 HF 下载实测出现过两次挂起（notes/01 §3）——"
-            "重试+断点续传可完成；缓存命中时本步秒级"}
+def file_sha(path):
+    h=hashlib.sha256()
+    with open(path,"rb") as f:
+        for chunk in iter(lambda:f.read(1024*1024),b""):h.update(chunk)
+    return h.hexdigest()
+
+
+def ensure_weights(revision=None,snapshot_dir=None):
+    """取得一个确定快照；后续权重、HF参考和分词器全从该目录读取。"""
+    t0=time.perf_counter()
+    if snapshot_dir is None:
+        from huggingface_hub import snapshot_download
+        path=Path(snapshot_download(MODEL_ID,revision=revision,allow_patterns=[
+            "model.safetensors","config.json","generation_config.json",
+            "vocab.json","merges.txt","tokenizer.json","tokenizer_config.json"]))
+    else:path=Path(snapshot_dir)
+    for name in ("model.safetensors","config.json"):
+        if not (path/name).is_file():raise FileNotFoundError(path/name)
+    names=("model.safetensors","config.json","generation_config.json","vocab.json",
+           "merges.txt","tokenizer.json","tokenizer_config.json")
+    files={name:(path/name).stat().st_size for name in names if (path/name).is_file()}
+    return {"snapshot_dir":str(path.resolve()),"requested_revision":revision,
+            "resolved_snapshot_name":path.name,"file_bytes":files,
+            "files_mib":{k:v/1024**2 for k,v in files.items()},"total_mib":sum(files.values())/1024**2,
+            "model_sha256":file_sha(path/"model.safetensors"),"config_sha256":file_sha(path/"config.json"),
+            "wallclock_sec":time.perf_counter()-t0,
+            "note":"MiB按2^20 bytes；这些是本次文件实际信息，不默认等同历史160键/525.4MiB快照"}
 
 
 # ---------------- 步骤②③：键映射 + 参数逐项对账 ----------------
 def load_official_into_ours(snap_dir):
-    """官方 safetensors -> 手写 GPT2 的 state_dict 键映射（三高危点教学件）。
-
-    高危点 A（Conv1D 转置）：checkpoint 的 c_attn/c_fc/c_proj 权重是 (in,out) 排布
-      （Conv1D 的 addmm 语义 y=xW+b），nn.Linear 是 (out,in)（F.linear 语义 y=xW^T+b）——
-      搬运须 .t()；其中 attn.c_proj 是 (768,768) 方阵，不转置不报错、静默输出垃圾（最阴的一处）。
-    高危点 B（tied 缺键）：checkpoint 只存 wte 一份（160 键里没有 lm_head.weight），
-      加载时须显式补 head.weight = wte.weight，否则 strict 加载缺键。
-    高危点 C（无前缀）：raw checkpoint 顶层键无 transformer. 前缀（OpenAI TF 转换遗产），
-      h.{i} 需改名 blocks.{i}；另有 12 个 h.{i}.attn.bias 遗留 causal-mask buffer 要跳过（v5 已废弃持久化）。
-    """
+    """按明确GPT2配置映射有/无transformer前缀的权重，检查共享别名而非盲目丢键。"""
     from safetensors.torch import load_file
-    raw = load_file(os.path.join(snap_dir, "model.safetensors"))   # 160 键（148 参数 + 12 attn.bias buffer）
-    sd, n_transpose, n_skip = {}, 0, 0
-    for k, v in raw.items():
-        if k.split(".")[-2:] == ["attn", "bias"]:
-            n_skip += 1                                            # 高危点 C 的伴生件：遗留 mask buffer
-            continue
-        k2 = k.replace("h.", "blocks.")                            # 高危点 C：h.{i} -> blocks.{i}（无 transformer. 前缀可剥）
-        if k2.endswith(("c_attn.weight", "c_proj.weight", "c_fc.weight")):
-            v = v.t()                                              # 高危点 A：Conv1D (in,out) -> Linear (out,in)
-            n_transpose += 1
-        sd[k2] = v
-    sd["head.weight"] = sd["wte.weight"]                           # 高危点 B：tied 补绑（同一存储的引用赋值）
-    ours = GPT2().eval()                                           # dropout=0（对拍口径；官方 pdrop 0.1 仅训练态生效）
-    ours.load_state_dict(sd, strict=True)                          # strict=True：无缺键/无多键即通过（高危点 B 的验收）
-    # 步骤③：参数逐项对账（逐组张量 numel 与逐位相等校验）
-    groups = {"wte": 0, "wpe": 0, "blocks": 0, "ln_f": 0}
-    bitwise_equal = True
-    for k, v in sd.items():
-        g = k.split(".")[0]
-        g = "blocks" if g == "blocks" else g
-        groups[g] = groups.get(g, 0) + v.numel()
-        ours_v = ours.state_dict()[k]
-        if not torch.equal(ours_v, v):
-            bitwise_equal = False
-    n_total = sum(p.numel() for p in {p.data_ptr(): p for p in ours.parameters()}.values())
-    n_nonemb = n_total - ours.wte.weight.numel() - ours.wpe.weight.numel()
-    audit = {
-        "checkpoint_keys_total": len(raw),
-        "keys_mapped": len(sd) - 1, "conv1d_transposed": n_transpose, "attn_bias_skipped": n_skip,
-        "strict_load": True,
-        "per_group_params": groups,
-        "params_total_dedup": n_total, "params_non_embedding_6ND": n_nonemb,
-        "bitwise_equal_after_load": bitwise_equal,
-        "asserts": {"total==124439808": n_total == 124_439_808,
-                    "nonemb==85056000": n_nonemb == 85_056_000,
-                    "wte==38597376": groups["wte"] == 38_597_376,
-                    "wpe==786432": groups["wpe"] == 786_432,
-                    "blocks==85054464": groups["blocks"] == 85_054_464,
-                    "ln_f==1536": groups["ln_f"] == 1_536},
-    }
-    return ours, audit
+    path=Path(snap_dir);conf=json.loads((path/"config.json").read_text())
+    cfg=GPT2Config(vocab_size=conf["vocab_size"],n_positions=conf["n_positions"],
+                   n_layer=conf["n_layer"],n_embd=conf["n_embd"],n_head=conf["n_head"],dropout=0.)
+    if (conf.get("activation_function","gelu_new")!="gelu_new"
+            or conf.get("n_inner") not in (None,4*cfg.n_embd)
+            or conf.get("layer_norm_epsilon",1e-5)!=1e-5
+            or conf.get("add_cross_attention",False)
+            or conf.get("scale_attn_by_inverse_layer_idx",False)
+            or not conf.get("scale_attn_weights",True)
+            or not conf.get("tie_word_embeddings",True)):
+        raise ValueError("配置超出本教学GPT2实现支持范围")
+    raw=load_file(str(path/"model.safetensors"))
+    if any(v.is_floating_point() and v.dtype!=torch.float32 for k,v in raw.items()
+           if not k.endswith((".attn.bias",".attn.masked_bias"))):
+        raise ValueError("本对拍限定原权重为fp32；低精度文件不能经静默转换后称逐位拷贝")
+    normalized={}
+    for key,value in raw.items():
+        name=key.removeprefix("transformer.")
+        if name in normalized:raise ValueError("去前缀后键冲突："+name)
+        normalized[name]=value
+    if "wte.weight" not in normalized:raise ValueError("缺词嵌入")
+    for alias in ("lm_head.weight","head.weight"):
+        if alias in normalized and not torch.equal(normalized[alias],normalized["wte.weight"]):
+            raise ValueError("共享输出头别名与词嵌入数值不一致")
+    sd={};n_transpose=0;skipped=[]
+    for key,value in normalized.items():
+        if key in ("lm_head.weight","head.weight"):continue
+        if key.endswith((".attn.bias",".attn.masked_bias")):
+            skipped.append(key);continue
+        name="blocks."+key[2:] if key.startswith("h.") else key
+        if name.endswith(("c_attn.weight","c_proj.weight","c_fc.weight")):
+            value=value.t();n_transpose+=1
+        sd[name]=value
+    sd["head.weight"]=sd["wte.weight"]  # 加载别名；构造器已建立参数共享
+    ours=GPT2(cfg).eval();ours.load_state_dict(sd,strict=True)
+    after=ours.state_dict()
+    bitwise=all(after[k].dtype==v.dtype and torch.equal(after[k],v) for k,v in sd.items())
+    groups={k:sum(v.numel() for name,v in sd.items() if name.startswith(k+"."))
+            for k in ("wte","wpe","blocks","ln_f")}
+    n_total=ours.n_params();n_non=ours.n_params(True);d=cfg.n_embd
+    expected=cfg.vocab_size*d+cfg.n_positions*d+cfg.n_layer*(12*d*d+13*d)+2*d
+    checks={"total_matches_config":n_total==expected,
+            "nonembedding_matches_config":n_non==cfg.n_layer*(12*d*d+13*d)+2*d,
+            "group_sum_matches_unique_total":sum(groups.values())==n_total,
+            "all_loaded_tensors_equal":bitwise,"shared_parameter_object":ours.head.weight is ours.wte.weight,
+            "four_transposes_per_block":n_transpose==4*cfg.n_layer}
+    if not all(checks.values()):raise AssertionError(checks)
+    audit={"checkpoint_keys_total":len(raw),"keys_mapped":len(sd)-1,"loading_keys":len(sd),
+           "conv1d_transposed":n_transpose,"attn_bias_skipped":len(skipped),"skipped_keys":skipped,
+           "strict_load":True,"per_group_params":groups,"head_is_alias_not_extra_parameters":True,
+           "params_total_dedup":n_total,"params_non_embedding_6ND":n_non,
+           "bitwise_equal_after_load":bitwise,"asserts":checks,"config":vars(cfg),
+           "note":"键数属于本次文件，不预设160；别名不重复计入参数组"}
+    return ours,audit
 
 
 # ---------------- 步骤④：7-prompt logits 对拍 + sanity 生成 ----------------
 @torch.no_grad()
-def parity_7prompts(ours, tok):
-    """三向对拍：手写(官方权重) vs HF 官方实现（eager, CPU fp32）vs 探针基线（2026-10-02 存盘）。"""
+def parity_7prompts(ours,tok,snapshot_dir,prompts=None):
+    """同一快照的手写实现与HF eager固定输入对拍；不自动使用缺身份的历史探针。"""
     from transformers import GPT2LMHeadModel
-    # 注意力路径与手写同型（eager）：v5 默认 sdpa 与 eager 差 ~1e-6，对拍取同型路径
-    hf_eager = GPT2LMHeadModel.from_pretrained(MODEL_ID, attn_implementation="eager").eval()
-
-    baseline = torch.load(BASELINE_PT, map_location="cpu") if os.path.exists(BASELINE_PT) else None
+    hf_eager=GPT2LMHeadModel.from_pretrained(str(snapshot_dir),attn_implementation="eager",
+                                               local_files_only=True).float().eval()
+    # 旧tensor-only探针文件缺快照/提示身份，不自动拿它当当前参考。
+    baseline=None
+    prompts=PROMPTS if prompts is None else prompts
+    if not prompts:raise ValueError("对拍至少需要一个输入")
     rows = []
-    for i, p in enumerate(PROMPTS):
+    for i,p in enumerate(prompts):
         enc = tok(p, return_tensors="pt")
         ids = enc["input_ids"]                                  # (1, n)
         lg_ours, _ = ours(ids)                                  # (1,n,50257)
-        lg_hf = hf_eager(input_ids=ids).logits                  # (1,n,50257)
+        lg_hf = hf_eager(input_ids=ids,use_cache=False).logits                  # (1,n,50257)
         last_o, last_h = lg_ours[0, -1, :], lg_hf[0, -1, :]     # (50257,) 各取末位
         d_hf = (last_o - last_h).abs()
         t5o, t5h = torch.topk(last_o, 5), torch.topk(last_h, 5)
@@ -145,6 +160,8 @@ def parity_7prompts(ours, tok):
         }
         if baseline is not None and f"p{i}" in baseline:
             row["max_dlogits_vs_probe_baseline"] = float((last_o - baseline[f"p{i}"]).abs().max())
+        if not torch.isfinite(d_hf).all() or row["max_dlogits_vs_hf"]>=1e-4 or not row["argmax_agree"]:
+            raise AssertionError({"prompt":p,"parity":row})
         rows.append(row)
     del hf_eager
     return rows, baseline is not None
@@ -154,7 +171,10 @@ def parity_7prompts(ours, tok):
 def greedy_generate(model, tok, prompt, n_new=20):
     """贪心自回归生成（全量重算口径：每步重跑整段前向，本册不引入增量缓存——欠账在 Book3/6）。
     ids (1,n) -> 逐步 append argmax -> (1,n+n_new)。"""
-    ids = tok(prompt, return_tensors="pt")["input_ids"]
+    ids=tok(prompt,return_tensors="pt")["input_ids"]
+    if n_new<0 or ids.shape[1]==0 or ids.shape[1]+max(0,n_new-1)>model.block_size:
+        raise ValueError("无效生成长度或超过模型上下文")
+    if n_new==0:return ""
     for _ in range(n_new):
         logits, _ = model(ids)                       # (1,n,V)
         ids = torch.cat([ids, logits[:, -1, :].argmax(-1, keepdim=True)], dim=1)   # (1,n) -> (1,n+1)
@@ -173,9 +193,9 @@ def make_figure(report):
     # 左：四步流程框线图
     ax1.set_xlim(0, 10); ax1.set_ylim(0, 10); ax1.axis("off")
     steps = [
-        ("step 1  download", "525 MB minimal set\n(safetensors+tokenizer+config)"),
-        ("step 2  key mapping", "A Conv1D .t() x48\nB tied: head=wte\nC no prefix / skip attn.bias x12"),
-        ("step 3  param audit", "total 124,439,808\nnon-emb 85,056,000\nbitwise equal"),
+        ("step 1  download", f"{report['download']['total_mib']:.1f} MiB this snapshot\n(safetensors + tokenizer + config)"),
+        ("step 2  key mapping", f"A Conv1D .t() x{report['audit']['conv1d_transposed']}\nB tied alias; C normalize prefixes\nskipped masks: {report['audit']['attn_bias_skipped']}"),
+        ("step 3  param audit", f"total {report['audit']['params_total_dedup']:,}\nnon-emb {report['audit']['params_non_embedding_6ND']:,}\nbitwise checked"),
         ("step 4  logits parity", "7 prompts, CPU fp32\nmax|dl| / argmax / top-5"),
     ]
     for i, (t, s) in enumerate(steps):
@@ -195,7 +215,7 @@ def make_figure(report):
     zeros = [i for i, r in enumerate(rows) if r["max_dlogits_vs_hf"] == 0.0]
     ax2.plot(xs, vals, "o", color=BLUE, ms=6, zorder=4, label="ours(official wts) vs HF eager")
     ax2.plot(zeros, [1e-9] * len(zeros), "o", mfc="white", mec=BLUE, ms=6, zorder=5)
-    ax2.text(0.99, 0.985, f"{len(zeros)}/7 exactly 0.0 (bitwise)", fontsize=6.6, color=BLUE,
+    ax2.text(0.99, 0.985, f"{len(zeros)}/{len(rows)} exactly 0.0", fontsize=6.6, color=BLUE,
              ha="right", va="top", transform=ax2.transAxes)
     if "max_dlogits_vs_probe_baseline" in rows[0]:
         ax2.plot(xs, [r["max_dlogits_vs_probe_baseline"] for r in rows], "o", color=ORANGE,
@@ -210,61 +230,54 @@ def make_figure(report):
     ax2.tick_params(colors=TICK)
     am = sum(r["argmax_agree"] for r in rows)
     t5 = sum(r["top5_hit"] >= 1.0 for r in rows)
-    ax2.set_title(f"argmax {am}/7 agree, top-5 {t5}/7 full hit", fontsize=9, color="#0b0b0b")
+    ax2.set_title(f"argmax {am}/{len(rows)}, top-5 {t5}/{len(rows)}", fontsize=9, color="#0b0b0b")
     ax2.legend(fontsize=6.4, frameon=False, loc="center left")
     fig.tight_layout()
     os.makedirs(FIG_DIR, exist_ok=True)
-    out = os.path.join(FIG_DIR, "fig-11-2-parity.png")
+    out=os.path.join(FIG_DIR,"check-11-2-parity.png")
+    if os.path.exists(out):raise FileExistsError(out)
     fig.savefig(out, dpi=300, facecolor="white")
     print(f"[figure] -> {out}")
 
 
 def main():
-    os.makedirs(OUT_DIR, exist_ok=True)
-    torch.manual_seed(SEED)
-    t0 = time.perf_counter()
+    global OUT_DIR,FIG_DIR
+    ap=argparse.ArgumentParser()
+    ap.add_argument("--snapshot-dir")
+    ap.add_argument("--revision")
+    ap.add_argument("--out-dir",default=OUT_DIR)
+    ap.add_argument("--out-name",default="official_parity.json")
+    a=ap.parse_args();OUT_DIR=a.out_dir;FIG_DIR=os.path.join(OUT_DIR,"figures",Path(a.out_name).stem)
+    if Path(a.out_name).name!=a.out_name or a.out_name in ("",".",".."):raise ValueError("out-name只接受文件名")
+    target=Path(OUT_DIR)/a.out_name
+    if target.exists():raise FileExistsError(target)
+    torch.manual_seed(SEED);t0=time.perf_counter()
+    import transformers
     from transformers import AutoTokenizer
-    report = {"meta": {"date": time.strftime("%Y-%m-%d %H:%M:%S"), "seed": SEED,
-                       "model_id": MODEL_ID, "device": "cpu", "dtype": "fp32",
-                       "torch": torch.__version__,
-                       "attention": "eager (both sides; sdpa-eager diff ~1e-6, parity uses same-type path)"}}
-
-    print("===== 步骤① 下载/定位最小文件集 =====", flush=True)
-    report["download"] = ensure_weights()
-    print(json.dumps(report["download"]["files_mb"], ensure_ascii=False), flush=True)
-
-    print("===== 步骤②③ 键映射 + 参数逐项对账 =====", flush=True)
-    ours, audit = load_official_into_ours(report["download"]["snapshot_dir"])
-    report["audit"] = audit
-    print(json.dumps(audit["asserts"], ensure_ascii=False), "| bitwise_equal:", audit["bitwise_equal_after_load"])
-
-    print("===== 步骤④ 7-prompt logits 对拍 + sanity 生成 =====", flush=True)
-    tok = AutoTokenizer.from_pretrained(MODEL_ID)
-    rows, has_baseline = parity_7prompts(ours, tok)
-    report["parity"] = rows
-    report["parity_note"] = ("三向：手写加载官方权重 vs HF eager 实现 vs 探针基线"
-                             + ("（log/book2-feasibility/gpt2_logits_baseline.pt，2026-10-02 存盘）" if has_baseline else "（基线文件缺失）"))
-    # sanity 生成两条教例（贪心 20 token）
-    report["sanity_gen"] = []
-    for p in [PROMPTS[0], PROMPTS[5]]:
-        gen = greedy_generate(ours, tok, p, n_new=20)
+    report={"meta":{"date_utc":time.strftime("%Y-%m-%dT%H:%M:%SZ",time.gmtime()),
+                    "seed":SEED,"device":"cpu","dtype":"fp32","torch":str(torch.__version__),
+                    "transformers":transformers.__version__,"attention":"eager，同快照、use_cache=False"}}
+    report["download"]=ensure_weights(a.revision,a.snapshot_dir)
+    snapshot=report["download"]["snapshot_dir"]
+    ours,audit=load_official_into_ours(snapshot);report["audit"]=audit
+    tok=AutoTokenizer.from_pretrained(snapshot,local_files_only=True)
+    rows,_=parity_7prompts(ours,tok,snapshot);report["parity"]=rows
+    report["parity_note"]="有限输入的当前数值证据；旧无身份探针基线未自动参与"
+    report["sanity_gen"]=[]
+    for prompt in (PROMPTS[0],PROMPTS[5]):
+        text=greedy_generate(ours,tok,prompt,20)
         with torch.no_grad():
-            ids = tok(p, return_tensors="pt")["input_ids"]
-            logits, _ = ours(ids)
-            probs = torch.softmax(logits[0, -1, :], dim=-1)
-            t5v, t5i = torch.topk(probs, 5)
-        report["sanity_gen"].append({
-            "prompt": p, "greedy_20tok": gen,
-            "next_top5": [{"token": tok.decode([int(i_)]), "id": int(i_), "p": round(float(v), 5)}
-                          for v, i_ in zip(t5v, t5i)]})
-        print(f"  [{p[:36]}...] greedy -> {gen!r}", flush=True)
-
-    report["meta"]["wallclock_sec"] = round(time.perf_counter() - t0, 1)
-    out_json = os.path.join(OUT_DIR, "official_parity.json")
-    with open(out_json, "w", encoding="utf-8") as f:
-        json.dump(report, f, ensure_ascii=False, indent=2)
-    print(f"[完成] -> {out_json}")
+            ids=tok(prompt,return_tensors="pt")["input_ids"]
+            probs=torch.softmax(ours(ids)[0][0,-1],-1)
+            values,index=probs.topk(5)
+        report["sanity_gen"].append({"prompt":prompt,"greedy_20tok":text,
+            "next_top5":[{"token":tok.decode([int(i)]),"id":int(i),"p":float(v)} for v,i in zip(values,index)]})
+    report["meta"]["wallclock_sec"]=time.perf_counter()-t0
+    payload=json.dumps(report,ensure_ascii=False,indent=2,allow_nan=False)+"\n"
+    target.parent.mkdir(parents=True,exist_ok=True)
     make_figure(report)
+    with target.open("x") as f:f.write(payload)
+    print(f"[固定输入对拍通过] {target}")
 
 
 if __name__ == "__main__":

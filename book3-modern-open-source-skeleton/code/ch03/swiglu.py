@@ -2,7 +2,7 @@
 # 用途：ch3.5「改装第二例」的换装件正身。教学重写 = 不复制 llama_slots.SwiGLU 的代码，
 #       而是按式 (3.4) 从零写一遍，再过两道对拍验收：
 #       ① 与 00-feasibility/llama_slots.py 的 SwiGLU（组件库正身）CPU fp32 逐位一致；
-#       ② 与 HF transformers 5.18.0 的 LlamaMLP 同 config 同权重 state_dict 直搬对拍
+#       ② 与 HF transformers 5.18.0 的 LlamaMLP 同 config 同权重 state_dict 直搬对拍（运行打印当前版本）
 #         （HF 键位 gate_proj/up_proj/down_proj，strict=True 零缺零余）。
 #       自测第三件：LLaMA1/2/3 七档 d_ff 用官方公式复算对账（表 3.2 的复算列）。
 # 所属章节：Book3 ch3（3.4 参数账 / 3.5 改装第二例）；ch10 整机 import 本件作 MLP 插槽
@@ -10,6 +10,7 @@
 # 运行方式：cd code/ch03 && python swiglu.py   （全 CPU 秒级，无命令行参数）
 # 依赖：sys.path 两级 bootstrap（00-feasibility 的 llama_slots）；transformers 仅在对拍段 import。
 import os
+import math
 import sys
 
 import torch
@@ -36,6 +37,8 @@ class SwiGLUMLP(nn.Module):
     def __init__(self, cfg):
         super().__init__()
         C, d_ff = cfg.hidden_size, cfg.intermediate_size
+        if any(not isinstance(v, int) or isinstance(v, bool) or v <= 0 for v in (C, d_ff)):
+            raise ValueError("hidden_size/intermediate_size须为正整数")
         self.gate_proj = nn.Linear(C, d_ff, bias=False)    # (B,n,C) -> (B,n,d_ff) 门支路：过 SiLU 后作门控系数
         self.up_proj = nn.Linear(C, d_ff, bias=False)      # (B,n,C) -> (B,n,d_ff) 值支路：候选内容，保持线性
         self.down_proj = nn.Linear(d_ff, C, bias=False)    # (B,n,d_ff) -> (B,n,C)  压回残差流宽度
@@ -53,9 +56,14 @@ def llama_d_ff(dim, multiple_of=256, ffn_dim_multiplier=None):
     初值 4*dim -> 折 2/3 成 8d/3 -> （L2-70B 起）乘 ffn_dim_multiplier -> 向上取整到 multiple_of
     的倍数（multiple_of=256 的注释原文："make SwiGLU hidden layer size multiple of large power of 2"）。
     """
-    hidden_dim = int(2 * (4 * dim) / 3)                       # 4d 折 2/3 = 8d/3
+    if any(not isinstance(v, int) or isinstance(v, bool) or v <= 0 for v in (dim, multiple_of)):
+        raise ValueError("dim/multiple_of须为正整数")
+    if ffn_dim_multiplier is not None and (not math.isfinite(ffn_dim_multiplier) or ffn_dim_multiplier <= 0):
+        raise ValueError("放大系数须为有限正数")
+    hidden_dim = 8 * dim // 3                       # 4d 折 2/3 = 8d/3
     if ffn_dim_multiplier is not None:
         hidden_dim = int(ffn_dim_multiplier * hidden_dim)     # L2-70B/L3 起为 1.3（社区引述口径，见正文）
+    if hidden_dim <= 0:raise ValueError("取整后中间维必须为正")
     return multiple_of * ((hidden_dim + multiple_of - 1) // multiple_of)   # 向上取整到 multiple_of 倍数
 
 
@@ -84,11 +92,13 @@ def check_seven_configs():
         print(f"  {name:12s} d={d:5d} mult={mult} mo={mo:4d} 复算={rec:6d} config={cfg_ff:6d} "
               f"比率={cfg_ff/d:.4f} {hit}")
     assert ok == len(rows), f"七档对账 {ok}/{len(rows)}——公式与 config 不符，正文表 3.2 不能引用"
-    print(f"  七档全部复算吻合（{ok}/{len(rows)}）——「8/3 取整到 256 倍数」精确复现 LLaMA1 全系与 mult 档\n")
+    print(f"  七档全部复算吻合（{ok}/{len(rows)}）——按表中放大系数与对齐倍数复算吻合，不证明生成配置唯一\n")
     return rows
 
 
 def main():
+    import transformers
+    print(f"实际版本：torch={torch.__version__}, transformers={transformers.__version__}；device=cpu")
     torch.manual_seed(20261002)          # 全书统一种子
     cfg = LLaMAConfig(vocab_size=512, hidden_size=768, intermediate_size=2048,   # d=768：8/3d=2048 整除零误差档
                       num_hidden_layers=2, num_attention_heads=12)
@@ -115,8 +125,8 @@ def main():
         y_hf = hf(x)                                      # (4,16,768)
     d2 = (y_ours - y_hf).abs().max().item()
     agree = (y_ours.argmax(-1) == y_hf.argmax(-1)).float().mean().item()
-    print(f"== 对拍② vs HF LlamaMLP（transformers 5.18.0，CPU fp32）==")
-    print(f"  max|Δ| = {d2:.3e}；argmax 一致率 = {agree:.4f}（同一运算的两种实现只差浮点结合序）")
+    print(f"== 对拍② vs HF LlamaMLP（transformers {transformers.__version__}，CPU fp32）==")
+    print(f"  max|Δ| = {d2:.3e}；argmax 一致率 = {agree:.4f}（此输入/权重/设备的实测，不推广所有dtype）")
     assert d2 < 1e-5 and agree == 1.0
 
     # ---- 参数账（ch3.4 的手算在代码里的对应物） ----

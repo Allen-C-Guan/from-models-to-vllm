@@ -2,7 +2,7 @@
 # 用途：Book1 第 7 章「整机组装」——复用第 2-6 章手写组件拼出完整 Transformer 整机
 #       （论文 §3.1/§3.4 口径：Embedding×√d_model→6+6 层→共享 pre-softmax 线性 + softmax），
 #       与官方 nn.Transformer(batch_first=True) 权重搬运对拍（含栈顶 LN 差异的分项演示），
-#       并以 numel 实数复核 base 的 65M 参数账本。
+#       并以 numel 计数核对本实现的63.1M与论文65M。
 # 所属章节：《Transformer 原典》第 7 章（整机组装与 mask 全景）
 # 跨章复用（读者复现方式）：本文件把 code/ 注入 sys.path 后按包导入
 #       ch03/ch05/ch06（各章目录已配 __init__.py；该目录名含连字符与中文、不能作包名，
@@ -50,7 +50,7 @@ class DecoderLayer(nn.Module):
     def __init__(self, d_model=512, h=8, d_ff=2048, p_drop=0.1):
         super().__init__()
         self.self_attn = MyMultiHeadAttention(d_model, h)       # 解码器带掩码自注意力
-        self.cross_attn = MyMultiHeadAttention(d_model, h)      # cross：Q 来自解码器，K=V=memory
+        self.cross_attn = MyMultiHeadAttention(d_model, h)      # cross：Q输入来自解码器，K/V输入同源于memory，投影参数各自独立
         self.ffn = PositionwiseFFN(d_model, d_ff)
         self.sub1 = PostLNSublayer(d_model, p_drop)
         self.sub2 = PostLNSublayer(d_model, p_drop)
@@ -132,7 +132,8 @@ def exp_default_hyperparams():
                d_model=t.d_model, h=t.encoder.layers[0].self_attn.num_heads,
                d_ff=t.encoder.layers[0].linear1.out_features,
                dropout=t.encoder.layers[0].dropout.p,
-               act="relu", norm_first=t.encoder.layers[0].norm_first,
+               act="relu" if t.encoder.layers[0].activation is F.relu else str(t.encoder.layers[0].activation),
+               norm_first=t.encoder.layers[0].norm_first,
                top_LN=t.encoder.norm is not None)
     base = dict(N_enc=6, N_dec=6, d_model=512, h=8, d_ff=2048, dropout=0.1,
                 act="relu", norm_first=False, top_LN=False)    # top_LN：论文 Fig 1 两塔出口无栈顶 LN（C-G13）
@@ -225,11 +226,11 @@ def exp_parity(d_model=512, h=8, n_layer=6, d_ff=2048, B=2, S=10, T=9):
     print(f"  对照档（本书+栈顶 LN vs 官方）          ：max|Δ| = {diff:.2e}"
           f"  allclose(atol=1e-5) = {torch.allclose(out_mine, out_offi, rtol=0, atol=1e-5)}")
     diff_ln = (out_paper - out_offi).abs().max().item()
-    print(f"  论文档（本书无栈顶 LN vs 官方，γ=1/β=0）：max|Δ| = {diff_ln:.2e}——post-LN 塔顶输出已逐位置"
-          f"零均值/单位方差，LN(γ=1,β=0) 近似恒等（差异被 ε 与方差口径压在 1e-6 量级）")
+    print(f"  论文档（无栈顶 LN vs 官方初始LN）：max|Δ| = {diff_ln:.2e}——"
+          f"本例末层标准化输出接近零均值、单位方差，再加初始LN改变量很小；数值范围非普遍保证。")
     diff_ln2 = (out_paper - out_offi2).abs().max().item()
-    print(f"  论文档 vs 官方（γ/β 训练后偏离初始）   ：max|Δ| = {diff_ln2:.2f}——"
-          f"一旦仿射参数离开 1/0，栈顶 LN 就是一处实打实的结构差异（多 2×512 个参数与一次归一化）")
+    print(f"  论文档 vs 官方（人为改变γ/β，不是训练结果）   ：max|Δ| = {diff_ln2:.2f}——"
+          f"这组参数使差异显现；每塔额外LN含2×d_model个参数与一次归一化。")
 
 
 # ---------- 4. 参数量账本：65M 逐项数（numel 实数，非公式推算） ----------
@@ -251,11 +252,11 @@ def exp_ledger(vocab=37000):
     print(f"  编码器层小计 {enc_l:>8,} ×6 = {6 * enc_l:>10,}")
     print(f"  解码器层小计 {dec_l:>8,} ×6 = {6 * dec_l:>10,}")
     print(f"  词嵌入（三处共享一个矩阵） {emb_p:>10,}")
-    print(f"  合计 {total:,} ≈ {total / 1e6:.1f}M（Table 3 记 65M，差 {(65e6 - total) / 1e6:.1f}M ≈ 3%，构成预估口径）")
+    print(f"  合计 {total:,} ≈ {total / 1e6:.1f}M（Table 3 记 65M，差 {(65e6 - total) / 1e6:.1f}M ≈ 3%，原因尚未核销）")
     print(f"  反事实：三处不共享 = {untied:,} ≈ {untied / 1e6:.1f}M——权重共享省下 2×{emb_p/1e6:.1f}M = {2*emb_p/1e6:.1f}M（省 37.5%，超过三分之一）")
     print(f"  共享自证：合计恰等于 6×编码器层 + 6×解码器层 + 单份嵌入 = "
           f"{total == 6 * enc_l + 6 * dec_l + emb_p}（同一张量三处引用，numel 只数到一份）")
-    # 「模型不止参数」：自回归解码的重算账（每个新 token 都把整段前缀重过一遍解码器）
+    # 这里只计目标前缀位置次数；decode_step还会重复源编码，此比值不等于总MAC或耗时。
     T = 9
     recompute = T * (T + 1) // 2
     print(f"  重算账（T={T} 逐 token 解码）：累计前向位置数 = 1+2+…+{T} = {recompute}，"

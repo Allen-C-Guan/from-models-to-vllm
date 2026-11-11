@@ -6,9 +6,10 @@
 #      导出真实训练所得的注意力对齐热图（图 4.3）与关键数字。
 # 所属章节：code/ch04/roles_demo.py
 # 运行：source env.sh && python "code/ch04/roles_demo.py"
-#      （固定种子 42，CPU 可跑；热图同时落 drafts/figures 与 log/ch04/）
+#      （固定种子42，CPU可跑；新热图落log/Book1-ch04/，可用BOOK1_LOG_ROOT覆盖）
 
 import math
+import os
 import random
 from pathlib import Path
 
@@ -16,9 +17,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-ROOT = Path(__file__).resolve().parents[3]
-FIG_DIR = ROOT / "drafts" / "Book1-Transformer原典" / "figures"
-LOG_DIR = ROOT / "log" / "ch04"
+ROOT = Path(__file__).resolve().parents[2]
+LOG_DIR = Path(os.environ.get("BOOK1_LOG_ROOT", ROOT / "log")).expanduser() / "Book1-ch04"
+FIG_DIR = LOG_DIR
 SEED = 42
 
 torch.manual_seed(SEED)
@@ -55,7 +56,7 @@ def demo_roles(n=8, d=16):
     # 角色一：encoder 自注意——Q=K=V 同源，无掩码，全句互见（双向）
     _, A_enc = attention(x_enc, x_enc, x_enc)          # A: (n_src, n_src)，全非零
     # 角色二：decoder 因果自注意——Q=K=V 同源，下三角可见（只许看过去）
-    _, A_dec = attention(y_dec, y_dec, y_dec, causal=True)   # A: (n_tgt, n_tgt)，严格下三角
+    _, A_dec = attention(y_dec, y_dec, y_dec, causal=True)   # A: (n_tgt, n_tgt)，含对角线的下三角
     # 角色三：cross——Q 来自解码器，K=V 来自编码器输出，无因果掩码
     _, A_cross = attention(y_dec, x_enc, x_enc)        # A: (n_tgt, n_src)，行=目标步、列=源位
     upper = torch.triu(torch.ones(n, n, dtype=torch.bool), diagonal=1)
@@ -66,7 +67,7 @@ def demo_roles(n=8, d=16):
     for name, A in [("enc", A_enc), ("dec", A_dec), ("cross", A_cross)]:
         assert torch.allclose(A.sum(-1), torch.ones(n), atol=1e-5), f"{name} 行和 != 1"
     assert A_dec[upper].sum() == 0.0, "因果掩码未屏蔽未来位置"
-    print("  断言通过：三种权重行和均为 1；因果矩阵严格下三角")
+    print("  断言通过：三种权重行和均为1；因果矩阵为含对角线的下三角")
 
 
 def demo_api_postures(n=8, d=16):
@@ -103,7 +104,7 @@ MIN_L, MAX_L = 6, 9
 
 def make_pair(rng):
     """源句 = 从 12 词中无重复抽 L 个；目标 = 词典直译，但**源句首词后置到目标句末**
-    （模拟德语动词后置式语序差异 → 对齐非单调，呼应 Bahdanau Fig.3(a)）。"""
+    （人为设置的非单调置换，用于检查对齐；并非真实德语语法的复现）。"""
     L = rng.randint(MIN_L, MAX_L)
     src = rng.sample(SRC, L)
     tgt = [DICT[w] for w in src[1:]] + [DICT[src[0]]]  # 首词搬到最后
@@ -219,7 +220,8 @@ def train(steps=3000, B=64, lr=1e-3):
 
 
 def evaluate(enc, dec, n=1024):
-    """held-out 句级精确匹配率 + 对齐 argmax 命中率 + 真值源位上的平均权重（对齐锐度）。"""
+    """独立随机采样、教师强制评测：整句逐步argmax匹配、对齐命中率与平均真值权重。
+    每步使用tgt_in中的标准答案前缀；不是自由生成循环，也未与训练样本逐句去重。"""
     rng = random.Random(SEED + 1)
     exact = hit = total = 0
     gold_w = 0.0
@@ -282,10 +284,8 @@ def export_heatmap(enc, dec, fname="fig-4-3-alignment-heatmap.png"):
     fig.colorbar(last_im, ax=axes, shrink=0.85, pad=0.03).ax.tick_params(labelsize=6, colors="#898781")
     fig.tight_layout()
     FIG_DIR.mkdir(parents=True, exist_ok=True)
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
     fig.savefig(FIG_DIR / fname)
-    fig.savefig(LOG_DIR / fname)
-    print(f"[热图] 已导出 {FIG_DIR / fname}（另存 log/ch04/）")
+    print(f"[热图] 已导出 {FIG_DIR / fname}（实验输出，正文历史图不覆盖）")
     return picks
 
 
@@ -298,7 +298,7 @@ def main():
     enc, dec, n_par, last_loss = train()
     acc, align, gold_w = evaluate(enc, dec)
     print(f"  参数量 {n_par:,}；最后一步 loss {last_loss:.4f}")
-    print(f"  held-out 1024 句：句级精确匹配率 {acc:.1%}；对齐 argmax 命中率 {align:.1%}；"
+    print(f"  独立采样1024句、教师强制：整句逐步argmax匹配率 {acc:.1%}；对齐 argmax 命中率 {align:.1%}；"
           f"对齐位平均权重 {gold_w:.3f}")
     picks = export_heatmap(enc, dec)
     for src_w, tgt_w, gold in picks:

@@ -1,13 +1,11 @@
-# data.py —— Book2 ch11 数据管道正式化（11.1 节：OWT 子采样→分词器分离→两种块化→换算盒→WikiText-2 对照）
-# 用途：把散在 00-feasibility/08_owt_subsample.py 与 ch08/data_prep.py、ch11/train_124m.py --prep-only
-#   的三段管道收拢为一个可复算的入口，并产出 ch11 特有的三件教学件：
-#   ①两种块化切法对比（GPT-2 拼接流切块 vs 文档边界对齐切块——零浪费换跨文档上下文）；
-#   ②token↔word 换算盒（同一文档集上 sp-8k 与 gpt2 两套 n_t/n_w 实测）；
-#   ③WikiText-2 word-level 对照（word 级 unigram/bigram 基线——换算盒的着陆坐标）。
-# 所属章节：Book2 第 11 章 11.1 节。
-# 运行方式：cd 工作区根目录 && source env.sh && python "code/ch11/data.py"
-#   （前置产物缺失时按提示先跑 08_owt_subsample.py / ch08/data_prep.py / ch11/train_124m.py --prep-only）
-# 产物：log/book2-ch11/data_pipeline.json + drafts/Book2-预训练革命/figures/fig-11-1-data-pipeline.png
+# data.py —— Book2第11章：语料字节账、两种块化、同文档编码计数与正规化词基线。
+# 工作区激活env.sh后：python code/ch11/data.py --help
+# --stages可单独运行某项；WikiText阶段需要datasets，当前修订未冒称重算了历史基线。
+# 输出log/book2-ch11；已有报告不覆盖，核算图不覆盖正文图。
+import argparse
+import hashlib
+import math
+from pathlib import Path
 import json
 import os
 import time
@@ -16,18 +14,19 @@ from collections import Counter
 import numpy as np
 
 SEED = 20261002
-REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+REPO_ROOT = os.getcwd()
+os.environ.setdefault("TIKTOKEN_CACHE_DIR", os.path.join(REPO_ROOT,"log","cache","tiktoken"))
 SCALING_DIR = os.path.join(REPO_ROOT, "log", "book2-scaling")
 CH08_DIR = os.path.join(REPO_ROOT, "log", "book2-ch08")
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book2-ch11")
-FIG_DIR = os.path.join(REPO_ROOT, "figures")
+FIG_DIR = os.path.join(OUT_DIR, "figures")
 
 DOCS_JSONL = os.path.join(SCALING_DIR, "owt_docs.jsonl")            # LM 主语料（1.15GB / 232,920 篇）
 TOK_TXT = os.path.join(SCALING_DIR, "owt_tokenizer_corpus.txt")     # 分词器分片（独立，29MB / 6000 篇）
 SP8K_MODEL = os.path.join(CH08_DIR, "sp8k_owt.model")
 TOKENS50K = os.path.join(OUT_DIR, "tokens50k.bin")                  # 50257 词表流（train_124m.py --prep-only 产物）
 BLOCK = 256                                                          # 训练窗长 s（全书统一）
-WT2_MAX_WORDS = 2_000_000                                            # WikiText-2 统计上限（语料本身 ~2M word 级）
+WT2_REVISION = "b08601e04326c79dfdd32d625aee71d232d685c3"  # 本轮实际查询的固定数据提交
 
 
 def need(path, hint):
@@ -37,239 +36,225 @@ def need(path, hint):
 
 # ---------------- ①语料与分片分离的核账 ----------------
 def step_corpus():
-    """OWT 子采样件核账 + 分词器分片分离声明（写作纪律：分离写进运行元数据）。"""
-    need(DOCS_JSONL, "python code/00-feasibility/08_owt_subsample.py --target-mb 1150")
-    n_docs, n_bytes = 0, 0
-    with open(DOCS_JSONL, "rb") as f:
-        for _ in f:
-            n_docs += 1
-    n_bytes = os.path.getsize(DOCS_JSONL)
-    return {"lm_corpus": {"path": DOCS_JSONL, "docs": n_docs, "mb": round(n_bytes / 1024 / 1024, 1),
-                          "license": "OpenWebText 打包层 CC0（HF 卡片 cc0-1.0）；原文各自版权。"
-                                     "WebText 原版=Reddit karma>=3 外链（GPT-2 论文 §2.1）；OpenWebText 的 karma 管道"
-                                     "说法出自其 GitHub 项目自述（第三方复刻），HF 卡片未载明 karma 细节"},
-            "tokenizer_shard": {"path": TOK_TXT, "mb": round(os.path.getsize(TOK_TXT) / 1024 / 1024, 1),
-                                "separation": "分词器只在独立分片（前 6000 篇）训练，与 LM 语料（自第 6001 篇起）互斥——"
-                                              "写进运行元数据的纪律（ch08 冒烟档教训的正式修正）"}}
+    """分别数JSONL存储字节、净文本字节/字符；不凭文件名证明内容去重。"""
+    need(DOCS_JSONL,"先获取独立LM文档流")
+    need(TOK_TXT,"先准备分词器训练文本")
+    docs=raw_bytes=chars=0
+    h=hashlib.sha256()
+    with open(DOCS_JSONL,"rb") as f:
+        for raw in f:
+            h.update(raw)
+            if not raw.strip():continue
+            text=json.loads(raw)["text"]
+            if not isinstance(text,str):raise ValueError("文档text须为字符串")
+            docs+=1;raw_bytes+=len(text.encode("utf-8"));chars+=len(text)
+    storage=Path(DOCS_JSONL).stat().st_size
+    return {"lm_corpus":{"path":DOCS_JSONL,"docs":docs,"jsonl_bytes":storage,
+                         "jsonl_mib":storage/1024**2,"raw_text_utf8_bytes":raw_bytes,
+                         "raw_text_characters":chars,"sha256":h.hexdigest(),
+                         "license_note":"OpenWebText卡片的CC0是包装层，原网页权利另计"},
+            "tokenizer_shard":{"path":TOK_TXT,"bytes":Path(TOK_TXT).stat().st_size,
+                              "separation":"历史获取脚本跳过前6000篇用于LM；本函数只核文件，不证明内容无重合"}}
 
 
 # ---------------- ②两种块化切法对比（教学件） ----------------
-def step_chunking(n_docs_demo=2000, block=BLOCK):
-    """同一批文档、两种切成 (B,256) 训练窗的方法对比。
+def chunking_counts(lengths, block):
+    """lengths含每篇EOS；同时给内容库存和右移训练窗口，边界按实际位置去重。"""
+    if block<=0 or not lengths or any(n<=0 for n in lengths):
+        raise ValueError("block与文档token长度须正")
+    total=sum(lengths);content_windows=total//block;pair_windows=(total-1)//block
+    boundaries=[];pos=0
+    for n in lengths[:-1]:
+        pos+=n;boundaries.append(pos)
+    content_cross={p//block for p in boundaries if p%block and p<content_windows*block}
+    # 输入与右移标签的联合跨度为block+1，整块边界也可能落在最后标签处。
+    pair_cross={(p-1)//block for p in boundaries if 0<p<=pair_windows*block}
+    per_content=sum(n//block for n in lengths)
+    per_pairs=sum((n-1)//block for n in lengths)
+    return {"total_tokens":total,"block":block,"docs":len(lengths),
+            "A_concat_stream":{"content_windows":content_windows,"content_remainder":total%block,
+                "content_utilization":content_windows*block/total,
+                "cross_doc_content_windows":len(content_cross),
+                "cross_doc_content_fraction":len(content_cross)/content_windows if content_windows else None,
+                "training_windows":pair_windows,"training_target_tokens":pair_windows*block,
+                "cross_doc_input_or_target_windows":len(pair_cross)},
+            "B_per_doc_aligned":{"content_windows":per_content,
+                "content_utilization":per_content*block/total,
+                "content_discarded_tokens":total-per_content*block,
+                "training_windows":per_pairs,"training_target_tokens":per_pairs*block},
+            "definition":"内容块只看block个token；训练窗另需右移目标。EOS是词元，未自动重置注意力。"}
 
-    法 A（GPT-2 拼接流，全书与官方同口径）：文档间插 EOT 后扁平拼接成一条流，按 256 定长切窗——
-      窗可以跨文档边界（EOT 就是官方教的「文档到此为止」信号），零填充零丢弃。
-    法 B（文档边界对齐）：每篇独立切窗、末窗不足 256 丢弃——窗内纯单文档，代价是短文档尾料浪费。
-    返回两种方法的窗口数/利用率/跨文档窗占比/示例窗。
-    """
-    need(SP8K_MODEL, "python \"code/ch08/data_prep.py\"")
+
+def step_chunking(n_docs_demo=2000, block=BLOCK):
+    """同一批文档的两种库存/训练窗对照；不假定这就是原GPT2训练管道。"""
+    need(SP8K_MODEL,"先准备SP分词器");need(DOCS_JSONL,"先准备LM文档流")
+    if n_docs_demo<=0:raise ValueError("演示文档数须正")
     import sentencepiece as spm
-    sp = spm.SentencePieceProcessor()
-    sp.Load(SP8K_MODEL)
-    eos = sp.eos_id()
-    lens, first_doc_ids = [], None
-    with open(DOCS_JSONL, "r", encoding="utf-8") as f:
-        for i, line in enumerate(f):
-            if i >= n_docs_demo:
-                break
-            ids = sp.encode(json.loads(line)["text"], out_type=int, add_eos=True)  # +EOS(id=2) 文档分隔
-            lens.append(len(ids))
-            if first_doc_ids is None:
-                first_doc_ids = ids
-    total_tok = sum(lens)
-    # 法 A：拼接流定长切窗
-    n_win_a = total_tok // block
-    cross, pos = 0, 0
-    for L in lens:
-        end = pos + L
-        if pos // block != (end - 1) // block and end <= n_win_a * block:
-            cross += 1                      # 该文档的结束边界落进某个窗内 => 该窗跨文档
-        pos = end
-    # 法 B：逐篇切窗丢尾
-    n_win_b = sum(L // block for L in lens)
-    used_b = n_win_b * block
-    # 示例：拼接流里第一个文档交界（doc1 末尾 + EOS + doc2 开头）——EOT 教边界的实物
-    with open(DOCS_JSONL, "r", encoding="utf-8") as f:
-        f.readline()
-        d2 = sp.encode(json.loads(f.readline())["text"], out_type=int)[:6]  # 下一篇开头 6 token
-    junction = first_doc_ids[-8:] + d2                                     # 末 8 token（含 EOS）+ 下一篇开头
-    return {
-        "demo_docs": n_docs_demo, "block": block, "total_tokens": total_tok,
-        "A_concat_stream": {"windows": n_win_a, "utilization": 1.0,
-                            "cross_doc_windows": cross, "cross_frac": round(cross / n_win_a, 3),
-                            "note": "GPT-2 式拼接流：文档间插 EOS/EOT 后按 256 定长切窗；窗跨文档边界是特性不是 bug——"
-                                    "官方预训练同口径，模型顺带学会 EOT 前后该断则断"},
-        "B_per_doc_aligned": {"windows": n_win_b, "utilization": round(used_b / total_tok, 4),
-                              "discarded_tokens": total_tok - used_b,
-                              "note": "文档边界对齐：窗内纯单文档、无 EOT 学习压力；代价=每篇尾料 <256 丢弃"},
-        "junction_decoded": sp.decode(junction),
-        "junction_ids": junction,
-        "junction_note": "第一个文档交界处：...doc1 末尾 [EOS=2] doc2 开头...——拼接流里模型「看见」的边界就长这样",
-    }
+    sp=spm.SentencePieceProcessor(model_file=SP8K_MODEL)
+    if sp.eos_id()<0:raise ValueError("SP模型没有有效EOS")
+    lengths=[];first=[]
+    with open(DOCS_JSONL,encoding="utf-8") as f:
+        for raw in f:
+            if not raw.strip():continue
+            ids=sp.encode(json.loads(raw)["text"],out_type=int,add_eos=True)
+            lengths.append(len(ids))
+            if len(first)<2:first.append(ids)
+            if len(lengths)>=n_docs_demo:break
+    rep=chunking_counts(lengths,block)
+    junction=first[0][-8:]+first[1][:6] if len(first)>1 else []
+    rep.update(requested_docs=n_docs_demo,actual_docs=len(lengths),eos_id=sp.eos_id(),
+               junction_ids=junction,junction_decoded=sp.decode(junction))
+    return rep
 
 
 # ---------------- ③token↔word 换算盒（同一文档集、两套词表） ----------------
 def step_conversion(n_docs=56000):
-    """换算盒实测：同一批文档（前 56,000 篇完整文档）上 gpt2(50257) 与 sp-8k 的 n_t/n_w 与 B/token。
-    注意口径：data50k_meta 的 total_tokens=60,000,000 是截断后的训练流，其逐篇累计统计覆盖的
-    是 56,000 篇完整文档（含截断尾段，gpt2 全量 ~63.3M）——本函数在前 56,000 行上直接重数三种单位，
-    保证三个比值同一分母。"""
-    need(TOKENS50K, "python \"code/ch11/train_124m.py\" --prep-only")
+    """在完全同一批完整文档上直接数两套编码；两者都加一个EOS/EOT，范围不借用别处元数据。"""
+    if n_docs<=0:raise ValueError("文档数须正")
+    need(DOCS_JSONL,"先准备LM文档流");need(SP8K_MODEL,"先准备SP分词器")
+    import sentencepiece as spm
     import tiktoken
-    enc = tiktoken.get_encoding("gpt2")
-    n_words, n_bytes, n_gpt = 0, 0, 0
-    with open(DOCS_JSONL, "r", encoding="utf-8") as f:
-        for i, line in enumerate(f):
-            if i >= n_docs:
-                break
-            text = json.loads(line)["text"]
-            n_words += len(text.split())
-            n_bytes += len(text.encode("utf-8"))
-            n_gpt += len(enc.encode(text, disallowed_special=())) + 1     # +EOT（与训练流拼接同口径）
-    with open(os.path.join(OUT_DIR, "data50k_meta.json"), encoding="utf-8") as f:
-        meta50k = json.load(f)
-    sp_tok = meta50k["encoding"]["sp8k_tokens_same_docs"]             # 73,598,712（train_124m 同一批文档）
-    return {
-        "docs": n_docs, "bytes": n_bytes, "words": n_words,
-        "gpt2_50257": {"tokens": n_gpt, "tokens_per_word": round(n_gpt / n_words, 4),
-                       "bytes_per_token": round(n_bytes / n_gpt, 3)},
-        "sp8k_8192": {"tokens": sp_tok, "tokens_per_word": round(sp_tok / n_words, 4),
-                      "bytes_per_token": round(n_bytes / sp_tok, 3)},
-        "stream_note": "训练流取 gpt2 拼接流前 60,000,000 token（约前 53,000 篇）；本表比值按 56,000 篇完整文档计（同一分母）",
-        "formula": "ln PPL_word = (n_t/n_w) * ln PPL_token（token 模型的损失换算到社区 word 级坐标系）",
-        "ch08_ref": "ch08 sp-8k 全语料（232,920 篇）B/token=3.82、2000 篇样本 n_t/n_w=1.5887",
-    }
+    sp=spm.SentencePieceProcessor(model_file=SP8K_MODEL)
+    if sp.eos_id()<0:raise ValueError("SP缺EOS")
+    enc=tiktoken.get_encoding("gpt2")
+    words=bytes_=gpt=sp_count=docs=0;h=hashlib.sha256()
+    with open(DOCS_JSONL,encoding="utf-8") as f:
+        for line in f:
+            if not line.strip():continue
+            text=json.loads(line)["text"];raw=text.encode("utf-8")
+            h.update(len(raw).to_bytes(8,"little"));h.update(raw)
+            words+=len(text.split());bytes_+=len(raw)
+            gpt+=len(enc.encode(text,disallowed_special=()))+1
+            sp_count+=len(sp.encode(text,out_type=int,add_eos=True))
+            docs+=1
+            if docs>=n_docs:break
+    if min(words,bytes_,gpt,sp_count)<=0:raise ValueError("无有效文本可换算")
+    return {"requested_docs":n_docs,"docs":docs,"bytes":bytes_,"words":words,
+            "document_sequence_sha256":h.hexdigest(),
+            "gpt2_50257":{"tokens":gpt,"tokens_per_word":gpt/words,"bytes_per_token":bytes_/gpt},
+            "sp8k_8192":{"tokens":sp_count,"tokens_per_word":sp_count/words,"bytes_per_token":bytes_/sp_count},
+            "boundary_protocol":"每篇两编码各加一个结束词元；字节只计净文本UTF8，不给人工结束词元添加字节",
+            "scope":"完整文档编码统计，不是任意模型eval窗口的精确换算系数；SP内部归一化仍需核对",
+            "historical_ch08_3_82":"JSONL包装字节/token，不能当净文本byte换算系数"}
 
 
 # ---------------- ④WikiText-2 word-level 对照基线 ----------------
-def step_wikitext2():
-    """WikiText-2（word-level 传统基准语料）上的三件数：
-    (a) word 级 unigram / bigram PPL 基线（教学级实现：train 频次 + <unk> 回退 + 计数插值平滑，
-        与社区 word 级协议同型：valid OOV 记 <unk>）；
-    (b) 同一 valid 切片上 sp-8k 与 gpt2 两种分词器的 n_t/n_w——换算盒的系数在本语料上的取值；
-    (c) 演示：若某 token 模型在 WT2 valid 上达 L nats/token，其 word PPL 读数=(b) 的系数换算。"""
-    from datasets import load_dataset
-    ds = load_dataset("Salesforce/wikitext", "wikitext-2-raw-v1")     # 许可：CC BY-SA（卡片文本 4.0 与
-    #   metadata 3.0+GFDL 双标不一致——保守口径：落 log/ 不分发、引用时注明二者）
+def canonical_wikitext(split):
+    """按行添加换行分隔；词数与两种token计数均基于同一份文本。"""
+    return "\n".join(split["text"])
 
-    def to_words(split):
-        out = []
-        for t in split["text"]:
-            out.extend(t.split())                                     # 行内按空白切（保留前导空格切出的词）
-        return out
 
-    tr, va = to_words(ds["train"]), to_words(ds["validation"])
-    uni = Counter(tr)
-    bi = Counter(zip(tr, tr[1:]))
-    n_tr, n_va = len(tr), len(va)
-    unk_hits = sum(1 for w in va if w not in uni)
-    p_uni = {w: c / n_tr for w, c in uni.items()}
-    p_unk = 1.0 / n_tr                                                # <unk> 概率（训练集单例折算，教学级）
+def word_baselines(train_text, valid_text, gamma=5.0):
+    """有限词表+UNK的正规化计数模型；首词用unigram，其余用bigram，均评分完整valid词流。"""
+    if not math.isfinite(gamma) or gamma<=0:raise ValueError("gamma须有限正数")
+    tr=train_text.split();va_raw=valid_text.split()
+    if not tr or not va_raw:raise ValueError("训练与验证词流不能为空")
+    counts=Counter(tr);unk="<unk>";added=0
+    if counts[unk]==0:counts[unk]=1;added=1
+    total=sum(counts.values())
+    p1={word:count/total for word,count in counts.items()}
+    assert abs(sum(p1.values())-1)<1e-8
+    va=[word if word in counts else unk for word in va_raw]
+    pairs=Counter(zip(tr,tr[1:]));predecessors=Counter(tr[:-1])
+    def prob2(prev,word):
+        return (pairs[(prev,word)]+gamma*p1[word])/(predecessors[prev]+gamma)
+    nll1=-sum(math.log(p1[word]) for word in va)
+    nll2=-math.log(p1[va[0]])-sum(math.log(prob2(prev,word)) for prev,word in zip(va,va[1:]))
+    return {"train_words":len(tr),"valid_words":len(va),"valid_oov_rate":sum(w not in counts for w in va_raw)/len(va_raw),
+            "vocab_with_unk":len(counts),"unk_pseudocount_added":added,"gamma":gamma,
+            "unigram_probability_sum":sum(p1.values()),"nll_unigram":nll1,"nll_bigram":nll2,
+            "word_ppl_unigram":math.exp(nll1/len(va)),"word_ppl_bigram_interp":math.exp(nll2/len(va)),
+            "scoring_protocol":"同一valid完整词流，首词P1；其余P2；空白切词，OOV映射UNK，不按行重置",
+            "not_standard_word_benchmark":"自定义raw-v1计数协议，不冒充预处理word-level榜单"}
 
-    def get_p1(w):
-        return p_uni.get(w, p_unk)                                    # OOV -> <unk>
 
-    ll_uni = sum(-np.log(get_p1(w)) for w in va)
-    gamma = 5.0                                                       # 计数插值：P(w2|w1)=(c12+γ·P1(w2))/(c1+γ)
-    ll_bi = 0.0
-    for w1, w2 in zip(va, va[1:]):
-        p1 = get_p1(w2)
-        c1 = uni.get(w1, 0)
-        p2 = (bi.get((w1, w2), 0) + gamma * p1) / (c1 + gamma) if c1 else p1
-        ll_bi += -np.log(p2)
-    # 两种分词器在本语料 valid 上的 n_t/n_w
-    import sentencepiece as spm
+def step_wikitext2(revision=WT2_REVISION):
+    """CPU计数核验，不训练神经网络；固定数据提交，文本和计数范围一并保存。"""
+    import datasets
     import tiktoken
-    sp = spm.SentencePieceProcessor()
-    sp.Load(SP8K_MODEL)
-    enc = tiktoken.get_encoding("gpt2")
-    va_text = "".join(t for t in ds["validation"]["text"])            # 原始文本流（不重组，避免引入口径差）
-    n_sp = len(sp.encode(va_text, out_type=int))
-    n_gpt = len(enc.encode(va_text))
-    return {"valid_words": n_va, "train_words": n_tr, "valid_oov_rate": round(unk_hits / n_va, 4),
-            "word_ppl_unigram": round(float(np.exp(ll_uni / n_va)), 1),
-            "word_ppl_bigram_interp": round(float(np.exp(ll_bi / (n_va - 1))), 1),
-            "note_baseline": "教学级 word 级基线（<unk> 回退 + γ=5 计数插值，非 SOTA）——给换算盒一个 word 级着陆坐标；"
-                             "社区 word 级 WT2 强基线在数十量级（LSTM 传统，第三方文献口径，本书不展开）",
-            "nt_nw_wt2": {"sp8k": round(n_sp / n_va, 4), "gpt2": round(n_gpt / n_va, 4)},
-            "demo": f"124M fast 档若在 WT2 上取 L nats/token，word PPL = exp({n_gpt / n_va:.4f}*L)（gpt2 在 WT2 的系数）"}
+    ds=datasets.load_dataset("Salesforce/wikitext","wikitext-2-raw-v1",revision=revision)
+    tr=canonical_wikitext(ds["train"]);va=canonical_wikitext(ds["validation"])
+    rep=word_baselines(tr,va)
+    enc=tiktoken.get_encoding("gpt2")
+    ngpt=len(enc.encode(va,disallowed_special=()))
+    rep.update(dataset="Salesforce/wikitext",config="wikitext-2-raw-v1",revision=revision,
+               datasets_version=datasets.__version__,text_join="数据行之间补换行符",
+               train_text_sha256=hashlib.sha256(tr.encode()).hexdigest(),
+               valid_text_sha256=hashlib.sha256(va.encode()).hexdigest(),
+               valid_utf8_bytes=len(va.encode()),gpt2_tokens_full_valid=ngpt,
+               gpt2_tokens_per_word_full_valid=ngpt/rep["valid_words"],
+               ratio_scope="全valid文本的描述统计；不可直接用于只评前若干token的模型损失")
+    if os.path.exists(SP8K_MODEL):
+        import sentencepiece as spm
+        sp=spm.SentencePieceProcessor(model_file=SP8K_MODEL)
+        rep["sp8k_tokens_per_word_full_valid"]=len(sp.encode(va))/rep["valid_words"]
+    return rep
 
 
 # ---------------- 图 11.1：管道流 ----------------
 def make_figure(rep):
+    """核算流程示意，仅用传入结果中的真实范围；输出log，不覆盖正文。"""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    plt.rcParams.update({"font.size": 8})
-    BLUE, ORANGE, TEAL, YELLOW, GRID, TICK = "#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e1e0d9", "#898781"
-    fig, ax = plt.subplots(figsize=(8, 4), dpi=300)
-    ax.set_xlim(0, 16); ax.set_ylim(0, 8); ax.axis("off")
-
-    def box(x, y, w, h, title, body, color=BLUE):
-        ax.add_patch(plt.Rectangle((x, y), w, h, facecolor="white", edgecolor=color, lw=1.4))
-        ax.text(x + w / 2, y + h - 0.52, title, ha="center", va="center", fontsize=8,
-                color="#0b0b0b", weight="bold")
-        ax.text(x + w / 2, y + (h - 0.52) / 2, body, ha="center", va="center", fontsize=6.6, color="#52514e")
-
-    def arrow(x1, y1, x2, y2, color=BLUE):
-        ax.annotate("", xy=(x2, y2), xytext=(x1, y1), arrowprops=dict(arrowstyle="-|>", color=color, lw=1.2))
-
-    # 上层：语料与分词器（分离纪律）
-    box(0.3, 5.4, 4.4, 2.2, "OWT stream subsample",
-        "232,920 docs / 1.15 GB\n(CC0 packaging)\nshard 0-6k  |  shard 6k+")
-    box(5.6, 5.4, 4.6, 2.2, "tokenizer (separate!)", "sp-8k trained on shard 0-6k ONLY\n(29 MB)  ->  sp8k_owt.model", ORANGE)
-    box(11.1, 5.4, 4.6, 2.2, "gpt2 50257 (given)",
-        "tiktoken gpt2, not trained here\n(ch2 parity: tiktoken == HF)", TEAL)
-    arrow(4.0, 5.4, 6.6, 3.6, ORANGE)
-    arrow(13.4, 5.4, 13.9, 3.6, TEAL)
-    # 下层：两条编码流
-    box(3.1, 1.4, 5.0, 2.2, "sp-8k stream (ch08/ch11-iso)",
-        "tokens.bin (306M,) uint16\nB/token=3.78  tok/word=1.600\n(same 56k docs basis)", ORANGE)
-    box(10.4, 1.4, 5.0, 2.2, "gpt2 stream (124M fast)",
-        "tokens50k.bin (60M,) uint16\nB/token=4.398  tok/word=1.376", TEAL)
-    arrow(7.9, 4.15, 7.9, 3.6, ORANGE)
-    arrow(12.4, 4.15, 12.4, 3.6, TEAL)
-    # 块化注记（虚线框）
-    box(0.4, 0.2, 2.4, 2.4, "chunking A/B",
-        "A concat-stream: (32,256)\nzero waste, cross-doc\nB per-doc aligned:\npad-free, tail loss", YELLOW)
-    ax.text(8.1, 0.8, "eval pool = stream tail (mutually exclusive, 401,408 tok/eval >= 400k protocol)",
-            fontsize=6.6, color="#52514e")
-    ax.set_title("ch11 data pipeline: one doc stream, two tokenizers, separate shards",
-                 fontsize=9, color="#0b0b0b")
-    fig.tight_layout()
-    os.makedirs(FIG_DIR, exist_ok=True)
-    out = os.path.join(FIG_DIR, "fig-11-1-data-pipeline.png")
-    fig.savefig(out, dpi=300, facecolor="white")
-    print(f"[figure] -> {out}")
+    fig,ax=plt.subplots(figsize=(9,4),dpi=300);ax.axis("off")
+    rows=[
+        ["source",f"LM docs: {rep['corpus']['lm_corpus']['docs']}; tokenizer shard counted separately"],
+        ["encoding","SP vocabulary for family/iso; GPT-2 vocabulary for 124M"],
+        ["boundaries","append EOS/EOT; marker does not reset causal attention"],
+        ["windows","content blocks and shifted input/target windows are different counts"],
+        ["evaluation","record text, target positions, tokenizer and context protocol"],
+    ]
+    table=ax.table(cellText=rows,colLabels=["stage","contract"],colWidths=[.18,.82],bbox=[0,.13,1,.72],cellLoc="left")
+    table.auto_set_font_size(False);table.set_fontsize(8)
+    for cell in table.get_celld().values():cell.set_edgecolor("#e1e0d9")
+    ax.set_title("Document stream, two encodings, explicit counting units")
+    fig.tight_layout();os.makedirs(FIG_DIR,exist_ok=True)
+    target=Path(FIG_DIR)/"check-11-1-data-pipeline.png"
+    if target.exists():raise FileExistsError(target)
+    fig.savefig(target,facecolor="white");plt.close(fig)
+    return str(target)
 
 
 def main():
-    os.makedirs(OUT_DIR, exist_ok=True)
-    t0 = time.perf_counter()
-    rep = {"meta": {"date": time.strftime("%Y-%m-%d %H:%M:%S"), "seed": SEED,
-                    "note": "数据管道正式化：本脚本只做核账与教学件，重活由 08_owt_subsample / ch08/data_prep / "
-                            "ch11/train_124m --prep-only 完成（断点产物已存在则复用）"}}
-    print("===== ① 语料与分片分离核账 =====", flush=True)
-    rep["corpus"] = step_corpus()
-    print(json.dumps(rep["corpus"]["lm_corpus"], ensure_ascii=False, indent=1))
-    print("===== ② 两种块化切法对比 =====", flush=True)
-    rep["chunking"] = step_chunking()
-    print(json.dumps({k: v for k, v in rep["chunking"].items()
-                      if k not in ("junction_ids", "junction_decoded")}, ensure_ascii=False, indent=1))
-    print("  junction:", rep["chunking"]["junction_ids"], "->", repr(rep["chunking"]["junction_decoded"]))
-    print("===== ③ token<->word 换算盒（同一文档集两套词表） =====", flush=True)
-    rep["conversion"] = step_conversion()
-    print(json.dumps(rep["conversion"], ensure_ascii=False, indent=1))
-    print("===== ④ WikiText-2 word-level 对照 =====", flush=True)
-    rep["wikitext2"] = step_wikitext2()
-    print(json.dumps(rep["wikitext2"], ensure_ascii=False, indent=1))
-    rep["meta"]["wallclock_sec"] = round(time.perf_counter() - t0, 1)
-    out_json = os.path.join(OUT_DIR, "data_pipeline.json")
-    with open(out_json, "w", encoding="utf-8") as f:
-        json.dump(rep, f, ensure_ascii=False, indent=2)
-    print(f"[完成] -> {out_json}")
-    make_figure(rep)
+    global OUT_DIR,FIG_DIR,DOCS_JSONL,TOK_TXT,SP8K_MODEL
+    ap=argparse.ArgumentParser()
+    ap.add_argument("--stages",default="corpus,chunking,conversion,wikitext2")
+    ap.add_argument("--docs",default=DOCS_JSONL)
+    ap.add_argument("--tokenizer-text",default=TOK_TXT)
+    ap.add_argument("--sp-model",default=SP8K_MODEL)
+    ap.add_argument("--out-dir",default=OUT_DIR)
+    ap.add_argument("--out-name",default="data_pipeline.json")
+    ap.add_argument("--revision",default=WT2_REVISION)
+    ap.add_argument("--conversion-docs",type=int,default=56000)
+    ap.add_argument("--chunk-docs",type=int,default=2000)
+    ap.add_argument("--block",type=int,default=BLOCK)
+    a=ap.parse_args()
+    stages=a.stages.split(",")
+    if not stages or any(x not in {"corpus","chunking","conversion","wikitext2"} for x in stages):
+        raise ValueError("未知核验阶段")
+    if Path(a.out_name).name!=a.out_name or a.out_name in ("",".",".."):
+        raise ValueError("out-name只接受文件名")
+    OUT_DIR=a.out_dir;FIG_DIR=os.path.join(OUT_DIR,"figures")
+    DOCS_JSONL=a.docs;TOK_TXT=a.tokenizer_text;SP8K_MODEL=a.sp_model
+    target=Path(OUT_DIR)/a.out_name
+    if target.exists():raise FileExistsError(f"已有报告不覆盖：{target}")
+    t0=time.perf_counter()
+    rep={"meta":{"date_utc":time.strftime("%Y-%m-%dT%H:%M:%SZ",time.gmtime()),
+                 "stages":stages,"note":"本轮按实际输入核计数，不复写历史实验读数"}}
+    for name in stages:
+        if name=="corpus":rep[name]=step_corpus()
+        elif name=="chunking":rep[name]=step_chunking(a.chunk_docs,a.block)
+        elif name=="conversion":rep[name]=step_conversion(a.conversion_docs)
+        else:rep[name]=step_wikitext2(a.revision)
+    if "corpus" in rep:rep["figure"]=make_figure(rep)
+    rep["meta"]["wallclock_sec"]=time.perf_counter()-t0
+    payload=json.dumps(rep,ensure_ascii=False,indent=2,allow_nan=False)+"\n"
+    target.parent.mkdir(parents=True,exist_ok=True)
+    with target.open("x") as f:f.write(payload)
+    print(payload)
+    print(f"[产物] {target}")
 
 
-if __name__ == "__main__":
+if __name__=="__main__":
     main()

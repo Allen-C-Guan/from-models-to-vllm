@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# 用途：生成 Book2 第 3 章三张图——
+# 用途：重绘 Book2 第 3 章图稿（图 3.1/3.2 为早期布局练习，与现行书稿排版不同）——
 #   fig 3.1 BERT 整机（自绘重制，引 arXiv:1810.04805v2 Fig.1/Fig.2；标注张量形状）
 #   fig 3.2 MLM 80-10-10 流程（自绘；选词-替换-预测三段，标注形状）
 #   fig 3.3 mini-GLUE 训练曲线与准确率（自产：读 log/book2-ch03/*.json）
@@ -8,6 +8,7 @@
 from pathlib import Path
 import argparse
 import json
+import os
 
 import matplotlib
 matplotlib.use("Agg")
@@ -19,8 +20,8 @@ BLUE, ORANGE, CYAN, YELLOW = "#2a78d6", "#eb6834", "#1baf7a", "#eda100"
 BLUE_F, ORNG_F, CYAN_F, YLW_F = "#cde2fb", "#fde8db", "#d8f3e8", "#fdf3d7"
 INK, NOTE, HAIR, GRID = "#0b0b0b", "#52514e", "#898781", "#e1e0d9"
 
-FIG_DIR = Path(__file__).resolve().parents[2] / "figures"
-LOG_DIR = Path("log") / "book2-ch03"
+LOG_DIR = Path(os.environ.get("BOOK2_LOG_ROOT", "log")) / "book2-ch03"
+FIG_DIR = Path(os.environ.get("BOOK2_FIGURE_OUTPUT_DIR", str(LOG_DIR / "figures")))
 
 
 def box(ax, x, y, w, h, text, ec=BLUE, fc=BLUE_F, fs=7.0, lw=1.3, tc=INK):
@@ -49,7 +50,7 @@ def fig_3_1():
     box(ax, .115, .80, .19, .10, "input ids\n[CLS] A [SEP] B [SEP]\n(B,n)", ec=HAIR, fc="white", fs=6.6)
     # 中左：三路嵌入（纵排）
     box(ax, .415, .925, .25, .072, "token embedding $V{\\times}H$\n$30522{\\times}768$, lookup\n(B,n)$\\to$(B,n,H)", ec=CYAN, fc=CYAN_F, fs=6.0)
-    box(ax, .415, .80, .25, .072, "segment embedding\n$2{\\times}H$, A/B two tables\n+(B,n,H)", ec=CYAN, fc=CYAN_F, fs=6.0)
+    box(ax, .415, .80, .25, .072, "segment embedding\n$2{\\times}H$, A/B two rows\n+(B,n,H)", ec=CYAN, fc=CYAN_F, fs=6.0)
     box(ax, .415, .675, .25, .072, "position embedding\n$512{\\times}H$ (learned table)\n+(B,n,H)", ec=CYAN, fc=CYAN_F, fs=6.0)
     # 中右：求和与 LN
     box(ax, .665, .80, .10, .085, "sum\n+ LN\ndropout", ec=YELLOW, fc=YLW_F, fs=6.2)
@@ -58,13 +59,13 @@ def fig_3_1():
     box(ax, .885, .80, .195, .36,
         "bidirectional\nTransformer encoder\n$\\times L$\n\nself-attn + FFN\n(post-LN)\n\nBASE 12/768/12\nLARGE 24/1024/16",
         ec=BLUE, fc=BLUE_F, fs=6.4)
-    note(ax, .885, .545, "scores (B,A,n,n)\nno causal mask", fs=6.0)
+    note(ax, .56, .62, "scores (B,A,n,n)\nno causal mask", fs=6.0)
     # 下：双头输出
     box(ax, .30, .24, .44, .13,
-        "MLM head: gather masked $T_i$\n(B,n,H)$\\to$(B,20,H) dense+GELU+LN\n$\\to$ tied decoder $E^{\\top}$+bias $\\to$ (B,20,V)",
+        "MLM head: gather selected $T_i$\n(B,n,H)$\\to$(B,m_max,H) dense+GELU+LN\n$\\to$ tied decoder $E^{\\top}$+bias $\\to$ (B,m_max,V)",
         ec=ORANGE, fc=ORNG_F, fs=6.2)
     box(ax, .80, .24, .36, .13,
-        "NSP head: pooler on [CLS]\n$C=T_0$: (B,n,H)$\\to$(B,H)\ndense+tanh $\\to$ (B,2)",
+        "NSP head: pooler on [CLS]\n$C=T_0$: (B,n,H)$\\to$(B,H)\ndense+tanh $\\to$ (B,H); linear $\\to$ (B,2)",
         ec=ORANGE, fc=ORNG_F, fs=6.2)
     note(ax, .30, .135, "cross-entropy vs original tokens", fs=6.0)
     note(ax, .80, .135, "IsNext / NotNext", fs=6.0)
@@ -79,7 +80,7 @@ def fig_3_1():
     # encoder 出口分两路（左下 MLM / 右下 NSP）
     arrow(ax, (.86, .62), (.52, .325), rad=0.22)
     arrow(ax, (.93, .62), (.80, .325), rad=0.0)
-    note(ax, .60, .475, "$T_i$: all positions (B,n,H)", fs=6.2, ha="left")
+    note(ax, .22, .475, "$T_i$: all positions (B,n,H)", fs=6.2, ha="left")
     note(ax, .955, .475, "$C=T_0$\n(B,H)", fs=6.2, ha="left")
     fig.tight_layout()
     fig.savefig(FIG_DIR / "fig-3-1-bert-architecture.png")
@@ -92,15 +93,15 @@ def fig_3_2():
     ax.set_xlim(0, 1); ax.set_ylim(0, 1); ax.axis("off")
 
     # 第一行：原序列与选词
-    box(ax, .19, .84, .30, .105, "original sequence (WordPiece)\nmy  dog  is  hair ##ry\n(B,n) token ids", ec=HAIR, fc="white", fs=6.6)
-    box(ax, .635, .84, .315, .105, "select 15% at random\n(hair ##ry both eligible:\nsubword-level, no whole-word rule)\n$\\to$ index set $\\mathcal{M}$, $|\\mathcal{M}|\\leq 20$", ec=CYAN, fc=CYAN_F, fs=6.2)
+    box(ax, .19, .84, .30, .105, "original sequence (WordPiece)\nmy  dog  is  hair ##y\n(B,n) token ids", ec=HAIR, fc="white", fs=6.6)
+    box(ax, .635, .84, .315, .105, "select about 15% without replacement\n(hair and ##y separately eligible)\nindex set M; per-sequence cap m_max", ec=CYAN, fc=CYAN_F, fs=6.2)
     arrow(ax, (.34, .84), (.478, .84))
-    note(ax, .50, .777, "here: position of \"hairy\" selected", fs=6.2, ha="center")
+    note(ax, .24, .72, "here: only the position of ##y is selected", fs=6.2, ha="center")
 
     # 第二行：三段式替换
-    box(ax, .175, .52, .27, .14, "80%: replace by [MASK]\nmy dog is [MASK] [MASK]\ntrain/infer mismatch\nnever seen at fine-tune", ec=ORANGE, fc=ORNG_F, fs=6.2)
-    box(ax, .50, .52, .24, .14, "10%: random token\nmy dog is apple [MASK]\nbiases representation\nto observed word", ec=BLUE, fc=BLUE_F, fs=6.2)
-    box(ax, .79, .52, .27, .14, "10%: keep original\nmy dog is hair ##ry\nanchors identity\nat the position", ec=BLUE, fc=BLUE_F, fs=6.2)
+    box(ax, .175, .52, .27, .14, "80%: replace by [MASK]\nmy dog is hair [MASK]\n[MASK] is normally absent\nfrom downstream inputs", ec=ORANGE, fc=ORNG_F, fs=6.2)
+    box(ax, .50, .52, .24, .14, "10%: random token\nmy dog is hair apple\nmay accidentally keep\nthe original token", ec=BLUE, fc=BLUE_F, fs=6.2)
+    box(ax, .79, .52, .27, .14, "10%: keep original\nmy dog is hair ##y\nanchors identity\nat the position", ec=BLUE, fc=BLUE_F, fs=6.2)
     # 选中 → 三段式：先汇聚到 junction，再分发三路
     arrow(ax, (.635, .7875), (.50, .685))
     for xx in (.175, .50, .79):
@@ -109,7 +110,7 @@ def fig_3_2():
 
     # 第三行：编码与预测
     box(ax, .235, .235, .40, .115, "bidirectional encoder (no causal mask)\n(B,n) ids $\\to$ (B,n,H) hidden states $T_i$\nevery token sees both sides", ec=BLUE, fc=BLUE_F, fs=6.4)
-    box(ax, .72, .235, .40, .115, "predict ONLY at $\\mathcal{M}$:\ngather (B,20,H) $\\to$ tied decoder\n$\\to$ softmax over V=30522 (B,20,V)\ncross-entropy vs original token", ec=ORANGE, fc=ORNG_F, fs=6.2)
+    box(ax, .72, .235, .40, .16, "predict ONLY at $\\mathcal{M}$:\ngather (B,m_max,H)\ndense+GELU+LN, then tied decoder\n$\\to$ softmax over V=30522 (B,m_max,V)\ncross-entropy vs original token", ec=ORANGE, fc=ORNG_F, fs=6.2)
     arrow(ax, (.435, .235), (.52, .235))
     for x0, x1 in ((.175, .16), (.50, .30), (.79, .40)):
         arrow(ax, (x0, .45), (x1, .293))
@@ -121,19 +122,25 @@ def fig_3_2():
 
 def fig_3_3():
     """mini-GLUE 实测：左=训练 loss 曲线（EMA 平滑），右=验证准确率 vs 多数类基线。"""
-    runs = [("tiny", "sst2"), ("base", "sst2"), ("base", "mrpc")]
+    runs = [("tiny", "sst2"), ("tiny", "mrpc"), ("base", "sst2"), ("base", "mrpc")]
     curves = {}
     for m, t in runs:
         p = LOG_DIR / f"finetune_{m}_{t}.json"
-        if p.exists():
-            curves[(m, t)] = json.load(open(p))
+        if not p.is_file():
+            raise FileNotFoundError(f"缺少真实运行日志：{p}；不生成空曲线或补造数据")
+        with p.open(encoding="utf-8") as f:
+            curves[(m, t)] = json.load(f)
+        if not curves[(m, t)]["train"]["loss_curve"] or not curves[(m, t)]["val_acc_per_epoch"]:
+            raise ValueError(f"日志没有完整训练曲线或评测值：{p}")
 
     fig, (a1, a2) = plt.subplots(1, 2, figsize=(8.6, 3.9), dpi=300)
-    style = {("tiny", "sst2"): (ORANGE, "bert-tiny / SST-2 (3 ep)"),
-             ("base", "sst2"): (BLUE, "bert-base / SST-2 (1 ep)"),
-             ("base", "mrpc"): (CYAN, "bert-base / MRPC (3 ep)")}
+    style = {("tiny", "sst2"): (ORANGE, "bert-tiny / SST-2"),
+             ("tiny", "mrpc"): (YELLOW, "bert-tiny / MRPC"),
+             ("base", "sst2"): (BLUE, "bert-base / SST-2"),
+             ("base", "mrpc"): (CYAN, "bert-base / MRPC")}
     for key, r in curves.items():
         c, lab = style[key]
+        lab = f"{lab} ({r['meta']['epochs']} ep)"
         raw = r["train"]["loss_curve"]
         ema, acc = [], 0.0
         for v in raw:  # EMA 平滑（α=0.02）
@@ -161,9 +168,17 @@ def fig_3_3():
     a2.bar([b[0] for b in bars], [b[1] for b in bars], width=0.72, color=[b[2] for b in bars], lw=0)
     for x, v, _ in bars:
         a2.text(x, v + 1.2, f"{v:.1f}", ha="center", fontsize=7.4, color=INK)
-    # bert-base/MRPC 同种子两次运行（MPS 非确定性）：柱取第二次，标注两次终点
-    if _final("base", "mrpc") is not None:
-        a2.text(3.4, _final("base", "mrpc") + 5.6, "2 runs:\n85.0 / 80.4", ha="center", fontsize=6.4, color=NOTE)
+    # 重复运行只从实际日志读取；不得硬编码历史成绩。
+    repeated = []
+    for p in sorted(LOG_DIR.glob("finetune_base_mrpc_run*.json")):
+        with p.open(encoding="utf-8") as f:
+            r = json.load(f)
+        if r.get("val_acc_per_epoch"):
+            repeated.append(r["val_acc_per_epoch"][-1])
+    if repeated:
+        a2.scatter([3.4] * len(repeated), repeated, marker="x", color=INK,
+                   s=25, label="base/MRPC repeated runs", zorder=4)
+        a2.legend(fontsize=6, frameon=False)
     for x0, x1, m in [(-0.45, 1.65, _maj("tiny", "sst2")), (1.95, 4.05, _maj("tiny", "mrpc"))]:
         if m is not None:
             a2.hlines(m, x0, x1, colors=HAIR, linestyles="--", lw=1.4)

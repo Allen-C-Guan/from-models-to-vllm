@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # 用途：mini-GLUE 微调实验——{bert-tiny, bert-base} × {SST-2 单句, MRPC 句对} 四格微调：
-#       加载预训练 BERT → 分类头随机初始化 → AdamW 微调（论文口径 batch 32 / lr 2e-5 / 3 epochs）
-#       → 逐 epoch 验证集准确率 vs 多数类基线；实测 sec/step、MPS 内存峰值、逐步 loss 曲线。
+#       加载预训练 BERT → 分类头随机初始化 → AdamW 微调（参考 batch 32 / lr 2e-5 / 3 epochs，常数 LR 简化协议）
+#       → 逐 epoch 验证集准确率 vs 多数类基线；记录含评测开销的均摊 sec/step、MPS 内存采样最大值、逐步 loss 曲线。
 #       HF transformers/datasets 为借用工具（对拍身份，见正文 3.6 借用框），算法不在此展开。
 # 所属章节：《预训练革命》第 3 章 3.6 节（mini-GLUE 实验）
 # 运行方式：cd 工作区根目录 && source env.sh && python "code/ch03/glue_finetune.py" --model tiny --task sst2
@@ -13,19 +13,22 @@ import json
 import os
 import threading
 import time
+import platform
+from datetime import datetime, timezone
+from importlib.metadata import version
 
 import torch
 
 SEED = 20261002
 MODELS = {  # model 键 → HF 模型 id（均为 uncased，对齐 BERT 论文「除 NER 外全部任务用 uncased」口径）
-    "tiny": "google/bert_uncased_L-2_H-128_A-2",  # L=2/H=128/A=2 ≈ 4.4M：Google 官方缩小版（2019-05 随 Turc et al. 家族发布）
+    "tiny": "google/bert_uncased_L-2_H-128_A-2",  # L=2/H=128/A=2 ≈ 4.4M：Google 官方缩小版（README 2020-03 公布，对应 Turc et al. 2019 研究）
     "base": "google-bert/bert-base-uncased",      # L=12/H=768/A=12 ≈ 109.5M：BERT_BASE 同源权重
 }
-OUT_DIR = os.path.join("log", "book2-ch03")
+OUT_DIR = os.path.join(os.environ.get("BOOK2_LOG_ROOT", "log"), "book2-ch03")
 
 
 class MpsMemSampler(threading.Thread):
-    """后台线程采样 MPS 分配内存峰值（全书统一口径：torch.mps.current_allocated_memory，MiB）。"""
+    """后台线程记录 MPS 已分配内存的采样最大值，可能漏过短时峰值（全书统一口径：torch.mps.current_allocated_memory，MiB）。"""
 
     def __init__(self, interval=0.03):
         super().__init__(daemon=True)
@@ -70,13 +73,18 @@ def evaluate(model, enc, device, batch=64):
     cols = [c for c in ("input_ids", "attention_mask", "token_type_ids") if c in enc.column_names]
     dl = torch.utils.data.DataLoader(enc.with_format("torch", columns=cols + ["label"]), batch_size=batch)
     n_hit = n_all = 0
+    was_training = model.training
     model.eval()
-    with torch.no_grad():
-        for b in dl:
-            logits = model(**{k: v.to(device) for k, v in b.items() if k != "label"}).logits  # (B,2)
-            n_hit += (logits.argmax(-1) == b["label"].to(device)).sum().item()
-            n_all += b["label"].numel()
-    model.train()
+    try:
+        with torch.no_grad():
+            for b in dl:
+                logits = model(**{k: v.to(device) for k, v in b.items() if k != "label"}).logits
+                n_hit += (logits.argmax(-1) == b["label"].to(device)).sum().item()
+                n_all += b["label"].numel()
+    finally:
+        model.train(was_training)
+    if not n_all:
+        raise ValueError("验证集不能为空")
     return 100.0 * n_hit / n_all
 
 
@@ -89,7 +97,16 @@ def main():
     ap.add_argument("--lr", type=float, default=2e-5, help="论文 §4.1 搜索集 {5e-5..2e-5} 中 SST-2/MRPC 常用值")
     ap.add_argument("--max-len", type=int, default=128)
     ap.add_argument("--run-tag", default="", help="输出文件名后缀（防同种子多次运行互相覆盖；留空=沿用基准文件名，make_figs.py 读基准名）")
+    ap.add_argument("--overwrite", action="store_true", help="明确允许覆盖同名结果；默认拒绝")
     args = ap.parse_args()
+    if args.epochs <= 0 or args.batch <= 0 or args.max_len <= 0 or args.lr <= 0:
+        ap.error("epochs、batch、max-len 和 lr 必须为正")
+    if any(c in args.run_tag for c in ("/", "\\")):
+        ap.error("run-tag 不能包含路径分隔符")
+    suffix = f"_{args.run_tag}" if args.run_tag else ""
+    result_path = os.path.join(OUT_DIR, f"finetune_{args.model}_{args.task}{suffix}.json")
+    if os.path.exists(result_path) and not args.overwrite:
+        ap.error(f"结果已存在：{result_path}；请更换 run-tag，或明确加 --overwrite")
     torch.manual_seed(SEED)
     os.makedirs(OUT_DIR, exist_ok=True)
     device = "mps" if torch.backends.mps.is_available() else "cpu"
@@ -99,7 +116,7 @@ def main():
     tok = AutoTokenizer.from_pretrained(MODELS[args.model])
     enc_train = tokenize(ds["train"], tok, keys, args.max_len)
     enc_val = tokenize(ds["validation"], tok, keys, args.max_len)
-    # 多数类基线（训练/验证各算一份）：微调「及格线」= 显著超过它
+    # 多数类基线（训练/验证各算一份）：用于描述性比较，不凭一次准确率判断统计显著性
     maj_train = 100.0 * max(ds["train"]["label"].count(l) for l in set(ds["train"]["label"])) / len(ds["train"])
     maj_val = 100.0 * max(ds["validation"]["label"].count(l) for l in set(ds["validation"]["label"])) / len(ds["validation"])
 
@@ -137,27 +154,31 @@ def main():
         print(f"[{args.model}/{args.task}] epoch {epoch + 1}/{args.epochs}: val acc {accs[-1]}%", flush=True)
     if device == "mps":
         torch.mps.synchronize()
-    sec_total = time.perf_counter() - t0 if t0 else 0.0
+    sec_total = time.perf_counter() - t0 if t0 is not None else None
     mem_peak = mem.stop() if mem else None
 
     report = {
-        "meta": {"date": "2026-10-03", "seed": SEED, "device": device, "model": args.model,
+        "meta": {"date": datetime.now(timezone.utc).isoformat(), "seed": SEED,
+                 "platform": platform.platform(), "torch": torch.__version__,
+                 "transformers": version("transformers"), "datasets": version("datasets"),
+                 "optimizer": "torch.optim.AdamW defaults except lr; constant learning rate",
+                 "timer_scope": "after first 3 training steps; includes later evaluation/loop overhead",
+                 "memory_scope": "sampled max current_allocated_memory every 0.03s on MPS",
+                 "device": device, "model": args.model,
                  "model_id": MODELS[args.model], "task": args.task, "epochs": args.epochs,
                  "batch": args.batch, "lr": args.lr, "max_len": args.max_len,
                  "n_train": len(ds["train"]), "n_val": len(ds["validation"])},
         "params": {"total": n_params, "classifier_head_new": n_head},
         "majority_baseline": {"train_pct": round(maj_train, 1), "val_pct": round(maj_val, 1)},
-        "train": {"steps": n_steps, "sec_per_step": round(sec_total / max(n_steps - 3, 1), 4),
-                  "loss_first10": round(sum(losses[:10]) / 10, 4), "loss_last10": round(sum(losses[-10:]) / 10, 4),
+        "train": {"steps": n_steps, "sec_per_step": round(sec_total / (n_steps - 3), 4) if n_steps > 3 else None,
+                  "loss_first10": round(sum(losses[:10]) / len(losses[:10]), 4), "loss_last10": round(sum(losses[-10:]) / len(losses[-10:]), 4),
                   "mem_peak_mib": mem_peak, "loss_curve": losses},
         "val_acc_per_epoch": accs,
     }
-    suffix = f"_{args.run_tag}" if args.run_tag else ""
-    out = os.path.join(OUT_DIR, f"finetune_{args.model}_{args.task}{suffix}.json")
-    with open(out, "w", encoding="utf-8") as f:
+    with open(result_path, "w" if args.overwrite else "x", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False)
     print(json.dumps({k: v for k, v in report.items() if k != "train"} | {"loss_curve_tail": losses[-3:]},
-                     ensure_ascii=False), "\nsaved ->", out)
+                     ensure_ascii=False), "\nsaved ->", result_path)
 
 
 if __name__ == "__main__":

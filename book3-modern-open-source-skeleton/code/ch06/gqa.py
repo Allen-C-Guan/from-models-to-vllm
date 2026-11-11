@@ -1,17 +1,17 @@
-# gqa.py —— Book3 ch6 教学重写件：GQA 注意力插槽的手写实现、两种写法与三重对拍
+# gqa.py —— Book3 ch6 教学重写件：GQA 注意力插槽的手写实现、两种写法与条件对拍
 # 用途：①给出可 import 的 GroupedQueryAttention(cfg).forward(x, cos, sin)（插槽 import 契约，ch10 整机将
 #           import 本件；与 llama_slots 正身同名同签名，CPU fp32 逐位一致）；
-#       ②「分组视图 vs repeat 视图」两种等价写法（K/V 从不复制 vs 广播撑回 h 份——同一数学的两种记账）；
-#       ③增量解码 demo：手写逐层 KV cache（每层一对 (B,h_kv,n,d_k)）逐 token 生成 vs 全量重算逐位对拍
+#       ②「分组视图 vs repeat 视图」两种等价写法（显式分组广播 vs 展开头维——同一数学的两种记账）；
+#       ③增量解码 demo：手写单层 KV cache（每层一对 (B,h_kv,n,d_k)）逐位置输入 vs 整段计算对拍
 #         （6.2 增量算法的机器验证：因果性 => 旧 K/V 不变 => 缓存合法）；
-#       ④三重对拍：与 llama_slots.GroupedQueryAttention 逐位一致 / 手写 repeat_kv 与 HF 5.18.0
+#       ④三重对拍：与 llama_slots.GroupedQueryAttention 逐位一致 / 手写 repeat_kv 与 HF（历史5.18.0，当前版本由运行时打印）
 #         modeling_llama.repeat_kv 逐位一致（含 n_rep=1 直通分支）/ repeat_kv 的写穿透实测（expand+reshape
-#         真复制——省的是常驻账本不是瞬时工位）。
+#         复制与视图取决于形状——持久缓存与临时量分开核算）。
 # 所属章节：Book3 第 6 章 §6.2（增量算法验证）/§6.5（repeat 两种写法）/§6.7（改装第四例）。
-# 运行方式：cd 工作区根目录 && source env.sh && python code/ch06/gqa.py
+# 运行方式：cd 工作区根目录 && source env.sh && python from-models-to-vllm/book3-modern-open-source-skeleton/code/ch06/gqa.py
 #   （CPU fp32，秒级，无命令行参数；产物全部打印 stdout，正文引用的自测数字来源，不写文件不落 log）
 # 依赖链：ch04/rope.py 的 build_rope_cache / apply_rope（插槽契约：cos/sin 由第 4 章位置插槽供给；
-#           ch04 件未就位时回退 00-feasibility/llama_slots 正身——两者同名同参逐位一致）+ transformers 5.18.0（仅对照）。
+#           ch04 件未就位时回退 00-feasibility/llama_slots 正身——两者同名同参逐位一致）+ transformers（版本由运行时打印）（仅对照）。
 import os
 import sys
 
@@ -38,13 +38,15 @@ def repeat_kv(x, n_rep):
 
     相邻的 n_rep 个查询头共享同一组 KV（组内连号共享：第 i 个 Q 头配第 i//n_rep 个 KV 头——HF 同款）。
     n_rep==1 直通返回（= MHA 的零开销快路径：GQA-h 退化成 MHA 的代码形态）。
-    expand 只给视图、reshape 落盘真复制——写穿透实测见 __main__ 探针 4。
+    expand为视图；常见GQA reshape物化，MQA的h_kv=1可保留零步长视图。
     """
+    if x.ndim!=4 or not isinstance(n_rep,int) or isinstance(n_rep,bool) or n_rep<1:
+        raise ValueError("repeat_kv需要四维输入与正整数重复数")
     if n_rep == 1:
         return x
     B, h_kv, n, hd = x.shape
     x = x[:, :, None, :, :].expand(B, h_kv, n_rep, n, hd)  # (B,h_kv,1,n,hd) 视图，零复制
-    return x.reshape(B, h_kv * n_rep, n, hd)                # (B,h,n,hd)：reshape 触发真复制
+    return x.reshape(B, h_kv * n_rep, n, hd)                # (B,h,n,hd)：是否复制取决于形状与步长
 
 
 class GroupedQueryAttention(nn.Module):
@@ -68,6 +70,8 @@ class GroupedQueryAttention(nn.Module):
         C, hd = cfg.hidden_size, cfg.head_dim
         self.n_head = cfg.num_attention_heads               # h：查询头数（全宽）
         self.n_kv_head = cfg.num_key_value_heads            # h_kv：KV 头数（=h 即 MHA，=1 即 MQA）
+        if min(C,hd,self.n_head,self.n_kv_head)<=0 or self.n_head%self.n_kv_head or hd%2:
+            raise ValueError("需正尺寸、整组查询头及RoPE偶数头维")
         self.n_rep = self.n_head // self.n_kv_head          # g = h/h_kv：组内查询头数
         self.head_dim = hd
         self.scaling = hd ** -0.5
@@ -79,10 +83,13 @@ class GroupedQueryAttention(nn.Module):
 
     def _causal_mask(self, n, device):
         if n not in self._mask_cache or self._mask_cache[n].device != device:
+            self._mask_cache.clear()  # 只保留当前长度，避免多个n²遮罩累积
             self._mask_cache[n] = torch.tril(torch.ones(n, n, device=device)).view(1, 1, n, n)
         return self._mask_cache[n]
 
     def forward(self, x, cos, sin):
+        if x.ndim!=3 or x.shape[1]<1 or x.shape[-1]!=self.q_proj.in_features:
+            raise ValueError("输入须为非空(B,n,C)，C与投影一致")
         B, n, C = x.shape                                                       # (B,n,C)
         hd, h, h_kv = self.head_dim, self.n_head, self.n_kv_head
         q = self.q_proj(x).view(B, n, h, hd).transpose(1, 2)                    # (B,h,n,hd)
@@ -98,14 +105,17 @@ class GroupedQueryAttention(nn.Module):
         return self.o_proj(y)                                                   # (B,n,C)
 
 
-# ---------------- 分组视图：同一数学的另一种记账（K/V 从不复制） ----------------
+# ---------------- 分组表达式：显式张量不展开KV；底层算子临时量另论 ----------------
 def grouped_view_attention(q, k, v, n_rep, scaling, mask):
-    """分组视图打分+加权：不 materialize h 份 KV。
+    """分组表达式打分+加权：不显式构造h份KV，底层临时量另论。
 
     q (B,h,n,hd) -> (B,h_kv,g,n,hd)（连号分组）；k/v (B,h_kv,n,hd) -> (B,h_kv,1,n,hd) 广播——
-    广播不复制，缓存里始终只有 h_kv 份（对照 repeat_kv 的写穿透）。输出 (B,h,n,hd)，与 repeat 路径逐位一致。
+    这里不显式构造h份KV；matmul内部是否复制仍取决于后端。输出(B,h,n,hd)，数值应与repeat路径接近。
     """
+    if q.ndim!=4 or k.ndim!=4 or v.shape!=k.shape or not isinstance(n_rep,int) or n_rep<1:
+        raise ValueError("分组输入或重复数无效")
     B, h, n, hd = q.shape
+    if h%n_rep or tuple(k.shape)!=(B,h//n_rep,n,hd):raise ValueError("查询/KV分组形状不匹配")
     h_kv = h // n_rep
     qg = q.view(B, h_kv, n_rep, n, hd)                      # (B,h_kv,g,n,hd)
     kg = k.view(B, h_kv, 1, n, hd)                          # (B,h_kv,1,n,hd)
@@ -118,14 +128,16 @@ def grouped_view_attention(q, k, v, n_rep, scaling, mask):
 
 
 # ---------------- 增量解码 demo：手写 KV cache vs 全量重算（6.2 的机器验证） ----------------
+@torch.no_grad()
 def incremental_vs_full(attn: GroupedQueryAttention, x, cos, sin):
-    """逐 token 增量生成 vs 整段全量前向，逐位对拍。x (B,n,C)，cos/sin (1,n,hd)。
+    """固定同一输入的单层逐位置计算vs整段前向，数值对拍。x (B,n,C)，cos/sin (1,n,hd)。
 
-    单层 cache = 一对 (B,h_kv,t,hd)。第 t 步只做三件事：新 token 的三次投影（各 1 个位置）、
-    位置 t 的 RoPE 行、q_t 对全部 t+1 个键的注意力——因果性使旧 K/V 永不改变，拼接即可；
+    单层 cache = 一对 (B,h_kv,t,hd)。注意力主体在第t步处理三项工作，末尾还有输出投影：新 token 的三次投影（各 1 个位置）、
+    位置 t 的 RoPE 行、q_t 对全部 t+1 个键的注意力——在参数/输入/位置规则固定时旧K/V不变，拼接即可；
     增量步的键恰好就是可见前缀，连因果掩码都不需要（禁区在「没进 cache」里，不在表上）。
     返回 (out_incremental (B,n,C), max|Δ| vs 全量)。
     """
+    if x.ndim!=3 or x.shape[1]<1:raise ValueError("增量演示需要非空三维输入")
     B, n, C = x.shape
     hd, h, h_kv = attn.head_dim, attn.n_head, attn.n_kv_head
     out_full = attn(x, cos, sin)                            # (B,n,C) 全量重算路径（Book2 口径）
@@ -152,6 +164,8 @@ def incremental_vs_full(attn: GroupedQueryAttention, x, cos, sin):
 
 # ---------------- 自测：三重对拍 + 写穿透 + 退化档 + 投影宽度账（CPU fp32，秒级） ----------------
 if __name__ == "__main__":
+    import transformers
+    print(f"torch={torch.__version__}, transformers={transformers.__version__}; CPU fp32")
     torch.manual_seed(SEED)
     B, n = 2, 64                                            # 小形状，肉眼可核
 
@@ -171,7 +185,7 @@ if __name__ == "__main__":
         assert d == 0.0, f"对拍失败 {tag}: max|Δ|={d}"
         print(f"[1] {tag:14s} h={h} h_kv={h_kv}  max|Δ| = {d:.1e}  （逐位一致）")
 
-    # ---- 探针 2：手写 repeat_kv vs HF transformers 5.18.0 repeat_kv 逐位一致 ----
+    # ---- 探针 2：手写 repeat_kv vs HF transformers（版本由运行时打印） repeat_kv 逐位一致 ----
     print("-" * 72)
     from transformers.models.llama.modeling_llama import repeat_kv as hf_repeat_kv
     print("探针 2：手写 repeat_kv vs HF modeling_llama.repeat_kv（torch.equal）")
@@ -184,7 +198,7 @@ if __name__ == "__main__":
 
     # ---- 探针 3：分组视图 vs repeat 视图（同一数学的两种记账）----
     print("-" * 72)
-    print("探针 3：分组视图（不复制 KV）vs repeat 视图（撑回 h 份），输出逐位一致")
+    print("探针 3：分组表达式（不显式展开KV）vs repeat 视图（撑回 h 份），输出逐位一致")
     cfg = LLaMAConfig(vocab_size=512, hidden_size=256, intermediate_size=704,
                       num_hidden_layers=2, num_attention_heads=8, num_key_value_heads=2,
                       max_position_embeddings=128)
@@ -202,11 +216,11 @@ if __name__ == "__main__":
     y_grp = grouped_view_attention(q, k, v, 4, attn.scaling, mask)  # 分组路径 (B,8,n,32)
     d = (y_rep - y_grp).abs().max().item()
     assert d == 0.0, f"两种写法不一致: {d}"
-    print(f"[3] h=8 h_kv=2（g=4）：max|Δ| = {d:.1e}（广播路径全程未复制 K/V）")
+    print(f"[3] h=8 h_kv=2（g=4）：max|Δ| = {d:.1e}（表达式未显式展开K/V，不测内核内部临时量）")
 
-    # ---- 探针 4：写穿透实测——expand+reshape 会真复制 ----
+    # ---- 探针 4：写穿透实测——本探针的GQA形状会复制 ----
     print("-" * 72)
-    print("探针 4：repeat_kv 的写穿透（expand 视图经 reshape 落盘 = 真复制）")
+    print("探针 4：repeat_kv 的写穿透（本探针GQA形状物化；MQA退化形状保留视图）")
     x = torch.randn(B, 2, n, 32)
     y = repeat_kv(x, 4)                                          # (B,8,n,32)
     y[0, 0, 0, 0] = 12345.0                                      # 往「视图」里写
@@ -216,14 +230,20 @@ if __name__ == "__main__":
     print(f"[4] 改 y 不动 x = {untouched}（缓存里的 h_kv 份安全）；两存储独立 = {copied}"
           f"——瞬时工位是 h 份、常驻账本仍 h_kv 份")
 
+    z=torch.randn(B,1,n,32);expanded=repeat_kv(z,8)
+    assert expanded.untyped_storage().data_ptr()==z.untyped_storage().data_ptr()
+    assert expanded.stride(1)==0
+    print("[4b] h_kv=1,g=8：共享存储、头维零步长；展开结果不要就地改写")
+
     # ---- 探针 5：增量解码 vs 全量重算（6.2 增量算法的机器验证）----
     print("-" * 72)
     print("探针 5：手写 KV cache 逐 token 生成 vs 整段全量重算（Book2 的笨办法）")
     cos2, sin2 = build_rope_cache(n, cfg.head_dim, cfg.rope_theta, x.device)
     d = incremental_vs_full(attn, torch.randn(B, n, cfg.hidden_size), cos2, sin2)[1]
+    assert d<2e-6, f"单层缓存等价性误差过大：{d}"
     n_pos_full, n_pos_inc = n * (n + 1) // 2, n                  # 全量重算累计 n(n+1)/2 个位置
     print(f"[5] n={n}：全量重算累计前向位置 {n_pos_full} 个 vs 增量 {n_pos_inc} 个"
-          f"（{n_pos_full / n_pos_inc:.1f} 倍）；输出 max|Δ| = {d:.2e}（因果性 => 旧 K/V 不变）")
+          f"（{n_pos_full / n_pos_inc:.1f} 倍）；输出 max|Δ| = {d:.2e}（固定参数/输入/位置规则下）")
 
     # ---- 探针 6：投影宽度即账本（207M cand1 档的注意力参数逐项手算）----
     print("-" * 72)

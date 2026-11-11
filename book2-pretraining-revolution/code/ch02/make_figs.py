@@ -3,6 +3,7 @@
 #       图 2.2 词表大小-压缩率曲线（自写 mini-BPE 扫描，训练 vs held-out）
 # 所属章节：《预训练革命》第 2 章；数据源 log/book2-ch02/bpe_report.json（bpe.py 产出）
 # 运行方式：source env.sh && python "code/ch02/make_figs.py"
+import argparse
 import json
 import os
 
@@ -22,8 +23,10 @@ plt.rcParams.update({
 })
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", ".."))
-FIG_DIR = os.path.join(ROOT, "figures")
-REPORT = json.load(open(os.path.join(ROOT, "log", "book2-ch02", "bpe_report.json"), encoding="utf-8"))
+LOG_ROOT = os.path.abspath(os.environ.get("BOOK2_LOG_ROOT", os.path.join(ROOT, "log")))
+FIG_DIR = os.path.abspath(os.environ.get("BOOK2_FIGURE_OUTPUT_DIR",
+                                        os.path.join(LOG_ROOT, "book2-ch02", "figures")))
+REPORT_PATH = os.path.join(LOG_ROOT, "book2-ch02", "bpe_report.json")
 
 
 def fig_merge_tree():
@@ -60,6 +63,7 @@ def fig_merge_tree():
         node(x, 0, t, "char")
     # 合并节点（编号 = 学习到的合并序）
     node(6.2, 1, "er", "mid");   arrow(5.6, 0, 6.2, 1, "#1")     # ① (e,r)→er
+    arrow(6.8, 0, 6.2, 1)  # r也是er的输入，原图漏了这条边。
     node(7.1, 2, "er·", "mid");  arrow(6.2, 1, 7.1, 2, "#2")     # ② (er,</w>)→er·
     arrow(8.0, 0, 7.1, 2)
     node(2.6, 1, "lo", "mid");   arrow(2.0, 0, 2.6, 1, "#3")     # ③ (l,o)→lo
@@ -84,29 +88,33 @@ def fig_merge_tree():
 
 
 def fig_vocab_compression():
-    """图 2.2：词表大小-压缩率曲线（口径 A 非空白字符/piece；训练语料 vs held-out 同分布切片）。"""
-    sweep = REPORT["mini_bpe"]["sweep"]
+    """图 2.2：词表大小-压缩率曲线（口径 A 非空白字符/piece；训练切片与保留切片；独立性按生成报告的实际数据划分判断）。"""
+    with open(REPORT_PATH, encoding="utf-8") as f:
+        report = json.load(f)
+    sweep = report["mini_bpe"]["sweep"]
+    base = report["mini_bpe"]["base_chars"]
     vocab = [s["vocab"] for s in sweep]
     train = [s["train"] for s in sweep]
     held = [s["heldout"] for s in sweep]
     fig, ax = plt.subplots(figsize=(6.4, 4), dpi=300)
-    ax.plot(vocab, train, "o-", color=BLUE, lw=2, ms=6, label="train slice (400K chars)")
-    ax.plot(vocab, held, "s-", color=ORANGE, lw=2, ms=6, label="held-out slice (100K chars)")
-    # 词表=98 基础字符+合并数 的注记与泛化损失注记
-    ax.annotate("vocab = 98 base chars\n+ #merges (char level = 1.0)",
-                xy=(98, 1.0), xytext=(180, 1.55), fontsize=8.5, color=SUB,
+    ax.plot(vocab, train, "o-", color=BLUE, lw=2, ms=6, label="train slice (400K code points)")
+    ax.plot(vocab, held, "s-", color=ORANGE, lw=2, ms=6, label="reserved slice (100K code points)")
+    # 基础字符数与切片差；不把曲线间距自动称为泛化损失。
+    ax.annotate(f"base alphabet: {base} code points\nvocabulary counts unique pieces",
+                xy=(vocab[0], train[0]), xytext=(vocab[0] * 1.8, 1.55), fontsize=8.5, color=SUB,
                 arrowprops=dict(arrowstyle="-", color=AXIS, lw=0.8))
-    ax.annotate(f"generalization gap\n{train[3]:.2f} vs {held[3]:.2f} at 1,098\n"
-                f"({train[-1] - held[-1]:.2f} at 4,098: {train[-1]:.2f} vs {held[-1]:.2f})",
-                xy=(1098, 2.322), xytext=(1450, 1.28), fontsize=8.5, color=SUB,
+    index = min(3, len(vocab) - 1)
+    ax.annotate(f"slice difference\n{train[index]:.2f} vs {held[index]:.2f} at {vocab[index]:,}\n"
+                f"({train[-1] - held[-1]:.2f} at {vocab[-1]:,}: {train[-1]:.2f} vs {held[-1]:.2f})",
+                xy=(vocab[index], held[index]), xytext=(vocab[index] * 1.3, 1.28), fontsize=8.5, color=SUB,
                 arrowprops=dict(arrowstyle="-", color=AXIS, lw=0.8))
     ax.set_xscale("log")
     ax.set_xticks(vocab)
     ax.set_xticklabels([f"{v:,}" for v in vocab], rotation=0)
-    ax.set_xlabel("vocabulary size (= base characters + merge operations)", color=SUB)
+    ax.set_xlabel("vocabulary size (unique pieces)", color=SUB)
     ax.set_ylabel("chars per piece (non-space)", color=SUB)
     ax.set_ylim(0.8, 3.8)
-    ax.set_title("Compression saturates as vocabulary grows (hand-written BPE, 1MB corpus)",
+    ax.set_title("Compression across vocabulary sizes (hand-written BPE)",
                  color=INK)
     ax.legend(frameon=False, loc="lower right")
     fig.tight_layout()
@@ -115,8 +123,14 @@ def fig_vocab_compression():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--merge-only", action="store_true", help="只画合并树，不读取训练报告")
+    args = parser.parse_args()
+    if not args.merge_only and not os.path.isfile(REPORT_PATH):
+        raise FileNotFoundError("请先生成bpe_report.json，或使用--merge-only")
     os.makedirs(FIG_DIR, exist_ok=True)
     fig_merge_tree()
-    fig_vocab_compression()
     print("saved ->", os.path.join(FIG_DIR, "fig-2-1-merge-tree.png"))
-    print("saved ->", os.path.join(FIG_DIR, "fig-2-2-vocab-compression.png"))
+    if not args.merge_only:
+        fig_vocab_compression()
+        print("saved ->", os.path.join(FIG_DIR, "fig-2-2-vocab-compression.png"))

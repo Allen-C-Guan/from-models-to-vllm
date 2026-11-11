@@ -1,8 +1,8 @@
 # model.py —— Book2 ch10 大项目 I 定版模型：从零实现的 GPT-2 124M（三插槽 Block，Book3 改装契约）
-# 所属章节：Book2 第 10 章 §10.2-10.3（drafts/Book2-预训练革命/ch10-大项目I.md；ch11 全章复用）
+# 所属章节：Book2 第 10 章 §10.2-10.3（drafts/Book2-预训练革命/ch10-大项目I.md；ch11官方权重对拍复用）
 # 单轨依赖链：ch04/warmup_ablation.py 的参数化 GPT（前身）→ 本文件（正式定版）→ ch11 复用（官方权重对拍）。
 # 结构对照 nanoGPT（MIT，2022-12，结构对照非照抄）与 HF transformers 5.18.0 modeling_gpt2.py（仅对照，命名贴近以便 ch11 键映射）。
-# 运行方式（自测：参数 assert + 初始化警示实验）：python model.py            （CPU fp32，秒级）
+# 运行方式（自测：参数 assert + 初始化警示实验）：python model.py            （CPU前向，不训练；--counts-only仅计数）
 # 被引用：from model import GPT2, GPT2Config（train.py / shakespeare.py 同目录）
 import math
 
@@ -13,7 +13,7 @@ import torch.nn.functional as F
 # ---------------- 超参与 124M 口径 ----------------
 # 官方口径（GPT-2 论文 §2.3 + openai-community/gpt2 config）：12 层 / 768 维 / 12 头 / ctx 1024 /
 #   词表 50257 / 初始化 N(0,0.02) / gelu_new（GELU 的 tanh 近似）/ tie_word_embeddings=True。
-# dropout：官方三处 pdrop=0.1；本模型默认 0.0（nanoGPT 小语料短训口径，1M 字符级语料上 0.1 会欠拟合），
+# dropout：HF公开config三个pdrop=0.1；本书默认0.0，nanoGPT的shakespeare_char配置为0.2；
 #   需要官方口径时 GPT2Config(dropout=0.1)。dropout 不影响参数量与权重对拍（eval 模式下关闭）。
 GPT2_124M = dict(vocab_size=50257, n_positions=1024, n_layer=12, n_embd=768, n_head=12)
 
@@ -23,7 +23,13 @@ class GPT2Config:
 
     def __init__(self, vocab_size=50257, n_positions=1024, n_layer=12, n_embd=768,
                  n_head=12, dropout=0.0, initializer_range=0.02):
-        assert n_embd % n_head == 0
+        sizes = (vocab_size, n_positions, n_layer, n_embd, n_head)
+        if any(not isinstance(v, int) or isinstance(v, bool) or v <= 0 for v in sizes):
+            raise ValueError("模型尺寸必须为正整数")
+        if n_embd % n_head:
+            raise ValueError("隐藏宽度须能被头数整除")
+        if not 0 <= dropout < 1 or not math.isfinite(initializer_range) or initializer_range <= 0:
+            raise ValueError("dropout须在[0,1)，初始化标准差须为有限正数")
         self.vocab_size = vocab_size        # wte 行数（50257 = 256 字节 + 50000 合并 + 1 <|endoftext|>，见第 2 章）
         self.n_positions = n_positions      # wpe 行数（1024 = 学习式位置查表的硬上限，第 4 章手术③）
         self.n_layer = n_layer              # Block 个数
@@ -49,7 +55,7 @@ class CausalSelfAttention(nn.Module):
         self.attn_drop = nn.Dropout(cfg.dropout)
         self.resid_drop = nn.Dropout(cfg.dropout)
         # 因果掩码：下三角可见（第 i 个位置只准看 <= i）。persistent=False：不进 state_dict
-        # （HF v5 也已废弃持久化 mask buffer，ch11 加载官方权重时不做键清理）
+        # HF各版本的掩码生成位置不同，加载时须核实际键清单，不按版本大类猜测。
         self.register_buffer("mask", torch.tril(torch.ones(cfg.n_positions, cfg.n_positions))
                              .view(1, 1, cfg.n_positions, cfg.n_positions), persistent=False)
 
@@ -72,7 +78,7 @@ class MLP(nn.Module):
     """前馈插槽：C -> 4C -> GELU(tanh 近似=gelu_new) -> C。输入 (B,n,C) -> 输出 (B,n,C)。
 
     4C=3072 沿袭原典比例；激活用 tanh 近似版 GELU（GPT-2 官方 config 的 gelu_new；
-    与 BERT 的 erf 精确版数值有差——对拍精度的隐形开关，见正文考据框）。
+    Google原始BERT也使用tanh近似；库中同名函数仍应核对具体实现，见正文考据框）。
     """
 
     def __init__(self, cfg: GPT2Config):
@@ -91,7 +97,7 @@ class Block(nn.Module):
 
     契约：块 = 两条残差支路，每条 = [归一化 ln_*] + [插槽子层 attn / mlp]；插槽内部怎么换
     （注意力变体、前馈变体、归一化变体）是 Book3 逐插槽改装的事，块级拓扑（pre-LN + 残差 +
-    两插槽次序）在本册定版。forward 输入/输出均为 (B,n,C)。
+    两支路次序）在本册定版。forward 输入/输出均为 (B,n,C)。
 
         x = x + attn(ln_1(x))    # 支路一：注意力插槽（LN 在入口 = pre-LN，第 4 章手术②）
         x = x + mlp(ln_2(x))     # 支路二：前馈插槽
@@ -113,15 +119,15 @@ class Block(nn.Module):
 class GPT2(nn.Module):
     """GPT-2 整机：wte + wpe + n_layer 个 Block + ln_f + tied lm_head。
 
-    前向：idx (B,n) -> logits (B,n,V)；给 targets (B,n) 时返回逐 token 交叉熵（因果 LM 目标：
+    前向：idx (B,n) -> logits (B,n,V)；给 targets (B,n) 时返回全部目标位置的平均交叉熵标量（因果 LM 目标：
     用第 t 个位置的状态预测第 t+1 个 token——T5 的 span corruption 是同一预训练范式在
     encoder-decoder 侧的另一端，见第 5 章）。
 
-    初始化 init="gpt2"（默认）：Linear/Embedding ~ N(0, 0.02)、偏置清零，且两条残差支路的
-    流出端投影（attn.c_proj / mlp.c_proj）额外乘 1/sqrt(2*n_layer)（GPT-2 §2.3 的 1/sqrt(N) 口径）。
+    初始化 init="gpt2"（默认）：Linear/Embedding正态分布，标准差s=0.02、偏置清零，且两条残差支路的
+    流出端投影（attn.c_proj / mlp.c_proj）重新以标准差s/sqrt(2*n_layer)初始化；这是本书复现约定，见正文原报告与代码的边界说明。
     init="default"：完全跳过自定义初始化（PyTorch 默认：Embedding ~ N(0,1)，Linear ~ kaiming 均匀），
     供「初始化警示」实验对照——此时 tied head 的 logit 方差约 C=768，初始 loss 会冲到数百而非
-    ln(50257)≈10.83（实测见 model.py 自测与正文 10.2 节）。
+    ln(50257)≈10.82（实测见 model.py 自测与正文 10.2 节）。
     """
 
     def __init__(self, cfg: GPT2Config = None, init: str = "gpt2"):
@@ -161,7 +167,10 @@ class GPT2(nn.Module):
 
     def forward(self, idx, targets=None):
         B, n = idx.shape                                        # (B,n)
-        assert n <= self.block_size, f"序列长 {n} 超过 wpe 查表上限 {self.block_size}"
+        if not 1 <= n <= self.block_size:
+            raise ValueError(f"序列长须在1—{self.block_size}，收到{n}")
+        if targets is not None and targets.shape != idx.shape:
+            raise ValueError("targets必须与idx同为(B,n)；标签由调用方右移一位")
         pos = torch.arange(n, device=idx.device)                # (n,)
         x = self.drop(self.wte(idx) + self.wpe(pos))            # (B,n,C)+(n,C) -> (B,n,C)
         for blk in self.blocks:                                 # 12 × (B,n,C)
@@ -175,24 +184,57 @@ class GPT2(nn.Module):
         return logits, loss
 
 
-# ---------------- 自测：验收①（参数逐位）+ 初始化警示实验 ----------------
-if __name__ == "__main__":
-    torch.manual_seed(20261002)  # 全书统一种子
-    print(f"ln(vocab) = ln(50257) = {math.log(50257):.4f}  <- 均匀分布的熵=随机初始化的理论初始 loss")
-
-    m = GPT2()
-    total, non_emb = m.n_params(), m.n_params(non_embedding=True)
-    print(f"[GPT-2 init] total = {total:,}   non-embedding(6ND) = {non_emb:,}")
-    assert total == 124_439_808, f"参数逐位对账失败：{total} != 124,439,808"
-    assert non_emb == 85_056_000
-
-    # 初始 loss 三口径（CPU fp32，随机 token 批；预测下一 token 故与当前嵌入无泄漏）
-    x = torch.randint(0, GPT2_124M["vocab_size"], (4, 256))
-    y = torch.randint(0, GPT2_124M["vocab_size"], (4, 256))
+# ---------------- 自测：计数与前向初始化诊断；不运行训练 ----------------
+def initialization_report(batch=1, seq=64, seed=20261002):
+    """CPU独立随机输入和标签，仅检查前向尺度；不是下一token训练批。"""
+    if batch <= 0 or not 1 <= seq <= 1024:
+        raise ValueError("批量须正，序列长须在1—1024")
+    torch.manual_seed(seed)
+    model = GPT2().eval()
+    assert model.n_params() == 124_439_808
+    assert model.n_params(True) == 85_056_000
+    x = torch.randint(0, 50257, (batch, seq))
+    y = torch.randint(0, 50257, (batch, seq))
+    result = {"device": "cpu", "dtype": "float32", "torch": str(torch.__version__),
+              "seed": seed, "batch": batch, "seq": seq,
+              "label_protocol": "独立均匀随机标签；前向尺度诊断",
+              "params_total": model.n_params(), "params_non_emb": model.n_params(True),
+              "uniform_ce": math.log(50257), "small_scale_approx": math.log(50257)+768*.02**2/2}
     with torch.no_grad():
-        _, loss_gpt2 = m(x, y)
-        m_def = GPT2(init="default")               # PyTorch 默认初始化（Embedding ~ N(0,1)）
-        _, loss_default = m_def(x, y)
-    print(f"[init=N(0,0.02)]   初始 loss = {loss_gpt2.item():.2f}   （理论 ~ ln V + sigma^2/2 = "
-          f"{math.log(50257) + 768 * 0.02**2 / 2:.2f}）")
-    print(f"[init=PyTorch 默认] 初始 loss = {loss_default.item():.2f}   <- 警示：离 ln(V) 十八倍开外")
+        logits, loss = model(x, y)
+        result["gpt2_loss"] = loss.item()
+        del logits, loss, model
+        model = GPT2(init="default").eval()
+        logits, loss = model(x, y)
+        own = logits.gather(-1, x.unsqueeze(-1)).squeeze(-1)
+        result.update(default_loss=loss.item(), default_logits_std=logits.std().item(),
+                      default_copy_rate=(logits.argmax(-1)==x).float().mean().item(),
+                      default_own_logit_min=own.min().item(), default_own_logit_max=own.max().item())
+    return result
+
+
+if __name__ == "__main__":
+    import argparse
+    import json
+    from pathlib import Path
+    ap = argparse.ArgumentParser(description="参数对账及CPU初始化诊断，不运行训练")
+    ap.add_argument("--counts-only", action="store_true")
+    ap.add_argument("--batch", type=int, default=1)
+    ap.add_argument("--seq", type=int, default=64)
+    ap.add_argument("--out", type=Path, default=Path.cwd()/"log/book2-ch10/init-check.json")
+    args = ap.parse_args()
+    if args.out.exists():
+        raise FileExistsError(f"已有结果不覆盖：{args.out}")
+    if args.counts_only:
+        with torch.device("meta"):
+            model = GPT2()
+        result = {"params_total": model.n_params(), "params_non_emb": model.n_params(True),
+                  "kind": "meta参数计数，无前向运行"}
+        assert result["params_total"] == 124_439_808 and result["params_non_emb"] == 85_056_000
+    else:
+        result = initialization_report(args.batch, args.seq)
+    text = json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False)+"\n"
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    with args.out.open("x") as f:
+        f.write(text)
+    print(text)

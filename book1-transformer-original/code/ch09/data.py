@@ -27,7 +27,7 @@ PAD, UNK, SOS, EOS = 0, 1, 2, 3
 
 def ensure_bpe(log_dir: str = LOG_DIR, vocab_size: int = VOCAB_SIZE) -> spm.SentencePieceProcessor:
     """自训（或复用已训）shared BPE。en+de 交替写入同一语料 → 单一词表（原论文 shared vocab 的缩小版）。
-    语料与模型文件都落 log/，重跑时若模型已存在则直接加载（确定性：固定随机种子 + 不打乱输入行）。"""
+    语料与模型文件都落log/，存在模型则直接加载；固定语料与配置有助复现，不仅由输入顺序保证。"""
     os.makedirs(log_dir, exist_ok=True)
     model_path = os.path.join(log_dir, "bpe_8k.model")
     if not os.path.exists(model_path):
@@ -61,8 +61,8 @@ def load_raw() -> dict:
 
 
 def encode_sent(sp: spm.SentencePieceProcessor, sent: str, cap: int = DECODE_MAX_PIECES) -> list:
-    """str → [SOS] + pieces + [EOS] 的 id 列表（总长 ≤ cap+1；内容截到 cap-2 个 piece——
-    训练侧 cap=MAX_TRAIN_PIECES 起过滤作用，正常不触发）。"""
+    """str → [SOS] + pieces + [EOS]，总长≤cap，内容最多cap-2个piece。
+    训练先由filter_pairs按内容长度过滤，再以默认cap=64编码；cap本身不负责过滤句对。"""
     ids = sp.encode(sent, out_type=int)[: cap - 2]
     return [SOS] + ids + [EOS]
 
@@ -85,8 +85,8 @@ def batches(id_pairs, batch_size: int = BATCH, shuffle: bool = True, seed: int =
     m = 批内两侧最长的 id 序列长（含 SOS/EOS；训练侧 m ≤ L+2 = 18），批与批不同。
     训练循环随后从 tgt (B,m) 错位切出 tgt[:, :-1] 与 tgt[:, 1:] 各 (B, m-1)（教师强制，见 train.py）。
     探针踩坑实录（ch9 9.2 节写作素材）：
-      ① 变长句拼张量必须先在 list 层补 pad 再 torch.tensor（先 tensor 化再 pad 会触发设备拷贝报错）；
-      ② tgt[:, 1:] 等切片非连续张量，损失内部展平须用 .reshape 而非 .view。"""
+      ① 本实现先在list补PAD再创建张量；pad_sequence或预分配张量也是可用方案；
+      ② 切片步幅不适合直接view时，可用reshape或先contiguous再view。"""
     idx = list(range(len(id_pairs)))
     if shuffle:
         random.Random(seed + epoch).shuffle(idx)  # 逐 epoch 换洗牌种子，可复现

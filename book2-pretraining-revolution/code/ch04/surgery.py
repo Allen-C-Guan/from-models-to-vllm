@@ -1,8 +1,8 @@
 # 用途：Book2 ch4「四项手术」最小对照演示——①单塔折叠（cross-attn 参数税）②post→pre-LN（主干尺度对比）
 #       ③学习式位置编码（1024 查表 vs 正弦闭合公式）④tied embeddings（124M 逐项账本+解绑代价），并输出形状流转表。
 # 所属章节：Book2 第 4 章 §4.3-§4.7（块实现直接复用 warmup_ablation.py 的 Block/GPT——单轨依赖链 ch4→ch8 的族工厂前身）
-# 运行方式：cd /Users/allen/Code/model_analysis && source env.sh && python code/ch04/surgery.py
-# 产物：全部打印到 stdout（正文引用的数字均出自本脚本固定种子运行；CPU 秒级）
+# 运行方式：在本册目录、已准备环境后运行 python code/ch04/surgery.py
+# 产物：全部打印到 stdout（打印当前CPU结果；不能据此宣称重现历史MPS训练）
 
 import math
 import sys
@@ -21,8 +21,8 @@ SEED = 20261002  # 全书统一种子
 class CrossAttention(nn.Module):
     """Book1 式解码块第二子层（cross-attention）的最小实现：Q 来自解码侧，K/V 来自 encoder 输出。
 
-    输入 x (B,n,C) 与 memory (B,m,C)；输出 (B,n,C)。HF GPT2Attention 的 cross 分支同构
-    （q_attn C→C + c_attn C→2C + c_proj C→C + ln_cross），此处按同口径计数。
+    输入 x (B,n,C) 与 memory (B,m,C)；输出 (B,n,C)。结构与常见库的可选 cross 分支相近
+    （q_attn C→C + c_attn C→2C + c_proj C→C + ln_cross），此处将外置 ln_cross 一并计数；本最小演示假定 memory 无填充，不提供源填充掩码。
     """
 
     def __init__(self, n_embd: int, n_head: int):
@@ -75,7 +75,7 @@ def surgery_1_folding():
 
 # ---------------- 手术②：post→pre-LN——同一初始化流下，主干尺度的两种命运 ----------------
 def surgery_2_preln():
-    """手术②对照：post-LN 每站钉死 std≈1；pre-LN 残差主干无归一、std 逐层增长，最后由 ln_f 一次收口。"""
+    """手术②对照：初始仿射参数下比较post/pre出口尺度；pre残差累计不保证单调增长，末端另作LN。"""
     print()
     print("=" * 72)
     print("手术② post→pre-LN：6 层主干逐层 std（输入 x~N(0,1)，(1,64,384)，固定种子）")
@@ -91,8 +91,8 @@ def surgery_2_preln():
     print("  层号 | post-LN 出口 std | pre-LN 出口 std")
     print("  -----|------------------|-----------------")
     for i in range(L):
-        xp = blocks_post[i](xp)     # post：每站 LN 钉回，出口 std≈1
-        xs = blocks_pre[i](xs)      # pre：残差主干只加不归，std 逐层长大
+        xp = blocks_post[i](xp)     # post：当前初始gamma=1、beta=0，出口std约为1
+        xs = blocks_pre[i](xs)      # pre：观察累加后的尺度，不预设每层增大
         print(f"   {i + 1:2d}  |       {xp.std().item():.4f}      |      {xs.std().item():.4f}")
     print(f"  pre-LN 末尾 ln_f 收口后 std = {ln_f(xs).std().item():.4f}（手术②的两半：挪 LN + 补 ln_f）")
     return None
@@ -101,12 +101,14 @@ def surgery_2_preln():
 # ---------------- 手术③：学习式位置编码——1024 位查表 vs 正弦闭合公式 ----------------
 def sinusoidal_pe(T: int, C: int) -> torch.Tensor:
     """Book1 式正弦位置编码（原论文式 5-8 的实现）：返回 (T,C)，零参数、任意 T 可算。"""
+    if T < 0 or C <= 0:
+        raise ValueError("T须非负，C须为正")
     pos = torch.arange(T).unsqueeze(1).float()                       # (T,1)
     i = torch.arange(0, C, 2).float()                                # (C/2,)
-    div = torch.exp(i * -(math.log(10000.0) / (C - 2 + (C % 2))))    # 原文 10000^(2i/d)
+    div = torch.exp(i * -(math.log(10000.0) / C))    # 原文 10000^(2i/d)
     pe = torch.zeros(T, C)
     pe[:, 0::2] = torch.sin(pos * div)
-    pe[:, 1::2] = torch.cos(pos * div[: (C + 1) // 2])
+    pe[:, 1::2] = torch.cos(pos * div[: C // 2])
     return pe
 
 
@@ -131,7 +133,7 @@ def surgery_3_pe():
         print("  pos=1024 查表成功（不应发生）")
     except IndexError as e:
         print(f"  pos=1024 查表 -> IndexError（{e}）：1024 位之外没有向量可用，硬上限")
-    beyond = sinusoidal_pe(4096, C)                                  # 正弦路线同一公式直接算到 4096
+    beyond = sinusoidal_pe(4097, C)                                  # 正弦路线同一公式直接算到 4096
     print(f"  正弦 PE pos=4096 仍可计算（{tuple(beyond.shape)}）——「结构上可算」≠「训练后好用」")
     # 形状：进入主干前与词嵌入广播相加
     wte = nn.Embedding(50257, C)
@@ -160,7 +162,7 @@ def ledger(vocab: int, ctx: int, n_layer: int = 12, n_embd: int = 768) -> dict:
 def surgery_4_tied():
     print()
     print("=" * 72)
-    print("手术④ tied embeddings：124M 逐项账本 + 解绑代价 + 论文 117M 口径复算")
+    print("手术④ tied embeddings：124M 逐项账本 + 解绑代价 + 改词表/上下文的计数构造")
     print("=" * 72)
     d = ledger(50257, 1024)
     total = d["wte"] + d["wpe"] + d["blocks"] + d["ln_f"]
@@ -177,12 +179,12 @@ def surgery_4_tied():
         m = GPT(n_layer=12, n_embd=768, n_head=12, vocab=50257, block_size=1024, ln_position="pre")
     assert m.n_params() == total, "账本与实例化不一致"
     print(f"  meta 实例化 numel 对拍              : {m.n_params():,} == 账本合计 ✓（逐位一致）")
-    # 论文 117M 口径复算（GPT-1 词表 40478 / 上下文 512 —— 117M 考据框的算术支点）
+    # 只替换词表/上下文的构造例，仍保留本GPT2结构，不是GPT1完整模型计数。
     d1 = ledger(40478, 512)
     t1 = d1["wte"] + d1["wpe"] + d1["blocks"] + d1["ln_f"]
     with torch.device("meta"):
         m1 = GPT(n_layer=12, n_embd=768, n_head=12, vocab=40478, block_size=512, ln_position="pre")
-    print(f"  GPT-1 口径（vocab 40478/ctx 512）   : {t1:,} ≈ 论文 Table 2 的「117M」（差 {d['wte'] - d1['wte'] + d['wpe'] - d1['wpe']:,} = 词表与上下文之差）")
+    print(f"  构造口径（vocab 40478/ctx 512）   : {t1:,} ≈ 论文 Table 2 的「117M」（差 {d['wte'] - d1['wte'] + d['wpe'] - d1['wpe']:,} = 词表与上下文之差）")
     assert m1.n_params() == t1
     # medium 档同法复核（24/1024——正文 4.2 考据框「344.3M 对 345M / 实发 354.8M」的复现支点）
     d1m = ledger(40478, 512, n_layer=24, n_embd=1024)
@@ -193,7 +195,7 @@ def surgery_4_tied():
         m1m = GPT(n_layer=24, n_embd=1024, n_head=16, vocab=40478, block_size=512, ln_position="pre")
         m2m = GPT(n_layer=24, n_embd=1024, n_head=16, vocab=50257, block_size=1024, ln_position="pre")
     assert m1m.n_params() == t1m and m2m.n_params() == t2m
-    print(f"  medium 档 GPT-1 口径（24×1024）     : {t1m:,} ≈ 论文「345M」；实发口径（50257/1024）: {t2m:,} ≈ 实发 355M")
+    print(f"  medium 档构造口径（24×1024）     : {t1m:,} ≈ 论文「345M」；实发口径（50257/1024）: {t2m:,} ≈ 实发 355M")
     return None
 
 
@@ -227,7 +229,7 @@ def shape_flow_table():
 
 
 def main():
-    print(f"[surgery.py] 固定种子 {SEED}，CPU 运行，数字供 ch4 正文引用\n")
+    print(f"[surgery.py] 固定种子 {SEED}，CPU 运行，输出为当前局部演示，历史训练成绩另列\n")
     surgery_1_folding()
     surgery_2_preln()
     surgery_3_pe()
