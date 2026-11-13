@@ -4,15 +4,16 @@
 #       的量化-反量化 round-trip 误差，对照两种缩放粒度：
 #       ①per-tensor：全矩阵一个 scale（s = amax / FORMAT_MAX）；
 #       ②per-group(128)：最后一维每 128 元素一组各一个 scale（DeepSeek FP8 训练的 128 分组口径）。
-#       输入两种分布：随机高斯矩阵 + 探针 A 采的真实残差流激活（log/book4-feasibility/act_sample.npz；
+#       输入两种分布：随机高斯矩阵 + 探针 A 采的网络前向激活样本（探针A使用随机权重与随机token）（log/book4-feasibility/act_sample.npz；
 #       缺失时自动退化为合成 RMSNorm 样分布并如实标注）。指标：相对 L2 误差与 SNR(dB)。
 #       【模拟口径声明】非原生 FP8：①subnormal 按固定步长 2^e_min/2^mant 建模、饱和只做 max 截断
-#       （无 NaN/Inf 算术）；②torch.round 为四舍五入（非严格 RN-even）；③只测「权重/激活存储量化」
+#       （无 NaN/Inf 算术）；②torch.round采用最近偶数舍入（ties-to-even）；③只测「权重/激活存储量化」
 #       的重建误差，不含 FP8 矩阵乘的累加误差——这三条在正文写作时必须显式标注。
 # 所属章节：Book4 ch7（FP8 per-group scaling 的直觉来源：为什么分组缩放救了动态范围）。
 # 运行方式：source env.sh && python 05_probe_e_fp8sim.py [--out-name run1]（秒级，CPU fp32）
 # 产物：log/book4-feasibility/probeE_fp8sim_{out}.json（不入库）
 import argparse
+from moe_mla_slots import prepare_output
 import os
 
 import numpy as np
@@ -33,6 +34,8 @@ def fake_fp8_quant(x, fmt):
     （尾数位随幅度递减——per-tensor 大离群值把 scale 撑大后小值掉进 subnormal 区的失真，
     正是 FP 训练里分组缩放要救的现场；E5M2 的 e_min=-14 远低于 E4M3 的 -6，范围代价换精度）。
     """
+    if not torch.is_floating_point(x) or not torch.isfinite(x).all():
+        raise ValueError("仅支持有限浮点输入")
     mant_bits = fmt["mant_bits"]
     e_min = 1 - fmt["bias"]
     sign = torch.sign(x)
@@ -40,7 +43,7 @@ def fake_fp8_quant(x, fmt):
     e = torch.floor(torch.log2(a.clamp_min(1e-38))).clamp_min(e_min)      # 指数（subnormal 区截到 e_min）
     frac = a / torch.exp2(e)                                              # 正常区 [1,2)；subnormal 区 [0,1)
     levels = 2 ** mant_bits
-    frac_q = torch.round(frac * levels) / levels                          # 尾数格点化（RN 近似）
+    frac_q = torch.round(frac * levels) / levels                          # 尾数格点化（ties-to-even）
     return sign * frac_q * torch.exp2(e)
 
 
@@ -51,6 +54,8 @@ def quantize_rt(x, fmt, group_size=None):
         s = x.abs().amax() / fmt["fmax"]
         s = torch.clamp(s, min=1e-30)
         return fake_fp8_quant(x / s, fmt) * s, s
+    if group_size <= 0 or x.ndim == 0 or x.shape[-1] % group_size:
+        raise ValueError("分组必须整除最后一维")
     x2 = x.reshape(-1, group_size)                                        # (N, g)
     s = x2.abs().amax(dim=1, keepdim=True) / fmt["fmax"]                  # (N,1) 每组一个 scale
     s = torch.clamp(s, min=1e-30)
@@ -68,16 +73,17 @@ def metrics(x, x_hat):
 
 
 def main(out_name):
+    prepare_output("probeE_fp8sim", out_name)
     torch.manual_seed(SEED)
     g = torch.Generator().manual_seed(SEED)
 
     # 两种输入分布
     inputs = {"gauss_4096x512": torch.randn(4096, 512, generator=g)}      # 随机权重样
-    act_path = os.path.join(OUT_DIR, "act_sample.npz")
-    if os.path.exists(act_path):                                          # 探针 A 的真实残差流
+    act_path = os.environ.get("BOOK4_ACTIVATION_NPZ", os.path.join(OUT_DIR, "act_sample.npz"))
+    if os.path.exists(act_path):                                          # 探针A网络采样，不代表训练后语料分布
         h = torch.from_numpy(np.load(act_path)["resid_layer6"]).float()   # (2,256,1024)
         inputs["real_act_512x1024"] = h.reshape(-1, 1024)
-        src = "probeA act_sample.npz（207M 第 6 层残差流）"
+        src = f"{act_path}（前向采样文件；探针A默认随机权重与随机输入，不代表训练后分布）"
     else:
         inputs["real_act_512x1024"] = torch.randn(512, 1024, generator=g)
         inputs["real_act_512x1024"] *= 1.0                                # 退化：合成样（如实标注）
@@ -132,7 +138,7 @@ def main(out_name):
               "input_source": src, "formats": {"E4M3": "4exp/3mant max=448", "E5M2": "5exp/2mant max=57344"},
               "rows": rows, "group_gain_x": summary,
               "caveats": ["subnormal 已按固定步长建模、饱和只做 max 截断（无 NaN/Inf 算术）",
-                          "torch.round 非 RN-even",
+                          "torch.round采用ties-to-even；不模拟NaN/Inf算术",
                           "只测存储量化重建误差，不含 FP8 GEMM 累加误差"]}
     save_json("probeE_fp8sim", report, out_name)
 

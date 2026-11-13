@@ -6,7 +6,7 @@
 #      [8.6, 9.6]——「≈ln 8192≈9.01」判据的方差修正版）。
 #   ③ off-by-one 三视图核验（结构断言 + 教师强制功能核验：MTP 支路位置 i 的输入嵌入 = tokens[i+1]）。
 #   ④ λ=0 时联合 loss == 主支路 CE（逐位）；λ=0.3 时联合 = main + 0.3·mtp（恒等式）。
-#   ⑤ 反向一步：损失有限、梯度无 NaN、主支路梯度路径通（「主支路不受拖累」的最小验证）。
+#   ⑤ 反向一步：损失有限、梯度无 NaN、主支路梯度路径通（只证明可反传，不证明主任务质量提高）。
 # 运行方式：source env.sh && python smoke_mtp.py [--out-name run1]（CPU fp32 报数）
 # 产物：log/book4-ch08/mtp_smoke_{out}.json
 import argparse
@@ -25,7 +25,7 @@ sys.path.insert(0, HERE)
 from mtp import (BACKBONE_PARAMS, EVAL_BIN, MTP_NEW_PARAMS, MTP_LAMBDA_DEFAULT, SEED,   # noqa: E402
                  TOTAL_PARAMS, VOCAB, assert_off_by_one, joint_loss, three_views)
 
-OUT_DIR = os.path.join(os.path.abspath(os.path.join(HERE, "..", "..")), "log", "book4-ch08")
+OUT_DIR = os.path.join(os.getcwd(), "log", "book4-ch08")
 
 
 class _RecordingEmbed(torch.nn.Module):
@@ -44,6 +44,11 @@ def main():
     ap = argparse.ArgumentParser(description="mini MTP 冒烟（秒级 CPU）")
     ap.add_argument("--out-name", default="run1")
     args = ap.parse_args()
+    if os.path.basename(args.out_name) != args.out_name or args.out_name in {".", ".."}:
+        ap.error("out-name须为单个文件名后缀")
+    out = os.path.join(OUT_DIR, f"mtp_smoke_{args.out_name}.json")
+    if os.path.exists(out):
+        raise FileExistsError(out)
     device = torch.device("cpu")                     # 冒烟数字一律 CPU fp32 报（papers/05 §4.2）
     torch.manual_seed(SEED)
 
@@ -62,7 +67,7 @@ def main():
                         "mtp_overhead_ratio": round(MTP_NEW_PARAMS / BACKBONE_PARAMS, 4)}
     print(f"[① 参数账] 主干 {BACKBONE_PARAMS:,} + MTP 新增 {MTP_NEW_PARAMS:,}（3 RMSNorm + "
           f"proj {512*1024:,} + TRM 层 {MTP_NEW_PARAMS - 512*1024 - 3*512:,}）= 总 {TOTAL_PARAMS:,}"
-          f"（+{MTP_NEW_PARAMS/BACKBONE_PARAMS:.1%}——「MTP 很便宜」的量化体感）")
+          f"（+{MTP_NEW_PARAMS/BACKBONE_PARAMS:.1%}——相对主干的新增参数比例）")
 
     # ---- ③ off-by-one 三视图：结构断言（合成可分辨序列） ----
     B, T = 2, 64
@@ -71,7 +76,7 @@ def main():
     x_in, y_main, y_mtp = three_views(tokens)
     assert torch.equal(y_main[:, :-1], x_in[:, 1:]) and torch.equal(y_mtp[:, :-1], y_main[:, 1:])
     checks["off_by_one_structure"] = "PASS（等长 T-2 / y_main=x_in 左移一 / y_mtp=y_main 左移一 / 单点抽验）"
-    print(f"[③ 三视图] tokens (B={B},T={T}) -> 三视图各 (B,{T-2})：x_in=t[:,-2] y_main=t[:,1:-1] "
+    print(f"[③ 三视图] tokens (B={B},T={T}) -> 三视图各 (B,{T-2})：x_in=t[:,:-2] y_main=t[:,1:-1] "
           f"y_mtp=t[:,2:]——结构断言 PASS")
 
     # ---- ③' 教师强制功能核验：MTP 支路位置 i 的输入嵌入 = tokens[i+1]（= y_main） ----
@@ -110,9 +115,10 @@ def main():
     checks["lambda_identities"] = "PASS（λ=0: L==CE_main 逐位；λ=0.3: L==CE_main+0.3·CE_mtp）"
     print("[④ λ 恒等式] λ=0 → L==CE_main（逐位）；λ=0.3 → L==CE_main+0.3·CE_mtp——PASS")
 
-    # ---- ⑤ 反向一步（主支路不受拖累的最小验证） ----
+    # ---- ⑤ 反向一步（数值与梯度路径检查） ----
     loss, _, _ = joint_loss(*m(toks), toks, lam=MTP_LAMBDA_DEFAULT)
     loss.backward()
+    assert torch.isfinite(loss), "损失非有限"
     grads = [p.grad for p in m.parameters() if p.grad is not None]
     assert all(torch.isfinite(g).all() for g in grads), "梯度出现非有限值"
     backbone_grad_norm = (sum(float(g.norm() ** 2) for g in
@@ -120,13 +126,19 @@ def main():
     checks["backward"] = {"loss_finite": bool(torch.isfinite(loss).item()),
                           "n_grad_tensors": len(grads),
                           "backbone_grad_norm": round(backbone_grad_norm, 6),
-                          "verdict": "PASS（反向通、梯度全有限——MTP 支路梯度确实回流主干）"}
+                          "verdict": "PASS（联合反向通、梯度全有限；MTP独立回流另测）"}
     print(f"[⑤ 反向] 联合 loss {loss.item():.4f} 有限；{len(grads)} 个参数张量梯度全有限；"
           f"主干梯度范数 {backbone_grad_norm:.4f}——PASS（「主支路被拖累」与否留给 fast 曲线判读）")
 
+    # 单独只回传支路损失，排除主损失梯度造成的伪阳性。
+    m.zero_grad(set_to_none=True)
+    _, _, ce_mtp_only = joint_loss(*m(toks[:, :16]), toks[:, :16])
+    ce_mtp_only.backward()
+    trunk_grad = m.backbone.model.layers[0].self_attn.q_proj.weight.grad
+    assert trunk_grad is not None and torch.isfinite(trunk_grad).all() and trunk_grad.norm() > 0
+    checks["mtp_only_backflow"] = {"first_layer_q_grad_norm": float(trunk_grad.norm())}
     os.makedirs(OUT_DIR, exist_ok=True)
-    out = os.path.join(OUT_DIR, f"mtp_smoke_{args.out_name}.json")
-    with open(out, "w", encoding="utf-8") as f:
+    with open(out, "x", encoding="utf-8") as f:
         json.dump({"date": time.strftime("%Y-%m-%d %H:%M:%S"), "seed": SEED,
                    "device": str(device), "checks": checks,
                    "all_pass": True}, f, ensure_ascii=False, indent=2)

@@ -4,13 +4,14 @@
 #       llama_slots 并自建同 config 整机（LLAMA_215M）；②前向+反向 10 步（MPS bf16 autocast 与
 #       CPU fp32 各报）——底座可用性与基线 sec/step，对照 Book3 实测口径（B=8/T=1024：
 #       MPS bf16 1.702 s/step、峰值 7,118 MB；CPU fp32 10.400 s/step）；
-#       ③顺带采一份真实残差流激活样本（中间层输出）存 npz，供探针 E 的 FP8 量化误差实验做
-#       「真实激活分布」输入（随机高斯 vs 真实分布的量化误差对照）。
+#       ③顺带采一份随机初始化网络的残差流激活样本（中间层输出）存 npz，供探针 E 的 FP8 量化误差实验做
+#       「网络前向采样（随机权重/随机token，非训练后语料激活）」输入（随机高斯 vs 网络采样分布的量化误差对照）。
 # 所属章节：Book4 ch0（底座契约）与 ch1（效率悖论账本的基线数字）；00-feasibility 探针 A。
 # 运行方式：source env.sh && python 01_probe_a_base.py [--out-name run1] [--cpu-steps 10]
 #   （MPS 10 步约 30 s；CPU fp32 10 步约 2 分钟——若单步 >90 s 自动降档并如实记录）
-# 产物：log/book4-feasibility/probeA_base_{out}.json + act_sample.npz（不入库）
+# 产物：log/book4-feasibility/probeA_base_{out}.json + act_sample_{out}.npz（不入库）
 import argparse
+from moe_mla_slots import prepare_output
 import os
 import time
 
@@ -28,7 +29,9 @@ def run_arm(model, device, steps, batch, block, use_autocast, tag):
     model = model.to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=1e-4, betas=(0.9, 0.95), weight_decay=0.1)
     secs, losses, mem_trace = [], [], []
-    for step in range(1, steps + 1):
+    step = 0
+    while step < steps:
+        step += 1
         x, y = stream.batch(step, device)
         t0 = time.perf_counter()
         with torch.autocast(device_type=device.type, dtype=torch.bfloat16) \
@@ -43,15 +46,15 @@ def run_arm(model, device, steps, batch, block, use_autocast, tag):
         secs.append(time.perf_counter() - t0)
         losses.append(loss.item())
         if device.type == "mps":
-            # torch.mps 无 reset_peak API——峰值口径 = 每步后采样 current_allocated_memory 取 max
+            # torch.mps 无 reset_peak API——此处仅取步末current_allocated_memory采样最大值，非捕获峰值
             mem_trace.append(torch.mps.current_allocated_memory() / 1024 / 1024)
         # CPU 臂降档守卫：单步 >90 s 且投影总时长 >15 min → 减半步数（降档留痕）
         if device.type == "cpu" and step == 2 and sum(secs) / 2 * steps > 900:
-            new_steps = max(5, int(900 / (sum(secs) / 2)))
+            new_steps = max(step, min(steps, int(900 / (sum(secs) / 2))))
             print(f"[降档] {tag}: CPU 单步 {sum(secs)/2:.1f}s，投影 {steps} 步超 15 min → 减至 {new_steps} 步")
             steps = new_steps
     peak = max(mem_trace) if mem_trace else None
-    steady = secs[1:]                                  # 丢首步（惰性编译/缓存预热）
+    steady = secs[1:] or secs                                  # 丢首步（惰性编译/缓存预热）
     return {"device": str(device), "dtype": "bf16-autocast" if use_autocast else "fp32",
             "steps": steps, "batch": batch, "block": block,
             "sec_per_step_steady": round(float(np.median(steady)), 3),
@@ -61,7 +64,7 @@ def run_arm(model, device, steps, batch, block, use_autocast, tag):
 
 
 def capture_activation_sample(model):
-    """中间层（第 6 层输出）残差流样本：真实激活分布（供探针 E）。"""
+    """中间层（第 6 层输出）残差流样本：网络前向采样（随机权重/随机token，非训练后语料激活）（供探针 E）。"""
     torch.manual_seed(SEED)
     model = model.to("cpu").eval()
     grabbed = {}
@@ -75,6 +78,12 @@ def capture_activation_sample(model):
 
 
 def main(out_name, cpu_steps):
+    prepare_output("probeA_base", out_name)
+    if cpu_steps < 1:raise ValueError("cpu-steps必须为正")
+    if not torch.backends.mps.is_available():
+        raise RuntimeError("探针A包含历史MPS性能臂；本机无MPS，CPU局部检查请用章节入口")
+    sample_path = os.path.join(OUT_DIR, f"act_sample_{out_name}.npz")
+    if os.path.exists(sample_path):raise FileExistsError(sample_path)
     slots = bootstrap_book3()
     print(f"[bootstrap] llama_slots 自：{os.path.dirname(slots.__file__)}")
     torch.manual_seed(SEED)
@@ -105,15 +114,15 @@ def main(out_name, cpu_steps):
           f"| 总墙钟 {cpu['wall_sec']} s")
     report["cpu_fp32"] = cpu
 
-    # ③ 真实激活分布样本（中间层残差流）
+    # ③ 网络前向采样（随机权重/随机token，非训练后语料激活）样本（中间层残差流）
     h = capture_activation_sample(slots.LLaMA(slots.LLaMAConfig(**slots.LLAMA_215M)))
     os.makedirs(OUT_DIR, exist_ok=True)
-    np.savez_compressed(os.path.join(OUT_DIR, "act_sample.npz"), resid_layer6=h,
+    np.savez_compressed(sample_path, resid_layer6=h,
                         stats=np.array([h.mean(), h.std(), *np.percentile(h, [1, 50, 99])]))
     print(f"[激活样本] resid_layer6 形状 {h.shape} | mean {h.mean():.4f} std {h.std():.4f} "
-          f"| p1/p50/p99 {np.percentile(h, [1, 50, 99]).round(4).tolist()} -> act_sample.npz")
+          f"| p1/p50/p99 {np.percentile(h, [1, 50, 99]).round(4).tolist()} -> {sample_path}")
 
-    report["activation_sample"] = {"shape": list(h.shape), "mean": float(h.mean()), "std": float(h.std()),
+    report["activation_sample"] = {"path": sample_path, "provenance": "新初始化模型与随机token，未加载训练权重", "shape": list(h.shape), "mean": float(h.mean()), "std": float(h.std()),
                                    "p1_p50_p99": np.percentile(h, [1, 50, 99]).round(4).tolist()}
     report["verdict"] = ("底座可用" if abs(mps["sec_per_step_steady"] - 1.702) < 1.0 else "可用但偏离口径，需查")
     save_json("probeA_base", report, out_name)

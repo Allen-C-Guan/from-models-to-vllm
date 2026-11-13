@@ -3,7 +3,7 @@
 #       （GShard 600B / Switch-C 1571B / Mixtral 46.7B / gpt-oss-20b 20.91B）与官方口径对拍；
 #       ③ 单份/双份激活口径切换打印（本册口径=含 lm_head、不含输入 embedding lookup，双份并列）。
 # 所属章节：Book4 第 1 章（1.3 三口径立式 / 1.4 表 1.2 自算对拍 / 1.5 显存与开销账）。
-# 运行方式：cd 工作区根目录 && source env.sh && python code/ch01/account.py [--out-name run1]
+# 运行方式：工作区根目录 source env.sh 后，python from-models-to-vllm/book4-scale-and-efficiency/code/ch01/account.py --out-name run1
 # 口径：纯整数算术（Python int 无浮点误差）；无随机源（固定种子纪律不适用）。
 #       公式承 code/00-feasibility/moe_mla_slots.py 的 hand_account /
 #       activated_account 与 notes/00 §六。
@@ -12,7 +12,7 @@ import json
 import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-LOG_DIR = os.path.join(HERE, "..", "..", "log", "book4-ch01")
+LOG_DIR = os.path.join(os.getcwd(), "log", "book4-ch01")
 
 
 # ---------------- 三口径公式（decoder-only、untied、RMSNorm 只 weight、无 bias） ----------------
@@ -72,27 +72,23 @@ def check_mini():
 
 # ---------------- 验证二~五：四样本参数账（论文级 → config 级） ----------------
 def gshard():
-    """GShard MoE(2048E,36L)——论文级：Table 1 专家总数 36684 + 附录 A.2 维度 1024/8192。
-    专家=ReLU 两矩阵（2·d·d_ff/个）；enc-dec 无公开 config，注意力/嵌入按 1024 维估 ~5B。"""
+    """分别保留论文Table 1数值与隔层规则计数；不虚构整机余项。"""
     per_expert = 2 * 1024 * 8192
-    experts = 36_684 * per_expert
-    return {"per_expert": per_expert, "experts_total": experts,
-            "plus_attn_emb_est": 5_000_000_000, "self_total": experts + 5_000_000_000,
-            "official": 600_000_000_000, "official_str": "600B（摘要 beyond 600 billion，取整）"}
+    return {"per_expert": per_expert, "table_expert_count": 36684,
+            "table_experts_params": 36684 * per_expert,
+            "layout_expert_count": 36 // 2 * 2048,
+            "layout_experts_params": 36 // 2 * 2048 * per_expert,
+            "official_rounded": 600_000_000_000,
+            "status": "表中专家数与隔层规则不一致；只算专家矩阵，整机精确值待决"}
 
 
 def switch_c():
-    """Switch-C——论文级：Table 9（d=2080/d_ff=6144/2048 专家/频率 1/15 层/top-1）。
-    槽位数由官方 1571B 反解=30（15 编+15 解，每层 FFN 全换；T5 解码器第二处 FFN 未给账）。"""
+    """30个MoE层的条件账；反解再回代不是独立验证。"""
     per_expert = 2 * 2080 * 6144
-    per_slot = 2048 * per_expert
-    slots = round(1571e9 / per_slot)
-    experts = slots * per_slot
-    attn = slots * 4 * 2080 * 2080
-    emb = 2 * 32_000 * 2080
-    return {"per_expert": per_expert, "slots_solved": slots, "experts": experts,
-            "attn": attn, "emb": emb, "self_total": experts + attn + emb,
-            "official": 1_571_000_000_000, "official_str": "1571B（Table 9）"}
+    return {"per_expert": per_expert, "assumed_moe_layers": 30,
+            "experts_only": 30 * 2048 * per_expert,
+            "official_rounded": 1_571_000_000_000,
+            "status": "30层假设下的专家量级相容；公开旧config与论文字段有冲突"}
 
 
 def mixtral():
@@ -118,10 +114,10 @@ def gptoss_20b():
     total = L * (A + mlp_layer + 2 * d) + 2 * V * d + d
     act1 = L * (A + k * (n_mat * d * w + 2 * w + d) + E * d + E + 2 * d) + V * d + d
     act2 = act1 + V * d
-    assert total == 20_914_757_184 and act1 == 3_608_307_264, "gpt-oss 官方 Table 1 对账失败"
+    assert total == 20_914_757_184 and act1 == 3_608_307_264, "gpt-oss 结构公式回归计数不符"
     return {"attn_per_layer": A, "mlp_per_layer": mlp_layer, "total": total,
             "active_single": act1, "active_double": act2,
-            "official_str": "官方 Table 1 20.91B / Active 3.61B（单份口径）"}
+            "official_str": "官方 Table 1 20.91B / Active 3.61B（与单份计数舍入相符）"}
 
 
 def main():
@@ -142,29 +138,24 @@ def main():
           f"{mini['moe_minus_eqtotal']:,} = 路由门 E·d）")
     print(f"  激活参（单份）：dense {mini['dense_act_single']:,} / MoE {mini['moe_act_single']:,}"
           f"（含路由门；不含则 {mini['moe_act_single_no_router']:,}，与 dense 逐位相同）")
-    print("== 验证二：GShard MoE(2048E,36L)（论文级） ==")
-    g = res["gshard"]
-    print(f"  专家账 = 36,684 x 2·1024·8192 = {g['experts_total']:,}（≈{g['experts_total']/B:.1f}B）"
-          f"  vs 官方 {g['official_str']} —— 差 {(g['self_total']/g['official']-1)*100:+.1f}%，无公开 config，登记口径差")
-    print("== 验证三：Switch-C（论文级，槽位反解） ==")
-    s = res["switch_c"]
-    print(f"  反解槽位 = 1571B / (2048 x 2·2080·6144) = {s['slots_solved']}；"
-          f"自算总量 {s['self_total']:,}（≈{s['self_total']/B:.1f}B）vs 官方 {s['official_str']}")
+    print("== GShard 与 Switch-C：条件计数和未决差异 ==")
+    print(json.dumps({"gshard": res["gshard"], "switch_c": res["switch_c"]},
+                     ensure_ascii=False, indent=2))
     print("== 验证四：Mixtral 8x7B（config 级） ==")
     m = res["mixtral"]
     print(f"  总参 {m['total']:,}（{m['total']/B:.3f}B）/ 激活单份 {m['active_single']:,}"
           f"（{m['active_single']/B:.3f}B）/ 双份 {m['active_double']:,}（{m['active_double']/B:.3f}B）")
     print(f"  官方 {m['official_str']}")
-    print("== 验证五：gpt-oss-20b（config 级，逐位 assert 官方 Table 1） ==")
+    print("== 验证五：gpt-oss-20b（结构计数，与官方取整值比较） ==")
     o = res["gptoss_20b"]
     print(f"  总参 {o['total']:,} / 激活单份 {o['active_single']:,}（{o['active_single']/B:.3f}B）"
           f" / 双份 {o['active_double']:,}（{o['active_double']/B:.3f}B）")
-    print(f"  官方 {o['official_str']} —— 单份精确吻合（跨厂商口径不齐的实证）")
+    print(f"  官方 {o['official_str']} —— 单份在所报小数精度下相符")
     print(f"  每 token 前向 FLOPs ≈ 2·N_act：Mixtral {2*m['active_single']/B:.1f}G / "
           f"gpt-oss {2*o['active_single']/B:.1f}G")
 
     out = os.path.join(LOG_DIR, f"account_{args.out_name}.json")
-    with open(out, "w", encoding="utf-8") as f:
+    with open(out, "x", encoding="utf-8") as f:
         json.dump(res, f, ensure_ascii=False, indent=2)
     print(f"[saved] {out}")
 

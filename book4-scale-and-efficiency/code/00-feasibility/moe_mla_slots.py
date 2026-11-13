@@ -22,6 +22,7 @@ import json
 import os
 import sys
 import time
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -29,7 +30,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))  # 三级上溯=工作区根/书仓根（书仓候选 book3-modern-open-source-skeleton 的定位锚，组装归一化按跨册 bootstrap 行豁免本行）
+BOOKS_ROOT = Path(HERE).parents[2]
+REPO_ROOT = str(next((p for p in Path(HERE).parents if (p / "env.sh").is_file()), BOOKS_ROOT))
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book4-feasibility")
 SEED = 20261002                                            # 全书统一种子
 
@@ -42,6 +44,7 @@ EVAL_SP32K = os.path.join(REPO_ROOT, "log", "book3-ch10", "eval32k.bin")
 
 # ---------------- 跨册双候选 bootstrap：llama_slots 的两种物理落点，存在即插入 ----------------
 _SLOTS_CANDIDATES = [
+    str(BOOKS_ROOT / "book3-modern-open-source-skeleton" / "code" / "00-feasibility"),
     os.path.abspath(os.path.join(REPO_ROOT, "code", "Book3-现代开源骨架", "00-feasibility")),
     os.path.abspath(os.path.join(REPO_ROOT, "from-models-to-vllm", "book3-modern-open-source-skeleton",
                                  "code", "00-feasibility")),
@@ -77,7 +80,7 @@ def slots_paths():
 class TokenStream:
     """np.memmap 顺序批加载器。batch(step) 返回 (x,y)，形状 (B,T)/(B,T) 的 int64——next-token 目标。
 
-    第 step 批取自偏移 step*B*T 的连续段（无重叠、无洗牌——可行性探针的确定性口径）。
+    第step批取连续B*T+1个token，x/y整体错一位；相邻批共享边界标签token，输入批无重叠。
     """
 
     def __init__(self, path, batch, block, holdout_first=0):
@@ -267,13 +270,13 @@ class MLAAttention(nn.Module):
       LN_c（潜向量 RMSNorm）                                       ↔ kv_a_layernorm (d_c)
       W_UK/W_UV（K/V 上投影，按头切片融合存一个矩阵）              ↔ kv_b_proj (d_c→h*(d_n+d_v))
       W_DQ/W_UQ（q 侧低秩分解，可选）                              ↔ q_a_proj/q_a_layernorm/q_b_proj
-      W_KR 严格说并入 kv_a_proj_with_mqa 的后 d_r 列；W_QR ↔ q_b_proj 的 rope 列
+      W_KR 并入 kv_a_proj_with_mqa 的后 d_r 行；W_QR 对应 q_b_proj 每头的位置行块
       W_O                                                          ↔ o_proj (h*d_v→d)
     几何：h 头 × (d_nope 压缩键维 + d_rope 解耦 RoPE 维)；v 独立维 d_v（可与 d_nope 不同——DSV3 教学点）。
     KV cache 每 token 每层只存 (d_c + d_r) 个元素（c_KV 与 k_R 两份），
     K/V 头在推理时由上投影现算——「KV 折叠进低秩潜空间」的代码形态。
     注意：RoPE 只作用于 q_pe/k_pe 的 d_r 维（llama_slots.apply_rope 的 rotate_half 约定；
-    HF DSV2 用复数约定，两者对 q·k 点积数学等价——q/k 同约定则旋转正交一致，见探针 g 记录）。
+    HF DSV2 用复数约定；两者需连同投影行作相应置换才表示同一函数，不能只换配对方式）。
     """
 
     def __init__(self, hidden_size, n_head, kv_lora_rank, qk_nope_head_dim, qk_rope_head_dim,
@@ -336,7 +339,7 @@ class MLAAttention(nn.Module):
 
     def latents(self, x):
         """产出「可缓存」的两份潜向量：c_KV (B,n,d_c，已 LN) 与 k_R (B,n,d_r，未旋转）。
-        KV cache 存的就是这两份——权重吸收/账本实验的口径正身。"""
+        本类仅完整序列前向，无增量cache；论文缓存读法还须保存已旋转的位置键。"""
         c_raw = self.kv_a_proj_with_mqa(x)                                   # (B,n,d_c+d_r)
         c_kv, k_r = c_raw.split([self.d_c, self.d_rope], dim=-1)
         return self.kv_a_layernorm(c_kv), k_r
@@ -684,7 +687,7 @@ def pick_device(pref="mps"):
 
 
 def mps_peak_mb(reset=False):
-    """MPS 统一内存口径：torch.mps.current_allocated_memory 峰值（无则返回 None）。"""
+    """当前allocated采样（MiB），不是完整捕获的峰值；不可用时返回None。"""
     try:
         if reset:
             torch.mps.reset_peak_memory_stats()
@@ -694,10 +697,19 @@ def mps_peak_mb(reset=False):
         return None
 
 
+def prepare_output(name, out_name="run1"):
+    if not out_name or Path(out_name).name != out_name or out_name in (".", ".."):
+        raise ValueError("out-name须为不含目录分隔符的名称")
+    path = os.path.join(OUT_DIR, f"{name}_{out_name}.json")
+    if os.path.exists(path):
+        raise FileExistsError(f"保留已有结果，请更换out-name：{path}")
+    return path
+
+
 def save_json(name, obj, out_name="run1"):
     os.makedirs(OUT_DIR, exist_ok=True)
-    path = os.path.join(OUT_DIR, f"{name}_{out_name}.json")
-    with open(path, "w", encoding="utf-8") as f:
+    path = prepare_output(name, out_name)
+    with open(path, "x", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False, indent=2)
     print(f"[产物] {path}")
     return path

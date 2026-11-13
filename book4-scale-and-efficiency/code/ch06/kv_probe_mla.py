@@ -21,7 +21,7 @@ import os
 import torch
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
+REPO_ROOT = os.getcwd()
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book4-ch06")
 
 BF16 = 2  # 每元素字节数
@@ -46,8 +46,10 @@ def part0_hand_example():
     assert torch.allclose(k, (W_UK @ W_DKV) @ h) and torch.allclose(v, (W_UV @ W_DKV) @ h)
     cache = (2 + 1) / 16                                                     # (d_c + d_h^R)/d
     print(f"[Part0 手算例] h=[1,2,1,2,...] → c=[4,8]（外加 k_R=3）；K 读法全 1、V 读法 4/-8 交替"
-          f"——与满秩真值逐位一致；缓存 {2+1}/16 = {cache:.4f}（−{(1-cache)*100:.2f}%）")
-    return {"c": [4.0, 8.0], "k_r": 3.0, "cache_frac": 3 / 16, "saving_pct": (1 - 3 / 16) * 100}
+          f"——与同一秩2映射逐位一致；三数存储演示（非完整RoPE） {2+1}/16 = {cache:.4f}（−{(1-cache)*100:.2f}%）")
+    return {"c": [4.0, 8.0], "k_r": 3.0, "cache_frac": 3 / 16, "saving_pct": (1 - 3 / 16) * 100,
+            "scalar_position_is_storage_demo_only": True,
+            "two_dimensional_position_saving_pct": (1-(2+2)/16)*100}
 
 
 def part1_bytes_measured():
@@ -75,7 +77,8 @@ def part1_bytes_measured():
                        torch.zeros(1, L, n, d_r, dtype=torch.bfloat16))
             formula = L * n * (d_c + d_r) * BF16
             elems = L * (d_c + d_r)
-        measured = sum(t.element_size() * t.numel() for t in tensors)
+        measured = sum(t.untyped_storage().nbytes() for t in tensors)
+        assert all(t.is_contiguous() for t in tensors)
         assert measured == formula, (name, measured, formula)
         n_pass += 1
         rows.append({"case": name, "elems_per_token": elems,
@@ -142,7 +145,7 @@ def part3_three_calibers():
     print(f"[Part3 三口径] 架构口径（同构 MHA 反事实）= 1−576/32768 = {arch*100:.2f}%  ← 本章主数字")
     print(f"[Part3 三口径] 跨机 bf16（vs DeepSeek 67B GQA-8）= 1−34,560/194,560 = {cross*100:.2f}%")
     print(f"[Part3 三口径] 部署口径（V2 侧 MLA+6bit KV、67B 侧 bf16）= 1−(576·60·6)/(2048·95·16)"
-          f" = {deploy*100:.2f}%  ← 论文摘要 93.3% 的复算（复合：压缩×层数差×精度）")
+          f" = {deploy*100:.2f}%  ← 与摘要93.3%在其精度下相容的解释，不是唯一来源证明")
     print(f"[Part3 金句复算] MLA 每层 576 元素 = 2·128·{groups} → 等效 {groups} 组的 GQA（论文口径 2.25 ✓）")
     print(f"[Part3 Lite 对 Table 9] {576*27:,}/{2*16*128*27:,} = {lite_frac*100:.2f}% ≈ 论文 App D.2 的 14%")
     print(f"[Part3 每层参数账] MLA {mla_p:,} vs GQA-8 {gqa_p:,}（DSV2 维度，省 {(1-mla_p/gqa_p)*100:.1f}%）")
@@ -150,7 +153,9 @@ def part3_three_calibers():
     assert round(deploy * 100, 2) == 93.34 and groups == 2.25
     assert round(lite_frac * 100, 2) == 14.06
     return {"arch_pct": round(arch * 100, 2), "cross_pct": round(cross * 100, 2),
-            "deploy_pct": round(deploy * 100, 2), "gqa_equiv_groups": groups,
+            "deploy_pct": round(deploy * 100, 2),
+            "deploy_note": "假设67B侧16bit；有效载荷复算，不是实测分配或唯一解释",
+            "gqa_equiv_groups": groups,
             "lite_frac_pct": round(lite_frac * 100, 2),
             "mla_params_per_layer": mla_p, "gqa8_params_per_layer": gqa_p,
             "mla_param_saving_pct": round((1 - mla_p / gqa_p) * 100, 1)}
@@ -165,7 +170,7 @@ def main(out_name):
     report["verdict"] = "PASS"
     os.makedirs(OUT_DIR, exist_ok=True)
     path = os.path.join(OUT_DIR, f"kv_probe_mla_{out_name}.json")
-    with open(path, "w", encoding="utf-8") as f:
+    with open(path, "x", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
     print(f"[产物] {path}")
     print("[判定] PASS（全部 assert 通过）")

@@ -26,7 +26,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.abspath(os.path.join(HERE, "..", "00-feasibility")))
 from moe_mla_slots import SEED, HFMixtralMoE, bootstrap_book3  # noqa: E402  正身（组件库）
 
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
+REPO_ROOT = os.getcwd()  # 按正文约定从工作区根目录运行，产物不写进书仓
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book4-ch02")
 
 
@@ -50,6 +50,8 @@ class MixtralTopKRouter(nn.Module):
 
     def __init__(self, hidden_size, n_expert, top_k):
         super().__init__()
+        if hidden_size <= 0 or n_expert <= 0 or not 1 <= top_k <= n_expert:
+            raise ValueError("hidden_size/E须为正，且1 <= top_k <= E")
         self.weight = nn.Parameter(torch.empty(n_expert, hidden_size))    # (E,d)
         nn.init.normal_(self.weight, mean=0.0, std=0.02)
         self.n_expert, self.top_k = n_expert, top_k
@@ -89,7 +91,7 @@ class ExpertBank(nn.Module):
             xe = h[tok]                                           # gather：(N,d) -> (n_e,d)
             gate, up = F.linear(xe, self.gate_up_proj[e]).chunk(2, dim=-1)  # (n_e,2w) -> (n_e,w)×2
             y = F.linear(F.silu(gate) * up, self.down_proj[e])    # (n_e,w) -> (n_e,d) SwiGLU 专家
-            out.index_add_(0, tok, y * topk_w[tok, slot].unsqueeze(1))      # scatter：加权写回 (N,d)
+            out.index_add_(0, tok, (y * topk_w[tok, slot].to(y.dtype).unsqueeze(1)).to(out.dtype))      # scatter：加权写回 (N,d)
             counts[e] = tok.numel()
         return out, counts
 
@@ -103,7 +105,7 @@ class SparseMoE(nn.Module):
     构造双形态：SparseMoE(cfg)（字段别名族 n_expert|num_local_experts、top_k|num_experts_per_tok、
     expert_dim|intermediate_size）或 SparseMoE(hidden_size=…, n_expert=…, top_k=…, expert_dim=…)。
     forward(x, out_router_logits=False)：x (B,n,d) -> hidden (B,n,d)；out_router_logits=True 时
-    返回 (hidden, router_logits (B,n,E))——对齐 MixtralForCausalLM 的输出约定（aux loss 吃它）。
+    返回 (hidden, router_logits (B,n,E))；这是教学接口，HF捕获的逐层logits可为展平(N,E)，使用辅助损失前须确认布局。
     """
 
     def __init__(self, cfg=None, hidden_size=None, n_expert=None, top_k=None, expert_dim=None, **_):
@@ -220,7 +222,8 @@ def main(out_name):
     t0 = time.perf_counter()
     os.makedirs(OUT_DIR, exist_ok=True)
     slots = bootstrap_book3()
-    report = {"seed": SEED, "device": "cpu fp32", "torch": torch.__version__}
+    report = {"seed": SEED, "device": "cpu fp32", "torch": torch.__version__,
+              "transformers": __import__("transformers").__version__}
 
     # ---- ① 教学件 vs 正身 HFMixtralMoE：同权重前向，期望逐位一致 ----
     d, E, k, w = 64, 4, 2, 128                                      # 小而全几何（parity_all 同款）
@@ -282,7 +285,7 @@ def main(out_name):
         lh = hf(xi).logits                                            # (2,128,512)
     delta = (lo - lh).abs().max().item()
     argmax_agree = (lo.argmax(-1) == lh.argmax(-1)).float().mean().item()
-    print(f"[③ vs HF 5.18.0] strict 直搬通过 {ours.n_params():,} 参 | max|Δlogits| = {delta:.2e}"
+    print(f"[③ vs HF {report['transformers']}] strict 直搬通过 {ours.n_params():,} 参 | max|Δlogits| = {delta:.2e}"
           f" | argmax 一致率 = {argmax_agree:.4f}")
     report["vs_hf_mixtral"] = {"params": ours.n_params(), "max_abs_diff_logit": delta,
                                "argmax_agreement": argmax_agree,
@@ -292,9 +295,11 @@ def main(out_name):
     ok = all(report[s]["verdict"] == "PASS" for s in ("teach_vs_ref", "mechanism_checks", "vs_hf_mixtral"))
     report["verdict"] = "PASS" if ok else "FAIL"
     path = os.path.join(OUT_DIR, f"moe_parity_{out_name}.json")
-    with open(path, "w", encoding="utf-8") as f:
+    with open(path, "x", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
     print(f"[判定] {report['verdict']} | 产物 {path} | 墙钟 {report['wall_sec']} s")
+    if not ok:
+        raise AssertionError("MoE对拍未通过，详见记录")
 
 
 if __name__ == "__main__":

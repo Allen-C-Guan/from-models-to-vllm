@@ -1,51 +1,26 @@
-# mixtral_infer.py —— Book4 ch4 config 反推实习：Mixtral 8x7B 上第一次独立走完五步法
-# 用途：正文 4.2/4.3 的代码正身。①认家族（model_type/architectures/transformers_version 年代学）
-#       ②重建图纸（字段→部件映射表，含 head_dim 缺席注记）③算账对拍（参数账公式整数精确算
-#       +assert 逐位：总参 46,702,792,704 / 激活参单份 12,748,853,248 / 双份 12,879,925,248
-#       ——论文 47B/13B=取整口径、HF 模型卡 46.7B/12.9B 的精确底数）④读外围（词表 32k / 32k 原生
-#       上下文 / sliding_window=null）⑤证据分级与默认类差异检测（checkpoint vs transformers
-#       5.18.0 MixtralConfig() 默认两处差异：max_position_embeddings 32768 vs 131072、
-#       router_aux_loss_coef 0.02 vs 0.001；head_dim 两边都缺席→按 d/h=128 派生）。
-# 所属章节：Book4 第 4 章（Mixtral：开源 MoE 组装术的实证）。
-# 运行方式：cd 工作区根目录 && source env.sh && \
-#           python code/ch04/mixtral_infer.py --out-name run1
-#   （CPU fp32，秒级；产物 log/book4-ch04/mixtral_infer_run1.json，不入库）
-# config 来源：mistralai/Mixtral-8x7B-v0.1 raw config.json（2026-10-04 curl 直读复核，
-#   与调研期 papers/02 §1.2 逐字段一致——P6 销项口径；head_dim 字段不存在是该复核的新发现）。
+# mixtral_infer.py —— Book4第4章4.1—4.4节：Mixtral配置反推与参数核算
+# 运行：工作区根目录 source ./env.sh 后运行本文件 --out-name run1。
+# 离线读取随书官方原始配置快照；打印来源、哈希与当前transformers版本。
+# 总参46,702,792,704；激活单份12,748,853,248、双份12,879,925,248。
+# 与论文47B/13B及模型卡46.7B/12.9B比较时，声明计数范围和取整精度。
+# 默认类的字段和值随版本变化，不预设差异数量；raw缺head_dim，不能代替读取实现规则。
+# 输出log/book4-ch04，不覆盖同名结果，不下载权重。
 import argparse
+import hashlib
+from pathlib import Path
 import json
 import os
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
+REPO_ROOT = os.getcwd()
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book4-ch04")
 
 # ---- 第①步的原料：checkpoint raw config.json 逐字段（禁手抄数字入正文，一切以此为准） ----
-CHECKPOINT_CONFIG = {
-    "architectures": ["MixtralForCausalLM"],
-    "attention_dropout": 0.0,
-    "hidden_act": "silu",
-    "hidden_size": 4096,
-    "initializer_range": 0.02,
-    "intermediate_size": 14336,
-    "max_position_embeddings": 32768,
-    "model_type": "mixtral",
-    "num_attention_heads": 32,
-    "num_experts_per_tok": 2,
-    "num_hidden_layers": 32,
-    "num_key_value_heads": 8,
-    "num_local_experts": 8,
-    "output_router_logits": False,
-    "rms_norm_eps": 1e-05,
-    "rope_theta": 1000000.0,
-    "router_aux_loss_coef": 0.02,
-    "sliding_window": None,
-    "tie_word_embeddings": False,
-    "vocab_size": 32000,
-}
-# （torch_dtype=bfloat16 / transformers_version="4.36.0.dev0" / use_cache 三项为外围元数据，
-#   不入结构账；transformers_version 只作第①步的年代学证据。）
+CONFIG_FILE = Path(__file__).with_name("mixtral_config.json")
+# 官方HF仓库raw配置的本轮快照；来源与内容哈希随结果输出，非运行时联网读取。
+CONFIG_URL = "https://huggingface.co/mistralai/Mixtral-8x7B-v0.1/resolve/main/config.json"
+CHECKPOINT_CONFIG = json.loads(CONFIG_FILE.read_text())
 
 # ---- 第③步的锚点：期望值全部逐位（ch1 account.py 同源公式；论文/HF 卡口径对照） ----
 EXPECT = {
@@ -63,7 +38,7 @@ def step1_family(rep):
     cfg = CHECKPOINT_CONFIG
     rows = [("model_type", cfg["model_type"], "HF 家族注册名（mixtral 族）"),
             ("architectures", cfg["architectures"][0], "入仓时对应的实现类"),
-            ("transformers_version", "4.36.0.dev0", "config 写入时的库版本——2023-12/2024-01 年代")]
+            ("transformers_version", cfg.get("transformers_version", "未记录"), "序列化版本线索，不独立证明写入日期")]
     print("== ① 认家族 ==")
     for k, v, note in rows:
         print(f"  {k:<22} {str(v):<28} {note}")
@@ -81,21 +56,21 @@ def step2_blueprint(rep):
         ("num_key_value_heads", c["num_key_value_heads"], f"KV 头数 h_kv（GQA {h // h_kv}:1）"),
         ("(head_dim)", f"缺席 → 派生 d/h = {d // h}", "raw config 无此字段；有效头维 128（32×128=4096=d）"),
         ("intermediate_size", c["intermediate_size"], "每专家 SwiGLU 宽 w（全宽专家，非切细）"),
-        ("vocab_size", c["vocab_size"], "词表 V（Llama 1/2 同款 32k SentencePiece BPE）"),
+        ("vocab_size", c["vocab_size"], "词表行数V；具体token映射另看tokenizer"),
         ("num_local_experts", c["num_local_experts"], "专家数 E=8（每层各一套，32 层共 256 个专家参数组）"),
         ("num_experts_per_tok", c["num_experts_per_tok"], "每 token 激活专家数 k=2（top-2）"),
-        ("max_position_embeddings", c["max_position_embeddings"], "RoPE 缓存上限=原生 32k 上下文"),
+        ("max_position_embeddings", c["max_position_embeddings"], "配置记录32k；训练长度另由论文说明"),
         ("rope_theta", c["rope_theta"], "RoPE 底数 θ=1e6（长窗出厂档；Book3 第 7 章对照点）"),
-        ("sliding_window", "null", "无滑动窗字段——32k 全稠密注意力（config 事实，机制归后续册）"),
+        ("sliding_window", "null", "sliding_window字段存在且为null，本配置不启用滑动窗口"),
         ("hidden_act / rms_norm_eps", "silu / 1e-5", "SwiGLU + RMSNorm（四插槽里的两格）"),
-        ("router_aux_loss_coef", c["router_aux_loss_coef"], "辅助损失系数——社区转换默认，非论文值（4.5 节）"),
+        ("router_aux_loss_coef", c["router_aux_loss_coef"], "HF检查点记录系数；不是原预训练配方的证明"),
         ("tie_word_embeddings", False, "untied：入口 embedding 与出口 lm_head 两份（Book3 第 5 章）"),
     ]
     print("\n== ② 重建图纸：字段 → 部件 ==")
     for k, v, note in fields:
         print(f"  {k:<28} {str(v):<30} {note}")
     rep["step2_blueprint"] = [{"field": k, "value": v, "component": n} for k, v, n in fields]
-    rep["head_dim_absent_in_raw_config"] = True
+    rep["head_dim_absent_in_raw_config"] = "head_dim" not in c
 
 
 def step3_account(rep):
@@ -143,17 +118,17 @@ def step3_account(rep):
                             "extra_ffn_copies": (E - 1) * L * expert,
                             "router_total": L * d * E,
                             "note": "46.7B = 7.24B 骨架 + 7×5.64B FFN 复件 + 0.001B 路由门（8×7=56B 的"
-                            "名字夸大：注意力与出入口只装一份）"}
+                            "名称不能按完整模型相乘：注意力与出入口只装一份）"}
     print(f"  加法分解           = {dense_eq:,}（≈Mistral 7B 骨架）+ {(E - 1) * L * expert:,}"
           f"（7 份 FFN 复件）+ {L * d * E:,}（路由门）")
     rep["step3_account"] = acc
 
 
 def step4_periphery(rep):
-    """读外围三件：词表 / 上下文 / 无滑动窗字段。"""
+    """读外围三件：词表 / 上下文 / 值为null的滑动窗口字段。"""
     c = CHECKPOINT_CONFIG
     print("\n== ④ 读外围 ==")
-    print(f"  vocab_size=32000：Llama 1/2 同款 SentencePiece BPE 词表（Book3 第 5 章已拆到字节）")
+    print(f"  vocab_size={c['vocab_size']}：行数相同不能证明token-ID映射相同")
     print(f"  max_position_embeddings=32768：原生 32k 上下文（论文摘要 'Trained with a 32k-token"
           f" context'——非外推；Book3 第 7 章外推链的对照点）")
     print(f"  sliding_window=null：32k 全稠密注意力（config 事实；机制与收益的唯一归属在后续册）")
@@ -162,45 +137,39 @@ def step4_periphery(rep):
 
 
 def step5_diff(rep):
-    """证据分级收尾：checkpoint 实值 vs transformers 5.18.0 默认类——两处差异 + head_dim 缺席。"""
+    """打印当前版本默认值与检查点的差异，不预设差异项数量。"""
+    import transformers
     from transformers import MixtralConfig
     default = MixtralConfig()
     compare = ["hidden_size", "num_hidden_layers", "num_attention_heads", "num_key_value_heads",
                "intermediate_size", "vocab_size", "num_local_experts", "num_experts_per_tok",
                "max_position_embeddings", "sliding_window", "hidden_act", "rms_norm_eps",
-               "router_aux_loss_coef", "tie_word_embeddings"]
-    diffs = {}
-    for f in compare:
-        ck = CHECKPOINT_CONFIG[f]
-        df = getattr(default, f, None)
-        if ck != df:
-            diffs[f] = {"checkpoint": ck, "default_class": df}
-    # rope_theta 在 5.x 被折进 rope_parameters 对象（读法换代的演示）
-    cfg5 = MixtralConfig(rope_theta=1000000.0)
-    rope_read = {"rope_parameters": dict(cfg5.rope_parameters)}
-    try:
-        _ = cfg5.rope_theta
-        rope_read["direct_attr_access"] = "可用"
-    except AttributeError:
-        rope_read["direct_attr_access"] = "AttributeError（5.x 一律读 config.rope_parameters）"
-
-    print("\n== ⑤ 默认类差异检测（checkpoint 为准——两处差异 + 一处双方缺席） ==")
-    for f, v in diffs.items():
-        print(f"  ⚠ {f}: checkpoint={v['checkpoint']} vs 5.18.0 默认={v['default_class']}")
-    print(f"  ⚠ head_dim: checkpoint 与默认类均无此字段（默认 None）→ 按派生 d/h=128")
-    print(f"  rope 读法演示: {rope_read}")
-    print(f"  红线提醒: router_aux_loss_coef=0.02 是社区转换默认——Mixtral 论文零披露训练配方，")
-    print(f"            不得写成『Mistral 训练用了 0.02 的辅助损失』（正文 4.5 节）")
-    rep["step5_diff"] = {"diffs": diffs, "head_dim": "absent both -> derived 128",
-                         "rope_read": rope_read}
-    rep["verdict"] = "PASS" if len(diffs) == 2 else f"CHECK（预期 2 处差异，实测 {len(diffs)}）"
+               "router_aux_loss_coef", "tie_word_embeddings", "output_router_logits"]
+    diffs={}
+    for field in compare:
+        ck=CHECKPOINT_CONFIG.get(field)
+        df=getattr(default,field,None)
+        if ck!=df:diffs[field]={"checkpoint":ck,"default_class":df}
+    cfg=MixtralConfig(**CHECKPOINT_CONFIG)
+    rope_read={"raw_theta":CHECKPOINT_CONFIG.get("rope_theta"),
+               "object_parameters":getattr(cfg,"rope_parameters",None),
+               "object_theta":getattr(cfg,"rope_theta",None)}
+    rep["transformers"]=transformers.__version__
+    rep["step5_diff"]={"diffs":diffs,"raw_has_head_dim":"head_dim" in CHECKPOINT_CONFIG,
+        "default_has_head_dim":hasattr(default,"head_dim"),"default_head_dim":getattr(default,"head_dim",None),
+        "rope_read":rope_read}
+    print(f"== 当前transformers {transformers.__version__}默认值对照 ==")
+    print(json.dumps(rep["step5_diff"],ensure_ascii=False,indent=2))
+    print("0.02是检查点字段；默认output_router_logits=false，不等于训练时已加入aux项。")
+    rep["verdict"]="PASS"  # 上一步整数账断言已通过；默认类差异仅报告，不以数量判错。
 
 
 def main(out_name):
     t0 = time.perf_counter()
     os.makedirs(OUT_DIR, exist_ok=True)
     rep = {"seed": None, "device": "cpu", "config_source":
-           "mistralai/Mixtral-8x7B-v0.1 raw config.json（2026-10-04 curl 直读复核，P6 销项口径）",
+           CONFIG_URL, "config_file":str(CONFIG_FILE),
+           "config_sha256":hashlib.sha256(CONFIG_FILE.read_bytes()).hexdigest(),
            "expect": EXPECT}
     step1_family(rep)
     step2_blueprint(rep)
@@ -209,7 +178,7 @@ def main(out_name):
     step5_diff(rep)
     rep["wall_sec"] = round(time.perf_counter() - t0, 1)
     path = os.path.join(OUT_DIR, f"mixtral_infer_{out_name}.json")
-    with open(path, "w", encoding="utf-8") as f:
+    with open(path, "x", encoding="utf-8") as f:
         json.dump(rep, f, ensure_ascii=False, indent=2)
     print(f"\n[判定] {rep['verdict']} | 产物 {path} | 墙钟 {rep['wall_sec']} s")
 

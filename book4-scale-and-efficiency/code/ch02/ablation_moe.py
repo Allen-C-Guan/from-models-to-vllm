@@ -15,6 +15,7 @@
 # 模块来源：不私搭模型——整机/手算账 import 自正身 moe_mla_slots（其内部 bootstrap 引 Book3 llama_slots）。
 import argparse
 import csv
+import hashlib
 import json
 import math
 import os
@@ -30,7 +31,7 @@ from moe_mla_slots import (SEED, SlotConfig, SlotLLaMA, TokenStream, activated_a
                            hand_account)
 
 # ---------------- 固定口径 ----------------
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
+REPO_ROOT = os.getcwd()  # 工作区根目录，见正文运行命令
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book4-ch02")
 TOKENS_BIN = os.path.join(REPO_ROOT, "log", "book2-ch08", "tokens.bin")
 EVAL_BIN = os.path.join(REPO_ROOT, "log", "book2-ch08", "eval.bin")
@@ -70,7 +71,7 @@ def build_eval_batches(device):
 
 @torch.no_grad()
 def eval_loss(model, ex, ey):
-    """49 窗 fp32 eval（无 autocast——权重本就 fp32）；返回 (均值, 标准误)。"""
+    """固定EVAL_BATCHES批fp32评测；返回批均值平均和批间SE，非训练种子方差。"""
     model.eval()
     losses = []
     for i in range(EVAL_BATCHES):
@@ -83,7 +84,7 @@ def eval_loss(model, ex, ey):
 
 
 def build_arm(arm):
-    """构造臂：同种子建整机（SlotLLaMA 正身），dense=moe 插槽留空 / moe=teach 版 SparseMoE。"""
+    """构造同种子整机；MoE用组件库ModuleList版，不是本章融合3D类。公共权重不保证相同。"""
     common = dict(vocab_size=VOCAB, hidden_size=D_MODEL, num_hidden_layers=N_LAYER,
                   num_attention_heads=N_HEAD, num_key_value_heads=N_KV, intermediate_size=D_DENSE)
     if arm == "dense":
@@ -117,6 +118,8 @@ def run_arm(arm, steps, eval_every, device, stream, ex, ey, report, out_json):
     resumed_from = None
     if os.path.exists(ckpt_path):
         ck = torch.load(ckpt_path, map_location=device, weights_only=False)
+        if ck.get("run_contract") != report["run_contract"] or ck.get("arm") != arm:
+            raise ValueError("checkpoint与当前日程/数据/实现不符；请改用新的out-name")
         m.load_state_dict(ck["model"])
         opt.load_state_dict(ck["opt"])
         train_losses, lrs, times = ck["train_losses"], ck["lrs"], ck["times"]
@@ -169,6 +172,7 @@ def run_arm(arm, steps, eval_every, device, stream, ex, ey, report, out_json):
                           "n_tokens": EVAL_BATCHES * TPB})
             print(f"  [{arm:5s}] [eval] step {step}: eval loss {el:.4f} ± {se:.4f}", flush=True)
             torch.save({"model": m.state_dict(), "opt": opt.state_dict(), "step": step,
+                        "run_contract": report["run_contract"], "arm": arm,
                         "train_losses": train_losses, "lrs": lrs, "times": times, "evals": evals,
                         "elapsed_train": elapsed_train, "elapsed_eval": elapsed_eval}, ckpt_path)
 
@@ -184,6 +188,9 @@ def run_arm(arm, steps, eval_every, device, stream, ex, ey, report, out_json):
                    **({} if arm == "dense" else {"n_expert": N_EXPERT, "top_k": TOP_K,
                                                  "expert_dim": D_EXPERT})},
         "params_total": n_total, "params_active": act, "params_active_nonemb": act_ne,
+        "params_active_convention": "历史双表，不含路由门",
+        "params_active_with_head_and_router": act - VOCAB * D_MODEL
+            + (N_LAYER * N_EXPERT * D_MODEL if arm == "moe" else 0),
         "params_total_ratio_vs_dense": round(n_total / DENSE_PARAMS, 3),
         "steps_done": steps_done, "steps_planned": steps, "resumed_from_step": resumed_from,
         "tail300_train_loss": round(sum(tail) / len(tail), 5),
@@ -195,12 +202,13 @@ def run_arm(arm, steps, eval_every, device, stream, ex, ey, report, out_json):
         "sec_per_step_steady": round(sum(steady) / len(steady), 4),
         "sec_per_step_median": round(float(np.median(steady)), 4),
         "sec_step_std": round(float(np.std(steady)), 4),
-        "mem_peak_delta_mb": round(peak - base_alloc, 1),
+        "mem_peak_delta_mb": round(peak - base_alloc, 1) if device.type == "mps" else None,  # 兼容旧键，MiB
+        "memory_metric": "MPS步末current_allocated_memory采样最大增量，MiB；非算子瞬时峰值",
         "elapsed_train_sec": round(elapsed_train, 1), "elapsed_eval_sec": round(elapsed_eval, 1),
         "wallclock_sec": round(time.perf_counter() - t_arm, 1),
         "diverged": diverged_at is not None, "diverged_at_step": diverged_at,
         "divergence_reason": reason,
-        "precision": "train bf16 autocast / eval fp32",
+        "precision": "train bf16 autocast / eval fp32" if device.type == "mps" else "CPU fp32",
     }
     curve_path = os.path.join(OUT_DIR, f"curve_{arm}_{report['meta']['out_name']}.csv")
     with open(curve_path, "w", newline="", encoding="utf-8") as cf:
@@ -222,7 +230,7 @@ def run_arm(arm, steps, eval_every, device, stream, ex, ey, report, out_json):
 
 
 def add_pair_summary(report):
-    """dense vs moe 两读数分开念：质量（eval 差）与速度（派发开销倍数）。"""
+    """分别报告eval差与整步耗时比；时间比不等于派发净开销。"""
     arms = report["arms"]
     a, b = arms.get("dense"), arms.get("moe")
     if not (a and b and a["eval_final"] is not None and b["eval_final"] is not None):
@@ -245,6 +253,8 @@ def main():
     ap.add_argument("--arms", type=str, default="dense,moe", help="臂选择（dense/moe，逗号分隔）")
     ap.add_argument("--eval-every", type=int, default=None, help="eval 间隔（默认 max(100, steps//4)）")
     args = ap.parse_args()
+    if args.steps < 1 or (args.eval_every is not None and args.eval_every < 1):
+        ap.error("steps与eval-every必须为正整数")
     out_name = args.out_name or ("fast" if args.steps <= 500 else "full")
     eval_every = args.eval_every or max(100, args.steps // 4)
     arms = [a.strip() for a in args.arms.split(",")]
@@ -260,27 +270,39 @@ def main():
     ex, ey = build_eval_batches(device)
     out_json = os.path.join(OUT_DIR, f"ablation_moe_{out_name}.json")
 
+    def file_id(path):
+        st = os.stat(path)
+        return {"path": os.path.realpath(path), "size": st.st_size, "mtime_ns": st.st_mtime_ns}
+    # 语料以路径/大小/mtime辨认；不声称这是内容哈希。源码另取SHA256。
+    contract = {"version": 1, "steps": args.steps, "eval_every": eval_every,
+                "seed": SEED, "batch": BATCH, "block": BLOCK,
+                "train_data": file_id(TOKENS_BIN), "eval_data": file_id(EVAL_BIN),
+                "script_sha256": hashlib.sha256(open(__file__, "rb").read()).hexdigest(),
+                "core_sha256": hashlib.sha256(open(sys.modules[SlotLLaMA.__module__].__file__, "rb").read()).hexdigest(),
+                "torch": torch.__version__, "device": str(device)}
     if os.path.exists(out_json):
         with open(out_json, encoding="utf-8") as f:
             report = json.load(f)
+        if report.get("run_contract") != contract:
+            raise ValueError("已有报告与当前日程/数据/实现不符；请改用新的out-name")
         report.setdefault("arms", {})          # 保留已完成的未请求臂（防 --arms 子集覆写丢记录）
         print(f"[续跑] 已有报告载入：臂 {sorted(report['arms'])}", flush=True)
     else:
-        report = {"arms": {}}
+        report = {"arms": {}, "run_contract": contract}
     report["meta"] = {
         "date": time.strftime("%Y-%m-%d %H:%M:%S"), "seed": SEED, "device": str(device),
         "torch": torch.__version__, "out_name": out_name,
-        "experiment": "ch2 等激活消融：dense(d_ff=1408) vs MoE(E8/top2/w=704)——单变量 = FFN 插槽形态",
+        "experiment": "ch2近似等激活两臂：FFN形态不同；共seed不保证公共权重一致",
         "module_tier": f"d={D_MODEL}/L={N_LAYER}/h={N_HEAD}/h_kv={N_KV}/V={VOCAB}，B={BATCH}/T={BLOCK}"
                        f"（{TPB:,} tok/步，探针 B 已验配置）",
-        "equal_activation": f"两臂激活参同为 {DENSE_PARAMS:,}（每 token 2×{D_EXPERT}={2*D_EXPERT}"
+        "equal_activation": f"历史双表不含router口径，两臂激活参同为 {DENSE_PARAMS:,}（每 token 2×{D_EXPERT}={2*D_EXPERT}"
                             f"={D_DENSE}=dense d_ff）；MoE 总参 {MOE_PARAMS:,}",
         "corpus": "log/book2-ch08/tokens.bin（sp-8k，306M token 流）",
         "optimizer": f"AdamW(betas=0.9,0.95,wd={WDECL}) + grad_clip 1.0（Book2 五件套）",
         "schedule": f"lr {PEAK_LR} 余弦降至 {PEAK_LR*MIN_LR_RATIO:.0e}，warmup={WARMUP}；两臂统一日程",
         "data_protocol": "顺序连续分块一次通过（moe_mla_slots.TokenStream）；两臂按步号取同批",
-        "eval_protocol": f"每 {eval_every} 步+终步：eval.bin 固定 49 窗 {EVAL_BATCHES*TPB:,} token，fp32",
-        "precision": "train bf16 autocast / eval fp32",
+        "eval_protocol": f"每 {eval_every} 步+终步：固定 {EVAL_BATCHES} 批，每批 {BATCH} 窗；共 {EVAL_BATCHES*TPB:,} 评测位置，fp32",
+        "precision": "train bf16 autocast / eval fp32" if device.type == "mps" else "CPU fp32",
         "ckpt": "每 eval 边界存 ckpt，臂完成即删；中断后重跑同命令自动续跑",
         "argv": " ".join(sys.argv[1:]),
     }

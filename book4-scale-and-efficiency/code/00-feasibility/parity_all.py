@@ -3,7 +3,7 @@
 #       交付边界与终校固定动作）——
 #       ①自动发现各章教学件：ch02/moe.py::SparseMoE（Mixtral 教学件）、ch05/deepseek_moe.py::
 #         DeepSeekMoE（DSV2 键位件）、ch06/mla.py::MultiHeadLatentAttention（MLA 双路径件），
-#         存在几件跑几件（本批交付时教学件可能 0 件——框架就位，交付后零改扩自动生效）；
+#         完整交付要求全部注册件在位；缺失或任一路对拍失败均不能放行；
 #       ②逐件与正身对应类 CPU fp32 对拍：构造小 config → 权重直搬（strict 优先，键位差异如实
 #         上报）→ 同输入同 seed 前向 → max|Δ|（阈值 1e-4 + 形状一致，Book3 验收管道口径）；
 #         对应关系：ch02→HFMixtralMoE、ch05→HFDeepseekMoE、ch06→MLAAttention（两 q_lora 变体）；
@@ -18,6 +18,8 @@
 # 产物：log/book4-feasibility/parity_all_{out}.json（不入库）
 import argparse
 import importlib.util
+import json
+from pathlib import Path
 import os
 import sys
 import time
@@ -30,7 +32,7 @@ if HERE not in sys.path:
 
 from moe_mla_slots import (SEED, HFDeepseekMoE, HFMixtralMoE, MLAAttention, SlotConfig,
                            SlotLLaMA, SparseMoE, bootstrap_book3, hand_account,
-                           mla_absorbed_forward, save_json)
+                           mla_absorbed_forward)
 
 TOL = 1e-4                                  # Book3 验收管道口径：max|Δ| < 1e-4
 CODE_ROOT = os.path.abspath(os.path.join(HERE, ".."))          # code/
@@ -175,6 +177,7 @@ def hf_block(kind, g):
         from transformers.models.mixtral.modeling_mixtral import MixtralSparseMoeBlock
         cfg = MixtralConfig(hidden_size=g["d"], intermediate_size=g["w"], num_local_experts=g["E"],
                             num_experts_per_tok=g["k"], router_jitter_noise=0.0)
+        cfg._experts_implementation = "eager"
         return MixtralSparseMoeBlock(cfg).eval()
     from transformers import DeepseekV2Config
     from transformers.models.deepseek_v2.modeling_deepseek_v2 import DeepseekV2Moe
@@ -182,6 +185,7 @@ def hf_block(kind, g):
                            n_routed_experts=g["E"], n_shared_experts=1, num_experts_per_tok=g["k"],
                            topk_method="greedy", n_group=1, topk_group=1, routed_scaling_factor=1.0,
                            mlp_bias=False)
+    cfg._experts_implementation = "eager"
     return DeepseekV2Moe(cfg).eval()
 
 
@@ -189,9 +193,11 @@ def hf_arm(kind, g, src, args_tuple):
     """一件 src（正身或教学件）vs HF 块级：直搬 → 同输入前向 → max|Δ|。"""
     block = hf_block(kind, g)
     missing, unexpected = align_weights(src.state_dict(), block)
-    note = f"missing={missing} unexpected={unexpected}" if (missing or unexpected) else "strict 等价"
+    if missing or unexpected:
+        return {"max_abs_diff": None, "verdict": "FAIL", "keys": f"missing={missing} unexpected={unexpected}"}
+    note = "strict 等价"
     diff, err = forward_pair(src, block, (args_tuple[0],), rope=False)
-    return {"max_abs_diff": diff, "verdict": "SKIP" if err else judge(diff), "keys": note,
+    return {"max_abs_diff": diff, "verdict": "FAIL" if err else judge(diff), "keys": note,
             "detail": err or ""}
 
 
@@ -234,19 +240,21 @@ def run_entry(entry, hf_on):
         args_tuple = make_input(entry["kind"], g)
         try:
             missing, unexpected = align_weights(teach.state_dict(), ref)
-            if missing:
+            if missing or unexpected:
                 v.update(status="keys_mismatch",
-                         detail=f"教学件缺正身键 {missing[:4]}（键位契约未承住）")
+                         detail=f"missing={missing[:4]} unexpected={unexpected[:4]}")
                 variants.append(v)
                 continue
             note = f"unexpected={unexpected}" if unexpected else "strict 等价直搬"
             diff, ferr = forward_pair(teach, ref, args_tuple, rope=(entry["kind"] == "mla"))
-            v["teach_vs_ref"] = {"max_abs_diff": diff, "verdict": "SKIP" if ferr else judge(diff),
+            v["teach_vs_ref"] = {"max_abs_diff": diff, "verdict": "FAIL" if ferr else judge(diff),
                                  "keys": note, "detail": ferr or ""}
             v.update(status="ok" if v["teach_vs_ref"]["verdict"] == "PASS" else "fail")
             if hf_on and entry["hf_kind"]:
                 v["ref_vs_hf"] = hf_arm(entry["hf_kind"], g, ref, args_tuple)
                 v["teach_vs_hf"] = hf_arm(entry["hf_kind"], g, teach, args_tuple)
+                if any(v[k]["verdict"] != "PASS" for k in ("ref_vs_hf","teach_vs_hf")):
+                    v["status"] = "fail"
         except Exception as e:                                            # 形状不匹配等运行期失败——如实登记
             v.update(status="forward_fail", detail=f"{type(e).__name__}: {str(e)[:200]}")
         variants.append(v)
@@ -297,7 +305,8 @@ def slots_sanity(hf_on):
         }
         got = {}
         for tag, c in cfgs.items():
-            n = SlotLLaMA(c).n_params()
+            with torch.device("meta"):
+                n = SlotLLaMA(c).n_params()
             assert n == hand_account(c)["total"], f"{tag}: {n} != 手算"
             got[tag] = n
         return {"verdict": "PASS", "params": got}
@@ -353,7 +362,7 @@ def cell(v, na="—"):
     if isinstance(v, dict):
         d = v.get("max_abs_diff")
         if d is None:
-            return "SKIP"
+            return v.get("verdict", "N/A")
         return f"{d:.2e}"
     return str(v)
 
@@ -378,7 +387,7 @@ def print_table(entries, sanity, hf_on):
                   + (f'  {v.get("detail", "")}' if v.get("detail") else ""))
     print("---- 正身内部 sanity（恒跑：正身改动的回归网）----")
     for name, v in sanity.items():
-        if isinstance(v, dict) and "max_abs_diff" in v:
+        if isinstance(v, dict) and v.get("max_abs_diff") is not None:
             print(f"  {name:<28} max|Δ| = {v['max_abs_diff']:.2e}  {v['verdict']}"
                   + (f'  {v["detail"]}' if v.get("detail") else ""))
         elif isinstance(v, dict) and v.get("verdict") == "PASS":
@@ -392,6 +401,10 @@ def main():
     ap.add_argument("--hf", action="store_true", help="加块级 HF 臂（Mixtral/DeepseekV2；默认关）")
     ap.add_argument("--out-name", default="run1", help="产物 JSON 后缀（防覆写）")
     args = ap.parse_args()
+    if Path(args.out_name).name != args.out_name or args.out_name in {".", ".."}:
+        ap.error("out-name须为单个文件名后缀")
+    out = Path.cwd() / "log/book4-feasibility" / f"parity_all_{args.out_name}.json"
+    if out.exists():raise FileExistsError(out)
     t0 = time.perf_counter()
     torch.manual_seed(SEED)
     bootstrap_book3()
@@ -410,10 +423,10 @@ def main():
     sanity, sanity_ok = slots_sanity(args.hf)
     print_table(entries, sanity, args.hf)
 
-    variants_ok = all(v.get("status") == "ok" for e in entries if e["status"] == "found"
-                      for v in e["variants"]) and n_found > 0
-    verdict = "PASS" if sanity_ok and (variants_ok or n_found == 0) else ("PASS(仅正身自检)"
-              if sanity_ok else "FAIL")
+    variants_ok = n_found == len(REGISTRY) and all(
+        e["status"] == "found" and e["variants"] and
+        all(v.get("status") == "ok" for v in e["variants"]) for e in entries)
+    verdict = "PASS" if sanity_ok and variants_ok else "FAIL"
     print(f"\n[判定] {verdict} | 教学件 {n_found} 件 | 正身 sanity {'全 PASS' if sanity_ok else '存在 FAIL'} "
           f"| 墙钟 {time.perf_counter() - t0:.1f} s")
     report = {
@@ -422,7 +435,10 @@ def main():
         "tol": TOL, "discovered": n_found, "registry": entries, "slots_sanity": sanity,
         "verdict": verdict, "wall_sec": round(time.perf_counter() - t0, 1),
     }
-    save_json("parity_all", report, args.out_name)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with out.open("x", encoding="utf-8") as handle:
+        json.dump(report, handle, ensure_ascii=False, indent=2)
+    if verdict != "PASS":raise SystemExit(1)
 
 
 if __name__ == "__main__":

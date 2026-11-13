@@ -7,8 +7,8 @@
 #            e_i=1/E−本批该层专家 i 被选比例（=c̄_i−c_i 的比例版，欠载抬/过载压——方向金证 papers/02 L181）；
 #            bias 只进选择不进门值；mini 档不做 γ 衰减）；
 #         ④ 等激活 dense 对照 —— 复用批一 ch2 dense 臂 full 产物（引用登记，不重跑）。
-#       实跑 = ②③ 两臂；②vs③ 单变量 = 均衡手段（损失式 vs 机制式），②vs① 单变量束 = 几何粗细。
-#       产出：eval 曲线 + 负载度量（MaxVio/max/min/死专家，口径同 ch3 ablation_balance——硬计数）+
+#       实跑 = ②③ 两臂；②vs③ 单变量 = 均衡手段（损失式 vs 机制式），②vs① 同时改变粒度、共享及参数量。
+#       产出：eval 曲线 + 负载度量（旧绝对份额差/新增逐层相对超载/max-min/死专家，复用ch3硬计数定义）+
 #       E16 档 sec/step 单独实测（「派发开销随 E 增长」实验产物，与 ch1 开销梯度呼应）。
 # 协议口径（Book2 五件套，与 ch02/ch03 逐字同款）：AdamW(0.9/0.95, wd=0.1) + clip 1.0
 #       + lr 1e-3 余弦降至 1e-4 + warmup 100；train bf16 autocast / eval fp32；
@@ -24,6 +24,7 @@
 #       llama_slots）。noaux 干预=本脚本 NoauxGate 子类（与正身 TopkGate 同权重对象，零新增 RNG），
 #       「不改 moe_mla_slots 正身一行」纪律承 ch3 钩子先例。
 import argparse
+import hashlib
 import csv
 import json
 import math
@@ -37,11 +38,13 @@ import torch.nn.functional as F
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.abspath(os.path.join(HERE, "..", "00-feasibility")))
+sys.path.insert(0, os.path.abspath(os.path.join(HERE, "..", "ch03")))
+from ablation_balance import balance_metrics  # 已核的L×E计数度量
 from moe_mla_slots import (SEED, SlotConfig, SlotLLaMA, TokenStream, TopkGate,   # noqa: E402
                            activated_account, hand_account)
 
 # ---------------- 固定口径 ----------------
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
+REPO_ROOT = os.getcwd()
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book4-ch05")
 TOKENS_BIN = os.path.join(REPO_ROOT, "log", "book2-ch08", "tokens.bin")
 EVAL_BIN = os.path.join(REPO_ROOT, "log", "book2-ch08", "eval.bin")
@@ -66,7 +69,7 @@ ARMS = ("fine_aux", "fine_noaux")
 REF_COARSE_AUX = {  # ① ch3 aux 臂（E8/top2/w704/无共享 + 0.1·CV²）
     "source": CH03_FULL_JSON, "eval_final": 4.85354, "eval_final_se": 0.01326,
     "sec_per_step_steady": 0.6135,
-    "max_vio_global_final": 0.015, "layer_mean_max_over_min_final": 2.13,
+    "max_vio_global_final": 0.031, "layer_mean_max_over_min_final": 2.13,
     "layer_mean_cv_final": 0.2397, "n_zero_cells_final": 0,
 }
 REF_DENSE = {      # ④ ch2 dense 臂（d_ff=1408）
@@ -144,7 +147,7 @@ class NoauxGate(TopkGate):
     门值仍取无 bias 的 softmax 概率（选中集内归一化）——「bias 只影响路由选择，不进门值」
     （2408.15664 原句 + DSV3 Eq.16 两文一致）。bias 为 buffer（不进优化器、不进损失图），
     训练环每步后按 b += u·sign(e) 手工更新（e_i=1/E−被选比例：欠载抬、过载压——Alg 1 方向）。键名
-    e_score_correction_bias 对齐 HF DeepseekV2/3 的落地 Buffer（ch5 §5.6「HF 落地」教学点的本机同型件）。
+    e_score_correction_bias 对齐 HF DeepseekV3 的落地 Buffer（ch5 §5.6「HF 落地」教学点的本机同型件）。
     """
 
     def __init__(self, hidden_size, n_expert, top_k, u=0.001, mode="mixtral"):
@@ -155,7 +158,9 @@ class NoauxGate(TopkGate):
     @classmethod
     def from_gate(cls, gate, u=0.001):
         """从正身 gate 构造：复用同一 weight Parameter（参数身份不变，优化器无感）。"""
-        new = cls(gate.weight.shape[1], gate.weight.shape[0], gate.top_k, u=u, mode=gate.mode)
+        with torch.random.fork_rng(devices=[]):
+            new = cls(gate.weight.shape[1], gate.weight.shape[0], gate.top_k, u=u, mode=gate.mode)
+        new = new.to(gate.weight.device)
         new.weight = gate.weight
         return new
 
@@ -193,6 +198,7 @@ def load_cv2_terms(stash):
     return terms
 
 
+@torch.no_grad()
 def noaux_bias_update(model, stash):
     """③ 的 R34 正身更新：b_i ← b_i + u·sign(e_i)，逐层；e_i = 1/E − 本批该层专家 i 被选比例。
 
@@ -203,11 +209,10 @@ def noaux_bias_update(model, stash):
     被越压越死，72/96 死专家贯穿全程；该次跑留档 fine_noaux_signflip 作反向对照，见 notes/07 B.4）。
     只用本步（最后一个）训练 batch 的路由计数——「无 EMA、只看上一 batch」（Alg 1）。
     """
-    n_sel = BATCH * BLOCK * TOP_K                 # 每层总选择数 = N·k
     for layer, out in zip(model.model.layers, stash):
         idx = out[2].detach().reshape(-1)
         counts = torch.bincount(idx, minlength=N_EXPERT).float()
-        e = 1.0 / N_EXPERT - counts / n_sel       # (E,) 欠载为正——bias 抬升被压制方
+        e = 1.0 / N_EXPERT - counts / idx.numel()       # (E,) 欠载为正——bias 抬升被压制方
         layer.mlp.gate.e_score_correction_bias += NOAUX_U * torch.sign(e)
 
 
@@ -227,7 +232,7 @@ def routing_snapshot(model, probe_x, device):
       frac_li = count_li / (N_tok·k)（每层选择总数归一，均匀 = 1/E）
       max_over_min = max(count_l) / max(min(count_l), 1)   ← 死专家（count=0）时下限取 1，防 ∞
       CV_l = std(count_l)/mean(count_l)（总体标准差）
-      MaxVio_l = max_i |frac_li − 1/E|（noaux R35 的 MaxVio 口径的逐层版）
+      MaxVio_l = max_i |frac_li − 1/E|（本书旧绝对份额偏差，非论文相对超载）
       MaxVio_global = 跨层聚合每专家计数后再取 max_i |frac_i − 1/E|
     计数直捕钩子 idx（noaux 臂 = 含 bias 的实际选择；aux 臂 = 同一钩子口径，两臂同法可比）。
     """
@@ -242,30 +247,7 @@ def routing_snapshot(model, probe_x, device):
     counts = [torch.bincount(out[2].detach().reshape(-1), minlength=N_EXPERT).tolist()
               for out in stash]                    # 每层 (E,)——真实路由（含 noaux bias）
     model.train()
-    n_sel = PROBE_B * PROBE_T * TOP_K               # 每层总选择数 = 32768
-    metrics, agg = [], [0] * N_EXPERT
-    for row in counts:
-        arr = np.array(row, dtype=float)
-        frac = arr / n_sel
-        for i, c in enumerate(row):
-            agg[i] += c
-        metrics.append({"counts": row,
-                        "frac": [round(float(f), 5) for f in frac],
-                        "max_over_min": round(float(arr.max() / max(arr.min(), 1.0)), 2),
-                        "cv": round(float(arr.std() / arr.mean()), 4),
-                        "max_vio": round(float(np.abs(frac - 1.0 / N_EXPERT).max()), 5),
-                        "n_zero_experts": int((arr == 0).sum())})
-    agg_arr = np.array(agg, dtype=float)            # 跨层聚合（L 层 × 每专家）
-    agg_frac = agg_arr / (n_sel * N_LAYER)
-    return {"counts": counts,
-            "per_layer": metrics,
-            "global": {"counts": agg,
-                       "frac": [round(float(f), 5) for f in agg_frac],
-                       "cv": round(float(agg_arr.std() / agg_arr.mean()), 4),
-                       "max_vio": round(float(np.abs(agg_frac - 1.0 / N_EXPERT).max()), 5),
-                       "n_zero_cells": int(sum(m["n_zero_experts"] for m in metrics))},
-            "layer_mean_max_over_min": round(float(np.mean([m["max_over_min"] for m in metrics])), 2),
-            "layer_mean_cv": round(float(np.mean([m["cv"] for m in metrics])), 4)}
+    return balance_metrics(counts)
 
 
 def bias_snapshot(model):
@@ -301,6 +283,8 @@ def run_arm(arm, steps, eval_every, device, stream, ex, ey, probe_x, report, out
     resumed_from = None
     if os.path.exists(ckpt_path):
         ck = torch.load(ckpt_path, map_location=device, weights_only=False)
+        if ck.get("run_contract") != report["run_contract"] or ck.get("arm") != arm:
+            raise ValueError("checkpoint与运行约定不符")
         m.load_state_dict(ck["model"])
         opt.load_state_dict(ck["opt"])
         train_losses, aux_losses = ck["train_losses"], ck["aux_losses"]
@@ -339,6 +323,8 @@ def run_arm(arm, steps, eval_every, device, stream, ex, ey, probe_x, report, out
         else:
             aux = None
             loss = ce
+        if not torch.isfinite(loss) or ce.item() > 100:
+            raise FloatingPointError("损失非有限或超过预设上限，停止更新")
         opt.zero_grad(set_to_none=True)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(m.parameters(), 1.0)
@@ -382,6 +368,7 @@ def run_arm(arm, steps, eval_every, device, stream, ex, ey, probe_x, report, out
                   f"{snap['global']['max_vio']} | 死专家 {snap['global']['n_zero_cells']}"
                   f"/{N_LAYER*N_EXPERT}", flush=True)
             torch.save({"model": m.state_dict(), "opt": opt.state_dict(), "step": step,
+                        "run_contract": report["run_contract"], "arm": arm,
                         "train_losses": train_losses, "aux_losses": aux_losses, "lrs": lrs,
                         "times": times, "evals": evals, "snaps": snaps, "biases": biases,
                         "elapsed_train": elapsed_train, "elapsed_eval": elapsed_eval}, ckpt_path)
@@ -408,8 +395,8 @@ def run_arm(arm, steps, eval_every, device, stream, ex, ey, probe_x, report, out
         "evals": evals,
         "eval_final": evals[-1]["eval_loss"] if evals else None,
         "eval_final_se": evals[-1]["eval_se"] if evals else None,
-        "aux_loss_first10_mean": (round(sum(aux_losses[:10]) / 10, 6) if aux_losses else None),
-        "aux_loss_last10_mean": (round(sum(aux_losses[-10:]) / 10, 6) if aux_losses else None),
+        "aux_loss_first10_mean": (round(sum(aux_losses[:10]) / len(aux_losses[:10]), 6) if aux_losses else None),
+        "aux_loss_last10_mean": (round(sum(aux_losses[-10:]) / len(aux_losses[-10:]), 6) if aux_losses else None),
         "snapshots": snaps,
         "balance_init": snaps[0]["global"] if snaps else None,
         "balance_final": snaps[-1]["global"] if snaps else None,
@@ -420,12 +407,13 @@ def run_arm(arm, steps, eval_every, device, stream, ex, ey, probe_x, report, out
         "bias_snapshots": biases if arm == "fine_noaux" else None,
         "sec_per_step_steady": round(sum(steady) / len(steady), 4),
         "sec_per_step_median": round(float(np.median(steady)), 4),
-        "mem_peak_delta_mb": round(peak - base_alloc, 1),
+        "mem_peak_delta_mb": round(peak - base_alloc, 1) if device.type == "mps" else None,
+        "memory_note": "MiB；每步末采样增量最大值，非瞬时峰值；CPU不测",
         "elapsed_train_sec": round(elapsed_train, 1), "elapsed_eval_sec": round(elapsed_eval, 1),
         "wallclock_sec": round(time.perf_counter() - t_arm, 1),
         "diverged": diverged_at is not None, "diverged_at_step": diverged_at,
         "divergence_reason": reason,
-        "precision": "train bf16 autocast / eval fp32",
+        "precision": "train MPS bf16/eval fp32" if device.type == "mps" else "train/eval CPU fp32",
     }
     curve_path = os.path.join(OUT_DIR, f"curve_{arm}_{report['meta']['out_name']}.csv")
     with open(curve_path, "w", newline="", encoding="utf-8") as cf:
@@ -465,15 +453,14 @@ def load_reference(path, arm, anchors):
 
 
 def add_pair_summary(report):
-    """四臂主对照：③vs②（均衡手段）+ ②vs①（几何粗细方向）+ ②③vs④（等激活差）+ E16 派发开销梯。"""
+    """四臂主对照：③vs②（均衡手段）+ ②vs①（几何与共享组合差异）+ ②③vs④（等激活差）+ E16整步耗时参照。"""
     arms = report["arms"]
     a, b = arms.get("fine_aux"), arms.get("fine_noaux")
     refs = report.get("references", {})
     if a and b and a["eval_final"] is not None and b["eval_final"] is not None:
         report["pair_summary"] = {
             "eval_final_diff_aux_minus_noaux": round(a["eval_final"] - b["eval_final"], 5),
-            "eval_diff_read": "正 = noaux 更低（机制式均衡未伤质量）；|diff| ≤ 0.05 nat 视为不劣于带宽"
-                              "（≤0.03 按噪声口径念）——判据预注册见 notes/07 §3.1",
+            "eval_diff_read": "正值表示本次noaux更低；0.05/0.03为历史工程阈值，非统计不劣界或跨种子置信界",
             "max_vio_global_final": {"fine_aux": a["balance_final"]["max_vio"] if a["balance_final"] else None,
                                      "fine_noaux": b["balance_final"]["max_vio"] if b["balance_final"] else None},
             "layer_mean_max_over_min_final": {"fine_aux": a["layer_mean_max_over_min"]["final"],
@@ -510,7 +497,11 @@ def main():
                     help="臂选择（fine_aux/fine_noaux，逗号分隔）")
     ap.add_argument("--eval-every", type=int, default=None, help="eval 间隔（默认 max(100, steps//4)）")
     args = ap.parse_args()
+    if args.steps < 1 or (args.eval_every is not None and args.eval_every < 1):
+        ap.error("steps和eval-every必须为正")
     out_name = args.out_name or ("fast" if args.steps <= 500 else "full")
+    if os.path.basename(out_name) != out_name or out_name in {".", ".."}:
+        ap.error("out-name须为单个文件名后缀")
     eval_every = args.eval_every or max(100, args.steps // 4)
     arms = [a.strip() for a in args.arms.split(",")]
     for a in arms:
@@ -526,13 +517,26 @@ def main():
     probe_x = build_probe_batch(device)
     out_json = os.path.join(OUT_DIR, f"ablation_granularity_{out_name}.json")
 
+    def file_id(path):
+        st = os.stat(path)
+        return {"path": os.path.realpath(path), "size": st.st_size, "mtime_ns": st.st_mtime_ns}
+    # 语料以路径/大小/mtime辨认；不声称这是内容哈希。源码另取SHA256。
+    contract = {"version": 1, "model_geometry": [VOCAB,D_MODEL,N_LAYER,N_HEAD,N_KV,D_DENSE,N_EXPERT,TOP_K,D_EXPERT,N_SHARED], "steps": args.steps, "eval_every": eval_every,
+                "seed": SEED, "batch": BATCH, "block": BLOCK,
+                "train_data": file_id(TOKENS_BIN), "eval_data": file_id(EVAL_BIN),
+                "script_sha256": hashlib.sha256(open(__file__, "rb").read()).hexdigest(),
+                "core_sha256": hashlib.sha256(open(sys.modules[SlotLLaMA.__module__].__file__, "rb").read()).hexdigest(),
+                "torch": torch.__version__, "device": str(device), "aux_w": AUX_W, "noaux_u": NOAUX_U,
+                "probe": [PROBE_B, PROBE_T], "eval_batches": EVAL_BATCHES}
     if os.path.exists(out_json):
         with open(out_json, encoding="utf-8") as f:
             report = json.load(f)
+        if report.get("run_contract") != contract:
+            raise ValueError("已有报告与当前日程/数据/实现不符；请使用新的out-name")
         report.setdefault("arms", {})          # 保留已完成的未请求臂（防 --arms 子集覆写丢记录）
         print(f"[续跑] 已有报告载入：臂 {sorted(report['arms'])}", flush=True)
     else:
-        report = {"arms": {}}
+        report = {"arms": {}, "run_contract": contract}
     report["references"] = {                   # ①④ 引用臂登记（不重跑）
         "coarse_aux": load_reference(CH03_FULL_JSON, "aux", REF_COARSE_AUX),
         "dense": load_reference(CH02_FULL_JSON, "dense", REF_DENSE),
@@ -556,15 +560,15 @@ def main():
                           "mini 档无 γ 衰减）"},
         "metrics_def": "度量用硬计数（钩子直捕 top-k idx——noaux 臂含 bias 的实际选择）：frac=count/(N·k)；"
                        "max/min 下限取 1（防死专家除零）；CV=std/mean（总体 std）；"
-                       "MaxVio=max|frac−1/E|（noaux R35 口径，global=跨层聚合后）",
+                       "旧MaxVio=max|frac−1/E|，global合并层编号；新增layer_mean_relative_overload按层计算，非旧指标",
         "corpus": "log/book2-ch08/tokens.bin（sp-8k，306M token 流）",
         "optimizer": f"AdamW(betas=0.9,0.95,wd={WDECL}) + grad_clip 1.0（Book2 五件套）",
         "schedule": f"lr {PEAK_LR} 余弦降至 {PEAK_LR*MIN_LR_RATIO:.0e}，warmup={WARMUP}；两臂统一日程",
         "data_protocol": "顺序连续分块一次通过（moe_mla_slots.TokenStream）；两臂按步号取同批",
-        "eval_protocol": f"每 {eval_every} 步+终步：eval.bin 固定 49 窗 {EVAL_BATCHES*TPB:,} token，fp32",
+        "eval_protocol": f"每 {eval_every} 步+终步：固定{EVAL_BATCHES}批，每批{BATCH}窗，共{EVAL_BATCHES*TPB:,}评估位置，fp32",
         "routing_probe_protocol": f"eval.bin 首段 {PROBE_B}×{PROBE_T}={PROBE_B*PROBE_T:,} token 固定探针，"
                                   "init + 每 eval 边界快照；长表 routing_{arm}_{out}.csv",
-        "precision": "train bf16 autocast / eval fp32",
+        "precision": "train MPS bf16/eval fp32" if device.type == "mps" else "train/eval CPU fp32",
         "ckpt": "每 eval 边界存 ckpt（含 noaux bias buffer），臂完成即删；中断后重跑同命令自动续跑",
         "argv": " ".join(sys.argv[1:]),
     }

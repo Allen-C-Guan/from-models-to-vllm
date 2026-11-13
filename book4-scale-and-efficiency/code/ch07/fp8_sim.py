@@ -1,29 +1,15 @@
-# fp8_sim.py —— Book4 ch7 FP8/MXFP4 量化误差模拟（探针 E 收编升格：本册正身实验脚本）
-# 用途：训练侧低精度一章的机制实验——MPS 无原生 FP8 计算，本脚本在 CPU fp32 上用
-#       「指数/尾数位截断」的 fake-quant 模拟四种格式 × 多种缩放粒度的量化-反量化
-#       round-trip 误差，给正文三组读数：
-#       ①格式刻度：E4M3/E5M2 同一高斯矩阵的 rel-L2（1 位尾数差 = 误差约 2×）+
-#         FP 尺度自相似（同一矩阵三种整体 scale 下误差不变——FP 与 INT 的本质差异）；
-#       ②bulk 断崖（主实验）：离群强度扫描 ×30/×300/×30000，全体 SNR vs bulk 子集 SNR
-#         双指标——per-tensor 的 scale 被离群劫持后 bulk 中位数落入 E4M3 次正规数区
-#         （2^-9..2^-6），精度断崖；per-group(128) 维持——DSV3 细粒度分组的直觉来源；
-#       ③分组收益条件性：平滑分布（高斯/真实残差流）分组几乎无益（≈1.0×），
-#         通道离群分布 2.5-2.7×——分组缩放救的是「离群结构」，不是普遍真理；
-#       ④MXFP4 块模拟（扩展口）：OCP MX 口径——最后维每 32 元素一块、共享 E8M0
-#         纯指数 scale（2 的幂）、块内元素 E2M1 格点 {0,.5,1,1.5,2,3,4,6}——
-#         对照 per-tensor E2M1，看「块共享指数」值多少。
-# 输入分布：随机高斯（权重样）+ 探针 A 采的真实残差流激活（log/book4-feasibility/
-#       act_sample.npz，207M 第 6 层；缺失时退化高斯并如实标注）+ 合成通道离群样。
-# 【模拟口径声明】非原生低精度计算：①subnormal 按固定步长 2^e_min/2^mant 建模、
-#       饱和只做 max 截断（无 NaN/Inf 算术）；②torch.round 为四舍五入（非严格 RN-even）；
-#       ③只测「存储量化」的重建误差，不含低精度矩阵乘的累加误差（DSV3 用 FP32 分段
-#       累加救的那一环，本脚本不模拟）；④E8M0 scale 取 2^ceil(log2(amax/6))（保证块内
-#       元素不溢出 E2M1 的最大值 6，方向与 OCP 规范一致）。速度类结论一律不做。
-# 所属章节：Book4 第 7 章 §7.2（格式课）/§7.3（缩放粒度）/§7.8（本机模拟三发现）
-# 运行方式：cd 工作区根目录 && source env.sh && python "code/ch07/fp8_sim.py"
-#           [--out-name run1]      （CPU fp32，秒级）
-# 产物：log/book4-ch07/fp8_sim_{out}.json（不入库）——make_figures.py 的数据源
+# fp8_sim.py —— Book4第7章：FP8/块FP4往返误差，CPU fp32数值模拟
+# 运行：工作区根目录 source ./env.sh 后运行本文件 --out-name run1。
+# 实验：格式格距、离群主体SNR、缩放粒度、OCP建议MXFP4与历史ceil策略对照。
+# 不执行FP8/FP4矩阵乘，不测训练质量或硬件速度。仅接受有限浮点输入。
+# FP8使用ties-to-even与有限值饱和；不模拟NaN/Inf算术。
+# MXFP4默认依OCP MX v1.0 §6.3建议取scale=2^(floor(log2(amax))-2)；
+# 历史ceil(log2(amax/6))另列为legacy_ceil，二者均用32元素块与E2M1。
+# E8M0指数范围限制为[-127,127]；零块选scale=1；负零保留。
+# 输入真实残差流缺失时使用合成替代并标注；历史已发表数据不被本次模拟覆盖。
+# 输出log/book4-ch07独立JSON；BOOK4_ACTIVATION_NPZ可指定网络样本文件，存在不等于来自训练后分布。
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -35,13 +21,25 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.abspath(os.path.join(HERE, "..", "00-feasibility")))
 from moe_mla_slots import SEED  # noqa: E402  全书统一种子 20261002（单轨纪律：不另立种子）
 
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
+REPO_ROOT = os.getcwd()
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book4-ch07")
-ACT_NPZ = os.path.join(REPO_ROOT, "log", "book4-feasibility", "act_sample.npz")
+ACT_NPZ = os.environ.get("BOOK4_ACTIVATION_NPZ", os.path.join(REPO_ROOT, "log", "book4-feasibility", "act_sample.npz"))
 
 E4M3 = dict(name="E4M3", mant_bits=3, exp_bits=4, bias=7, fmax=448.0)      # 前向权重/激活：刻度细、尺子短
 E5M2 = dict(name="E5M2", mant_bits=2, exp_bits=5, bias=15, fmax=57344.0)   # 梯度：尺子长、刻度粗
 E2M1_LEVELS = torch.tensor([0.0, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0])       # MXFP4 块内元素格点（正半轴）
+
+
+def finite_input(x):
+    if x.dtype not in (torch.float32, torch.float64) or x.numel() == 0 or not torch.isfinite(x).all():
+        raise ValueError("需要非空有限FP32或FP64输入")
+
+
+def groups(x, size):
+    finite_input(x)
+    if not isinstance(size, int) or size < 1 or x.ndim == 0 or x.shape[-1] % size:
+        raise ValueError("组大小须为正整数且整除最后一维；不得跨行拼组")
+    return x.reshape(-1, size)
 
 
 def fake_fp8_quant(x, fmt):
@@ -53,54 +51,72 @@ def fake_fp8_quant(x, fmt):
     per-tensor 大离群把 scale 撑大后小值掉进次正规数区的失真正是要演示的现场。
     输入 (…)，输出 (…) 同形。
     """
+    finite_input(x)
     mant_bits = fmt["mant_bits"]
     e_min = 1 - fmt["bias"]
-    sign = torch.sign(x)
     a = x.abs().clamp(max=fmt["fmax"])
     e = torch.floor(torch.log2(a.clamp_min(1e-38))).clamp_min(e_min)      # 指数（次正规区截到 e_min）
     frac = a / torch.exp2(e)                                              # 正常区 [1,2)；次正规区 [0,1)
     levels = 2 ** mant_bits
-    frac_q = torch.round(frac * levels) / levels                          # 尾数格点化（RN 近似）
-    return sign * frac_q * torch.exp2(e)
+    frac_q = torch.round(frac * levels) / levels                          # 格点舍入：torch.round为ties-to-even
+    return torch.copysign(frac_q * torch.exp2(e), x)
 
 
 def quantize_rt(x, fmt, group_size=None):
     """FP8 量化-反量化 round-trip。group_size=None → per-tensor（全张量一个 scale）；
     int → 最后维按组各一个 scale（DSV3 激活 1×128 口径）。scale=amax/fmax。返回 (x_hat, scale)。"""
+    finite_input(x)
     if group_size is None:
         s = (x.abs().amax() / fmt["fmax"]).clamp(min=1e-30)
         return fake_fp8_quant(x / s, fmt) * s, s
-    x2 = x.reshape(-1, group_size)                                        # (N, g) 每组一行
+    x2 = groups(x, group_size)                                        # (N, g) 每组一行
     s = (x2.abs().amax(dim=1, keepdim=True) / fmt["fmax"]).clamp(min=1e-30)  # (N,1)
     return fake_fp8_quant(x2 / s, fmt).mul(s).reshape(x.shape), s
 
 
-def mxfp4_rt(x, block=32):
-    """MXFP4 块模拟（OCP MX 口径的存储侧简化）：最后维每 block=32 元素一块，共享一个
-    E8M0 纯指数 scale（2 的幂，s=2^ceil(log2(amax/6))——保证块内元素 ≤E2M1 上限 6）；
-    块内元素 round 到 E2M1 格点 {0,.5,1,1.5,2,3,4,6}（带符号，线性最近邻）。"""
-    x2 = x.reshape(-1, block)                                             # (N, 32)
-    amax = x2.abs().amax(dim=1, keepdim=True).clamp(min=1e-30)            # (N,1)
-    s = torch.exp2(torch.ceil(torch.log2(amax / 6.0)))                    # E8M0：纯指数、2 的幂
-    y = (x2 / s).abs()                                                    # (N,32) 块内归一
-    lv = E2M1_LEVELS.to(y.device)
-    idx = torch.bucketize(y, (lv[1:] + lv[:-1]) / 2.0)                    # 最近邻格点索引 (N,32)∈[0,7]
-    q = lv[idx] * torch.sign(x2)
-    return (q * s).reshape(x.shape), s
+def e2m1_round(x):
+    """有限E2M1最近舍入，编码最低位为偶数者打破中点平局；越界饱和到±6。"""
+    finite_input(x)
+    levels = E2M1_LEVELS.to(device=x.device, dtype=x.dtype)
+    mid = (levels[1:] + levels[:-1]) / 2
+    magnitude = x.abs()
+    idx = torch.bucketize(magnitude.contiguous(), mid)
+    tie = (idx < len(mid)) & (magnitude == mid[idx.clamp_max(len(mid)-1)])
+    idx = idx + (tie & (idx.remainder(2) == 1)).long()
+    return torch.copysign(levels[idx], x)
+
+
+def mxfp4_rt(x, block=32, scale_mode="ocp"):
+    """32元素E2M1+E8M0缩放模拟。ocp为v1.0 §6.3建议；legacy_ceil为旧无溢出选法。
+    两者均有有限指数范围与ties-to-even；未调用硬件打包或低精度GEMM。
+    """
+    if block != 32:
+        raise ValueError("本函数的MXFP4块固定为32个元素")
+    x2 = groups(x, block)
+    amax = x2.abs().amax(dim=1, keepdim=True)
+    logmax = torch.log2(amax.clamp_min(torch.finfo(x.dtype).tiny))
+    if scale_mode == "ocp":
+        exponent = torch.floor(logmax) - 2
+    elif scale_mode == "legacy_ceil":
+        exponent = torch.ceil(torch.log2(amax.double().clamp_min(torch.finfo(torch.float64).tiny) / 6)).to(x.dtype)
+    else:
+        raise ValueError("scale_mode须为ocp或legacy_ceil")
+    exponent = torch.where(amax == 0, torch.zeros_like(exponent), exponent).clamp(-127,127)
+    scale = torch.exp2(exponent)
+    return (e2m1_round(x2 / scale) * scale).reshape(x.shape), scale
 
 
 def e2m1_tensor_rt(x):
-    """对照臂：per-tensor E2M1（无块共享 scale，全张量一个实数 scale=amax/6）。"""
-    s = (x.abs().amax() / 6.0).clamp(min=1e-30)
-    y = (x / s).abs()
-    lv = E2M1_LEVELS.to(y.device)
-    idx = torch.bucketize(y, (lv[1:] + lv[:-1]) / 2.0)
-    return (lv[idx] * torch.sign(x)) * s, s
+    """全张量单个实数scale=amax/6的E2M1对照；仍有scale，不能叫无缩放。"""
+    finite_input(x)
+    scale = (x.abs().amax() / 6).clamp_min(1e-30)
+    return e2m1_round(x / scale) * scale, scale
 
 
 def rel_l2(x, x_hat):
     """相对 L2 误差（P10 口径：本章一律 rel-L2% 报数，dB 只用于 E4M3 断崖主实验）。"""
-    return ((x - x_hat).norm() / x.norm()).item()
+    error, norm = (x - x_hat).norm().item(), x.norm().item()
+    return error / norm if norm else (0.0 if error == 0 else float("inf"))
 
 
 def snr_db(x, x_hat, mask=None):
@@ -114,21 +130,24 @@ def snr_db(x, x_hat, mask=None):
 def main(out_name):
     torch.manual_seed(SEED)
     g = torch.Generator().manual_seed(SEED)
-    report = {"seed": SEED, "device": "cpu fp32（MPS 无原生 FP8——模拟口径，声明见文件头）",
-              "caveats": ["subnormal 按固定步长建模、饱和只做 max 截断（无 NaN/Inf 算术）",
-                          "torch.round 非 RN-even",
-                          "只测存储量化重建误差，不含低精度 GEMM 累加误差",
-                          "E8M0 scale=2^ceil(log2(amax/6))，方向同 OCP MX、非逐位规范实现"]}
+    report = {"seed": SEED, "device": "cpu fp32 simulation", "torch": torch.__version__,
+              "caveats": ["只接受有限浮点输入；FP8有限饱和与ties-to-even，不模拟特殊值算术",
+                          "只测往返重建误差，不含FP8/FP4 GEMM与累加或训练质量",
+                          "MXFP4: OCP v1.0建议scale与历史legacy_ceil分列；E8M0指数[-127,127]",
+                          "实数scale设置1e-30数值下限；整体尺度不变性仅在未触及该下限时讨论"]}
 
     # ---------- 输入分布 ----------
     inputs = {"gauss_4096x512": torch.randn(4096, 512, generator=g)}
     if os.path.exists(ACT_NPZ):                                           # 探针 A 真实残差流
         h = torch.from_numpy(np.load(ACT_NPZ)["resid_layer6"]).float()    # (2,256,1024)
         inputs["real_act_512x1024"] = h.reshape(-1, 1024)
-        src = "probeA act_sample.npz（207M 第 6 层残差流）"
+        src = f"{ACT_NPZ}（网络采样；探针A默认随机权重与随机token，非训练后语料激活）"
     else:
         inputs["real_act_512x1024"] = torch.randn(512, 1024, generator=g)
         src = "act_sample.npz 缺失——退化为高斯合成（非真实激活！）"
+    report["activation_input"] = {"source": src, "from_sample_file": os.path.exists(ACT_NPZ),
+        "sha256": hashlib.sha256(open(ACT_NPZ,"rb").read()).hexdigest() if os.path.exists(ACT_NPZ) else None,
+        "legacy_key": "real_act_512x1024仅为兼容旧键，实际来源以is_real为准"}
     # 通道离群合成样：512 通道中 5 个 ×100 / ×1000（LLM 激活通道离群的结构化近似）
     ol_cols = torch.randperm(512, generator=g)[:5]
     ol_mask = torch.ones(512, dtype=torch.bool)
@@ -198,7 +217,7 @@ def main(out_name):
                 "group_gain_x": round(rpt / max(rpg, 1e-12), 2)}
     report["exp3_group_gain"] = exp3
     key = lambda f, i: exp3[f"{f}/{i}"]["group_gain_x"]                    # noqa: E731
-    print(f"[③分组] E4M3 增益：平滑 gauss {key('E4M3','gauss_4096x512')}× / 真实残差流 "
+    print(f"[③分组] E4M3 增益：平滑 gauss {key('E4M3','gauss_4096x512')}× / 激活样本（来源见上） "
           f"{key('E4M3','real_act_512x1024')}× / 通道离群×100 "
           f"{key('E4M3','outlier_x100_4096x512')}× / ×1000 {key('E4M3','outlier_x1000_4096x512')}×")
 
@@ -207,9 +226,12 @@ def main(out_name):
                          "{0,.5,1,1.5,2,3,4,6} · 4.25 bits/param = 4+8/32（算术）"}
     for in_name in ("gauss_4096x512", "real_act_512x1024", "outlier_x100_4096x512"):
         x = inputs[in_name]
-        xb, _ = mxfp4_rt(x)                                               # 块共享指数版
+        xb, _ = mxfp4_rt(x)
+        legacy, _ = mxfp4_rt(x, scale_mode="legacy_ceil")                                               # 块共享指数版
         xt, _ = e2m1_tensor_rt(x)                                         # per-tensor E2M1 对照
         exp4[in_name] = {"mxfp4_block32_relL2_pct": round(rel_l2(x, xb) * 100, 2),
+                         "scale_policy": "OCP v1.0 §6.3 recommended",
+                         "legacy_ceil_block32_relL2_pct": round(rel_l2(x, legacy) * 100, 2),
                          "e2m1_pertensor_relL2_pct": round(rel_l2(x, xt) * 100, 2),
                          "block_scale_gain_x": round(rel_l2(x, xt) / max(rel_l2(x, xb), 1e-12), 2)}
     report["exp4_mxfp4"] = exp4
@@ -219,8 +241,8 @@ def main(out_name):
 
     os.makedirs(OUT_DIR, exist_ok=True)
     path = os.path.join(OUT_DIR, f"fp8_sim_{out_name}.json")
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(report, f, ensure_ascii=False, indent=2)
+    with open(path, "x", encoding="utf-8") as f:
+        json.dump(report, f, ensure_ascii=False, indent=2, allow_nan=False)
     print(f"[产物] {path}")
 
 

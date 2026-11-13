@@ -9,12 +9,12 @@
 #       （主支路 target=t+1）、y_mtp=tokens[:,2:]（MTP 支路 target=t+2），三者等长 T-2——
 #       MTP 支路在位置 i 的输入嵌入 = tokens[i+1]（teacher forcing 真值，即 y_main[:,i]）。
 # 结构对照（工业镜像）：与 vLLM deepseek_mtp.py 的 DeepSeekMultiTokenPredictorLayer 同型
-#       （enorm/hnorm 分立 + eh_proj + mtp_block + shared_head{norm,head}）；差异两处如实登记：
+#       （enorm/hnorm + 拼接投影 + TRM + 词表头）；mini用GQA+dense及末norm后主干状态，不能直载官方权重：
 #       ① 拼接序本件取论文 Eq 21 的 [RMSNorm(h); RMSNorm(Emb)]，vLLM 实现为 [Emb; h]；
 #       ② 本件共享 = 严格共享主干 embed_tokens/lm_head 两件（DSV3 §3.2.3 共享思想的最小版）。
 # 协议口径（与 ch02/03/05 消融同款 Book2 五件套）：AdamW(0.9/0.95,wd=0.1)+clip 1.0
-#       + lr 1e-3 余弦降 1e-4 + warmup 100；train bf16 autocast / eval fp32；tokens.bin 顺序分块；
-#       eval 固定 49 窗 (16,512)（与消融完全同集，主支路 eval 可直接对 dense 臂轨迹）。
+#       + lr 1e-3 余弦降 1e-4 + warmup 100；MPS train/eval bf16 autocast + fp32 CE；CPU fp32；tokens.bin 顺序分块；
+#       eval固定49批×16窗，原序列512；本章每窗510个标签，不能与dense的512标签直接等同。
 # 运行方式：source env.sh && python mtp.py --steps 500 --out-name fast [--lambdas 0.3,0.0]
 #           （冒烟请用 smoke_mtp.py；本件 __main__ 为训练档：fast=500 步）。
 # 产物（log/book4-ch08/，不入库）：mtp_{out}.json + curve_{arm}_{out}.csv + ckpt_{arm}_{out}.pt
@@ -23,6 +23,7 @@
 #       （其内部 bootstrap 引 Book3 llama_slots：RMSNorm/build_rope_cache）。
 import argparse
 import csv
+import hashlib
 import json
 import math
 import os
@@ -40,21 +41,21 @@ from moe_mla_slots import (SEED, SlotConfig, SlotDecoderLayer, SlotLLaMA, TokenS
                            bootstrap_book3, hand_account)
 
 # ---------------- 固定口径（模块档 dense 几何） ----------------
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
+REPO_ROOT = os.getcwd()  # 从工作区根目录运行，所有数据与产物统一落log/
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book4-ch08")
 TOKENS_BIN = os.path.join(REPO_ROOT, "log", "book2-ch08", "tokens.bin")
 EVAL_BIN = os.path.join(REPO_ROOT, "log", "book2-ch08", "eval.bin")
 
 VOCAB, D_MODEL, N_LAYER, N_HEAD, N_KV, D_FF = 8192, 512, 6, 8, 4, 1408
 BATCH, BLOCK = 16, 512
-EVAL_BATCHES = 49                                                  # 固定 49 窗 = 401,408 token
+EVAL_BATCHES = 49                                                  # 固定49批×16窗，每支路399,840个评测标签
 PEAK_LR, MIN_LR_RATIO, WARMUP, WDECL, TAIL = 1e-3, 0.1, 100, 0.1, 300
 BACKBONE_PARAMS = 26_089_984                                       # 模块档 dense 锚点（探针 B）
 MTP_LAMBDA_DEFAULT = 0.3                                           # DSV3 §4.2 前段（Eq 25，D=1）
 
 
 def mtp_new_params():
-    """MTP 模块新增参数手算账：3 枚 RMSNorm + M_1 投影(2d²·d 系数=d·2d) + 一个同型 TRM 层。"""
+    """MTP 模块新增参数手算账：3 枚 RMSNorm + M_1 投影(d·2d) + 一个同型 TRM 层。"""
     layer_cfg = SlotConfig(vocab_size=VOCAB, hidden_size=D_MODEL, num_hidden_layers=1,
                            num_attention_heads=N_HEAD, num_key_value_heads=N_KV,
                            intermediate_size=D_FF)
@@ -73,6 +74,8 @@ def three_views(tokens):
     y_main = tokens[:, 1:-1]  主支路目标（位置 i 的 target = t_{i+1}）
     y_mtp  = tokens[:, 2:]    MTP 支路目标（位置 i 的 target = t_{i+2}——多想的那一步棋）
     """
+    if tokens.ndim != 2 or tokens.shape[0] < 1 or tokens.shape[1] < 3:
+        raise ValueError("tokens必须为非空(B,T)，且T>=3")
     return tokens[:, :-2], tokens[:, 1:-1], tokens[:, 2:]
 
 
@@ -83,7 +86,7 @@ def assert_off_by_one(tokens):
     assert x_in.shape == y_main.shape == y_mtp.shape == (B, T - 2), "三视图不等长（应各为 T-2）"
     assert torch.equal(y_main[:, :-1], x_in[:, 1:]), "y_main 应为 x_in 左移一位"
     assert torch.equal(y_mtp[:, :-1], y_main[:, 1:]), "y_mtp 应为 y_main 左移一位"
-    i = T // 2                                                     # 单点抽验：位置 i 的两支路目标
+    i = min(T // 2, T - 3)                                                     # 单点抽验：位置 i 的两支路目标
     assert bool(y_main[:, i].eq(tokens[:, i + 1]).all()), "y_main[i] 应 = tokens[i+1]"
     assert bool(y_mtp[:, i].eq(tokens[:, i + 2]).all()), "y_mtp[i] 应 = tokens[i+2]"
     return x_in, y_main, y_mtp
@@ -106,6 +109,9 @@ class MTPModule(nn.Module):
         super().__init__()
         slots = bootstrap_book3()
         d = hidden_size
+        if d % N_HEAD or (d // N_HEAD) % 2:
+            raise ValueError("hidden_size须使每头维度为偶数")
+        self.head_dim = d // N_HEAD
         self.hnorm = slots.RMSNorm(d, 1e-5)                        # RMSNorm(h_i)：主干表征入模归一
         self.enorm = slots.RMSNorm(d, 1e-5)                        # RMSNorm(Emb(t_{i+1}))：真值嵌入归一
         self.proj = nn.Linear(2 * d, d, bias=False)                # M_1 ∈ R^{d×2d}（Eq 21 投影）
@@ -122,10 +128,10 @@ class MTPModule(nn.Module):
         self.apply(_init)
 
     def _rope(self, n, device):
-        if (n, device.type) not in self._rope_cache:
-            self._rope_cache[(n, device.type)] = bootstrap_book3().build_rope_cache(
-                n, D_MODEL // N_HEAD, 10000.0, device)             # (1,1,n,head_dim) ×2
-        return self._rope_cache[(n, device.type)]
+        if (n, str(device)) not in self._rope_cache:
+            self._rope_cache[(n, str(device))] = bootstrap_book3().build_rope_cache(
+                n, self.head_dim, 10000.0, device)             # (1,1,n,head_dim) ×2
+        return self._rope_cache[(n, str(device))]
 
     def n_params(self):
         return sum(p.numel() for p in self.parameters())
@@ -133,6 +139,8 @@ class MTPModule(nn.Module):
     def forward(self, h, next_tok, embed, lm_head):
         """h (B,n,d) 主干终态；next_tok (B,n) = y_main（teacher forcing 的 t_{i+1}）；
         embed/lm_head = 主干共享件。返回 logits_mtp (B,n,V)。"""
+        if h.ndim != 3 or next_tok.shape != h.shape[:2] or h.shape[-1] != self.hnorm.weight.numel():
+            raise ValueError("h与next_tok的批次、长度或隐藏维不匹配")
         e = embed(next_tok)                                        # (B,n,d) 共享 embedding
         x = torch.cat([self.hnorm(h), self.enorm(e)], dim=-1)      # (B,n,2d) Eq 21 拼接
         x = self.proj(x)                                           # (B,n,d)
@@ -171,8 +179,13 @@ class MTPSlotLLaMA(nn.Module):
 def joint_loss(logits_main, logits_mtp, tokens, lam=MTP_LAMBDA_DEFAULT):
     """L = CE_main + λ·CE_mtp（Eq 24-25，D=1；λ=0 即 λ 对照臂——CE_mtp 仍记录不进损失）。"""
     _, y_main, y_mtp = three_views(tokens)
-    ce_main = F.cross_entropy(logits_main.reshape(-1, VOCAB).float(), y_main.reshape(-1))
-    ce_mtp = F.cross_entropy(logits_mtp.reshape(-1, VOCAB).float(), y_mtp.reshape(-1))
+    if not math.isfinite(lam) or lam < 0:
+        raise ValueError("lambda须有限且非负")
+    if logits_main.ndim != 3 or logits_main.shape != logits_mtp.shape or logits_main.shape[:2] != y_main.shape:
+        raise ValueError("两支路logits必须与三视图逐位对齐")
+    vocab = logits_main.shape[-1]
+    ce_main = F.cross_entropy(logits_main.reshape(-1, vocab).float(), y_main.reshape(-1))
+    ce_mtp = F.cross_entropy(logits_mtp.reshape(-1, vocab).float(), y_mtp.reshape(-1))
     return ce_main + lam * ce_mtp, ce_main, ce_mtp
 
 
@@ -185,7 +198,7 @@ def lr_at(step, total):
 
 
 def build_eval_batches(device):
-    """固定 eval 窗集（与 ch02/03/05 完全同集同种子——主支路 eval 可直接对 dense 臂轨迹）。"""
+    """沿用相同起点采样种子；每窗只保留510个监督位置，不能当作dense的完整评测集。"""
     ev = np.memmap(EVAL_BIN, dtype=np.uint16, mode="r")
     gen = torch.Generator().manual_seed(SEED)
     offs = torch.randint(0, len(ev) - BLOCK - 1, (EVAL_BATCHES * BATCH,), generator=gen).numpy()
@@ -197,21 +210,22 @@ def build_eval_batches(device):
 
 @torch.no_grad()
 def eval_loss(model, ex):
-    """49 窗 fp32 eval：返回主/MTP 两支路 (均值, 标准误)——主支路口径与消融 eval 完全一致。"""
+    """返回主/MTP批均值及批间标准误；MPS前向BF16、CE为FP32，不表示种子方差。"""
+    was_training = model.training
     model.eval()
     mains, mtps = [], []
-    for i in range(EVAL_BATCHES):
+    for i in range(len(ex)):
         with torch.autocast(device_type=ex.device.type, dtype=torch.bfloat16) \
                 if ex.device.type == "mps" else torch.autocast("cpu", enabled=False):
             logits_main, logits_mtp = model(ex[i])
         _, ce_main, ce_mtp = joint_loss(logits_main, logits_mtp, ex[i], lam=0.0)
         mains.append(ce_main.item())
         mtps.append(ce_mtp.item())
-    model.train()
+    model.train(was_training)
 
     def stat(v):
         m = sum(v) / len(v)
-        se = (sum((x - m) ** 2 for x in v) / (len(v) - 1)) ** 0.5 / math.sqrt(len(v))
+        se = (sum((x - m) ** 2 for x in v) / (len(v) - 1)) ** 0.5 / math.sqrt(len(v)) if len(v) > 1 else 0.0
         return round(m, 5), round(se, 5)
 
     return stat(mains), stat(mtps)
@@ -232,6 +246,8 @@ def run_arm(arm, lam, steps, eval_every, device, stream, ex, report, out_json):
     resumed_from = None
     if os.path.exists(ckpt_path):
         ck = torch.load(ckpt_path, map_location=device, weights_only=False)
+        if ck.get("run_contract") != report["run_contract"] or ck.get("arm") != arm or ck.get("lambda") != lam:
+            raise ValueError("checkpoint的日程、数据、实现或lambda与本次不符")
         m.load_state_dict(ck["model"])
         opt.load_state_dict(ck["opt"])
         main_losses, mtp_losses = ck["main_losses"], ck["mtp_losses"]
@@ -248,16 +264,18 @@ def run_arm(arm, lam, steps, eval_every, device, stream, ex, report, out_json):
         for g in opt.param_groups:
             g["lr"] = lr
         x, y = stream.batch(step, device)                          # (16,512)×2
-        tokens = torch.cat([x[:, :1], y], dim=1)                   # (16,512) 原始连续块（重建自流）
-        assert_off_by_one(tokens)                                  # 三视图核验内置（每步 O(T) 廉价）
+        tokens = torch.cat([x[:, :1], y], dim=1)                   # (B,BLOCK+1)，每支路BLOCK-1个监督位
+        assert_off_by_one(tokens)                                  # O(BT)检查；同步开销未计入下方步时
         t0 = time.perf_counter()
         with torch.autocast(device_type=device.type, dtype=torch.bfloat16) if device.type == "mps" \
                 else torch.autocast("cpu", enabled=False):
             logits_main, logits_mtp = m(tokens)
             loss, ce_main, ce_mtp = joint_loss(logits_main, logits_mtp, tokens, lam=lam)
+        if not torch.isfinite(loss) or ce_main.item() > 100:
+            raise FloatingPointError("损失非有限或超过预设上限，停止更新")
         opt.zero_grad(set_to_none=True)
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(m.parameters(), 1.0)
+        torch.nn.utils.clip_grad_norm_(m.parameters(), 1.0, error_if_nonfinite=True)
         opt.step()
         if device.type == "mps":
             torch.mps.synchronize()
@@ -287,6 +305,7 @@ def run_arm(arm, lam, steps, eval_every, device, stream, ex, report, out_json):
             print(f"  [{arm:6s}] [eval] step {step}: main {em:.4f} ± {em_se:.4f} | "
                   f"mtp {et:.4f} ± {et_se:.4f}", flush=True)
             torch.save({"model": m.state_dict(), "opt": opt.state_dict(), "step": step,
+                        "run_contract": report["run_contract"], "arm": arm, "lambda": lam,
                         "main_losses": main_losses, "mtp_losses": mtp_losses, "lrs": lrs,
                         "times": times, "evals": evals,
                         "elapsed_train": elapsed_train, "elapsed_eval": elapsed_eval}, ckpt_path)
@@ -299,7 +318,8 @@ def run_arm(arm, lam, steps, eval_every, device, stream, ex, report, out_json):
         "arm_def": f"λ={lam}（L = CE_main + {lam}·CE_mtp；λ=0 为对照臂——MTP 支路前向与记录保留、"
                    "梯度权重为零）",
         "config": {"d": D_MODEL, "L": N_LAYER, "h": N_HEAD, "h_kv": N_KV, "V": VOCAB,
-                   "B": BATCH, "T": BLOCK, "T_eff": BLOCK - 2, "lambda": lam, "mtp_depth": 1,
+                   "B": BATCH, "T_train": BLOCK + 1, "T_eval": BLOCK,
+                   "T_eff_train": BLOCK - 1, "T_eff_eval": BLOCK - 2, "lambda": lam, "mtp_depth": 1,
                    "mtp_module": "shared emb + shared head + {hnorm,enorm,proj 2d→d, TRM, exit norm}"},
         "params_total": TOTAL_PARAMS, "params_backbone": BACKBONE_PARAMS,
         "params_mtp_new": MTP_NEW_PARAMS, "params_mtp_overhead_ratio": round(MTP_NEW_PARAMS / BACKBONE_PARAMS, 4),
@@ -308,16 +328,16 @@ def run_arm(arm, lam, steps, eval_every, device, stream, ex, report, out_json):
         "evals": evals,
         "eval_main_final": evals[-1]["eval_main"] if evals else None,
         "eval_mtp_final": evals[-1]["eval_mtp"] if evals else None,
-        "main_loss_first10_mean": round(sum(main_losses[:10]) / 10, 5) if main_losses else None,
-        "main_loss_last10_mean": round(sum(main_losses[-10:]) / 10, 5) if main_losses else None,
-        "mtp_loss_first10_mean": round(sum(mtp_losses[:10]) / 10, 5) if mtp_losses else None,
-        "mtp_loss_last10_mean": round(sum(mtp_losses[-10:]) / 10, 5) if mtp_losses else None,
+        "main_loss_first10_mean": round(sum(main_losses[:10]) / len(main_losses[:10]), 5) if main_losses else None,
+        "main_loss_last10_mean": round(sum(main_losses[-10:]) / len(main_losses[-10:]), 5) if main_losses else None,
+        "mtp_loss_first10_mean": round(sum(mtp_losses[:10]) / len(mtp_losses[:10]), 5) if mtp_losses else None,
+        "mtp_loss_last10_mean": round(sum(mtp_losses[-10:]) / len(mtp_losses[-10:]), 5) if mtp_losses else None,
         "sec_per_step_steady": round(sum(steady) / len(steady), 4),
         "elapsed_train_sec": round(elapsed_train, 1), "elapsed_eval_sec": round(elapsed_eval, 1),
         "wallclock_sec": round(time.perf_counter() - t_arm, 1),
         "diverged": diverged_at is not None, "diverged_at_step": diverged_at,
         "divergence_reason": reason,
-        "precision": "train bf16 autocast / eval fp32",
+        "precision": "MPS train/eval bf16 autocast + fp32 CE；CPU fp32",
     }
     curve_path = os.path.join(OUT_DIR, f"curve_{arm}_{report['meta']['out_name']}.csv")
     with open(curve_path, "w", newline="", encoding="utf-8") as cf:
@@ -325,11 +345,11 @@ def run_arm(arm, lam, steps, eval_every, device, stream, ex, report, out_json):
         w.writerow(["step", "main_loss", "mtp_loss", "lr"])
         for i, (lv, mv, lr) in enumerate(zip(main_losses, mtp_losses, lrs), 1):
             w.writerow([i, f"{lv:.6g}", f"{mv:.6g}", f"{lr:.6g}"])
-    if steps_done >= steps and os.path.exists(ckpt_path):
-        os.remove(ckpt_path)
     report["arms"][arm] = rec
     with open(out_json, "w", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
+    if steps_done >= steps and os.path.exists(ckpt_path):
+        os.remove(ckpt_path)
     print(f"  [{arm} 完成] steps {steps_done} | eval_main_final {rec['eval_main_final']} | "
           f"eval_mtp_final {rec['eval_mtp_final']} | {rec['sec_per_step_steady']}s/step", flush=True)
     del m, opt
@@ -345,7 +365,17 @@ def main():
     ap.add_argument("--lambdas", type=str, default="0.3,0.0", help="λ 臂（主臂 0.3 + 对照 0.0）")
     ap.add_argument("--eval-every", type=int, default=None, help="eval 间隔（默认 max(100, steps//5)）")
     args = ap.parse_args()
+    if args.steps < 1 or (args.eval_every is not None and args.eval_every < 1):
+        ap.error("steps和eval-every必须为正")
+    lambdas = [float(s.strip()) for s in args.lambdas.split(",")]
+    if not lambdas or any(not math.isfinite(v) or v < 0 for v in lambdas):
+        ap.error("lambdas必须有限且非负")
+    arms = [f"lam{int(round(v * 100)):02d}" for v in lambdas]
+    if len(arms) != len(set(arms)):
+        ap.error("lambda生成了重复结果名；请分别运行并用独立out-name")
     out_name = args.out_name or ("fast" if args.steps <= 1000 else "full")
+    if os.path.basename(out_name) != out_name or out_name in {".", ".."}:
+        ap.error("out-name须为单个文件名后缀")
     eval_every = args.eval_every or max(100, args.steps // 5)
 
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
@@ -356,18 +386,34 @@ def main():
     ex = build_eval_batches(device)
     out_json = os.path.join(OUT_DIR, f"mtp_{out_name}.json")
 
+    def file_id(path):
+        st = os.stat(path)
+        return {"path": os.path.realpath(path), "size": st.st_size, "mtime_ns": st.st_mtime_ns}
+    contract = {"version": 1, "steps": args.steps, "eval_every": eval_every,
+                "seed": SEED, "batch": BATCH, "block": BLOCK, "eval_batches": EVAL_BATCHES,
+                "geometry": [VOCAB,D_MODEL,N_LAYER,N_HEAD,N_KV,D_FF],
+                "lambdas": lambdas, "train_data": file_id(TOKENS_BIN), "eval_data": file_id(EVAL_BIN),
+                "script_sha256": hashlib.sha256(open(__file__, "rb").read()).hexdigest(),
+                "core_sha256": hashlib.sha256(open(sys.modules[SlotLLaMA.__module__].__file__, "rb").read()).hexdigest(),
+                "slots_sha256": hashlib.sha256(open(bootstrap_book3().__file__, "rb").read()).hexdigest(),
+                "torch": torch.__version__, "device": str(device)}
     if os.path.exists(out_json):
         with open(out_json, encoding="utf-8") as f:
             report = json.load(f)
+        if report.get("run_contract") != contract:
+            raise ValueError("已有报告与本次运行约定不符，请换out-name")
         report.setdefault("arms", {})
         print(f"[续跑] 已有报告载入：臂 {sorted(report['arms'])}", flush=True)
     else:
-        report = {"arms": {}}
+        if any(os.path.exists(os.path.join(OUT_DIR, f"{kind}_{arm}_{out_name}.{ext}"))
+               for arm in arms for kind,ext in [("curve","csv"),("ckpt","pt")]):
+            raise FileExistsError("曲线或断点存在但报告缺失，请换out-name")
+        report = {"arms": {}, "run_contract": contract}
     report["meta"] = {
         "date": time.strftime("%Y-%m-%d %H:%M:%S"), "seed": SEED, "device": str(device),
         "torch": torch.__version__, "out_name": out_name,
         "experiment": "P11 前置：mini MTP 探针（DSV3 §2.2 Eq21-23 教学式，D=1）——"
-                      "联合训练是否拖累主支路/规模反转自洽性（判据预注册 notes/07 §3.3）",
+                      "联合训练对主支路的影响（历史判据预注册notes/07 §3.3；不作跨论文规模曲线验证）",
         "backbone": f"模块档 dense 几何 d={D_MODEL}/L={N_LAYER}/h={N_HEAD}/h_kv={N_KV}/V={VOCAB}"
                     f"（探针 B 已验；总参 {BACKBONE_PARAMS:,}）",
         "mtp_module": f"新增 {MTP_NEW_PARAMS:,}（3 枚 RMSNorm {3 * D_MODEL} + proj {D_MODEL * 2 * D_MODEL}"
@@ -375,15 +421,15 @@ def main():
                       f"+{MTP_NEW_PARAMS / BACKBONE_PARAMS:.1%}；共享主干 embedding 与 lm_head",
         "off_by_one": "x_in=tokens[:,:-2] / y_main=tokens[:,1:-1] / y_mtp=tokens[:,2:]（各 T-2）；"
                       "MTP 支路位置 i 的输入嵌入 = tokens[i+1]（teacher forcing）；断言内置每步训练前",
-        "corpus": "log/book2-ch08/tokens.bin（sp-8k，306M token 流）；每步有效监督位 510/512",
+        "corpus": "log/book2-ch08/tokens.bin（sp-8k，306M token 流）；每步每序列511个监督位；评测每窗510个",
         "optimizer": f"AdamW(betas=0.9,0.95,wd={WDECL}) + grad_clip 1.0（Book2 五件套）",
         "schedule": f"lr {PEAK_LR} 余弦降至 {PEAK_LR*MIN_LR_RATIO:.0e}，warmup={WARMUP}；两 λ 臂统一日程",
-        "eval_protocol": f"每 {eval_every} 步+终步：eval.bin 固定 49 窗（与 ch02/03/05 完全同集），"
-                         "fp32，主/MTP 双支路",
+        "eval_protocol": f"每 {eval_every} 步+终步：eval.bin固定49批×16窗、每窗510标签，"
+                         "MPS前向bf16/CE fp32，CPU全fp32，主/MTP双支路",
         "references": {"dense_full_eval_at_500": 5.7858, "dense_full_eval_final": 4.93375,
                        "note": "ch2 dense 臂 full 轨迹参照（不同日程长度，只作量级参照不作判据）；"
                                "判据用同日程 λ=0 对照臂（notes/07 §3.3）"},
-        "precision": "train bf16 autocast / eval fp32",
+        "precision": "MPS train/eval bf16 autocast + fp32 CE；CPU fp32",
         "ckpt": "每 eval 边界存 ckpt，臂完成即删；中断后重跑同命令自动续跑",
         "argv": " ".join(sys.argv[1:]),
     }
@@ -391,9 +437,7 @@ def main():
         json.dump(report, f, ensure_ascii=False, indent=2)
 
     t_all = time.perf_counter()
-    for lam_str in [s.strip() for s in args.lambdas.split(",")]:
-        lam = float(lam_str)
-        arm = f"lam{int(round(lam * 100)):02d}"
+    for lam, arm in zip(lambdas, arms):
         done = report["arms"].get(arm)
         if done and done["steps_done"] >= args.steps:
             print(f"[跳过] 臂 {arm} 已完成（{done['steps_done']} 步）", flush=True)
@@ -401,10 +445,11 @@ def main():
         print(f"\n===== 臂 {arm}（λ={lam}，{args.steps} 步，eval_every={eval_every}） =====", flush=True)
         run_arm(arm, lam, args.steps, eval_every, device, stream, ex, report, out_json)
     a, b = report["arms"].get("lam30"), report["arms"].get("lam00")
-    if a and b and a["eval_main_final"] is not None and b["eval_main_final"] is not None:
+    if a and b and a["config"]["lambda"] == 0.3 and b["config"]["lambda"] == 0.0 \
+            and a["eval_main_final"] is not None and b["eval_main_final"] is not None:
         report["pair_summary"] = {
             "eval_main_diff_lam03_minus_lam00": round(a["eval_main_final"] - b["eval_main_final"], 5),
-            "read": "正 = 挂 MTP 拖累主支路；|diff| ≤ 0.05 nat=持平/略差（规模反转自洽素材）；"
+            "read": "正 = 挂 MTP 拖累主支路；0.05 nat为排障阈值，不是统计显著性或跨论文规模反转判据；"
                     ">0.05 才排障（notes/07 §3.3 预注册）",
             "mtp_branch_above_main_always": None,   # 正文核验用：曲线 CSV 里逐点核
         }

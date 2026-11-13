@@ -34,7 +34,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(HERE, "..", "ch02")))
 from moe import ExpertBank                     # noqa: E402  ch02 专家件复用（SwiGLU 同构，融合 3D 键位）
 from moe_mla_slots import SEED, ExpertSwiGLU, HFDeepseekMoE   # noqa: E402  正身（组件库）
 
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
+REPO_ROOT = os.getcwd()
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book4-ch05")
 
 
@@ -65,7 +65,18 @@ class DeepseekRouter(nn.Module):
     def __init__(self, hidden_size, n_expert, top_k, scoring="softmax", n_group=1, topk_group=1,
                  norm_topk_prob=False, routed_scaling_factor=1.0, use_bias=False, bias_u=0.001):
         super().__init__()
-        assert scoring in ("softmax", "sigmoid")
+        if scoring not in ("softmax", "sigmoid"):
+            raise ValueError("scoring须为softmax或sigmoid")
+        if min(hidden_size, n_expert, top_k, n_group, topk_group) < 1:
+            raise ValueError("几何参数必须为正")
+        if n_expert % n_group or topk_group > n_group:
+            raise ValueError("专家须均分到有效的组")
+        if top_k > topk_group * (n_expert // n_group):
+            raise ValueError("top-k超出所选组可提供的专家数")
+        if n_group > 1 and scoring == "sigmoid" and n_expert // n_group < 2:
+            raise ValueError("V3组代表需要每组至少两个专家")
+        if bias_u < 0:
+            raise ValueError("偏置步长须非负")
         self.weight = nn.Parameter(torch.empty(n_expert, hidden_size))     # (E,d) —— HF 键名 gate.weight
         nn.init.normal_(self.weight, mean=0.0, std=0.02)
         self.n_expert, self.top_k, self.scoring = n_expert, top_k, scoring
@@ -107,6 +118,12 @@ class DeepseekRouter(nn.Module):
         counts: (E,) 本步（整 batch）各专家实收选择数。
         """
         u = self.bias_u if u is None else u
+        if not hasattr(self, "e_score_correction_bias"):
+            raise ValueError("此路由器未启用偏置")
+        if counts.shape != (self.n_expert,) or not torch.isfinite(counts).all() or (counts < 0).any() or counts.sum() <= 0:
+            raise ValueError("counts须为非负有限且总和大于0的(E,)计数")
+        if not 0 <= u < float("inf"):
+            raise ValueError("步长须为有限非负数")
         frac = counts.float() / counts.float().sum()
         e = 1.0 / self.n_expert - frac                                     # (E,) 欠载为正
         self.e_score_correction_bias += u * torch.sign(e)
@@ -135,6 +152,19 @@ class DeepSeekMoE(nn.Module):
             top_k = _field(cfg, "top_k", "num_experts_per_tok")
             expert_dim = _field(cfg, "expert_dim", "moe_intermediate_size", "intermediate_size")
             n_shared = _field(cfg, "n_shared", "n_shared_experts")
+            method = getattr(cfg, "topk_method", None)
+            is_v3 = getattr(cfg, "model_type", None) == "deepseek_v3" or method == "noaux_tc"
+            scoring = getattr(cfg, "scoring_func", None) or ("sigmoid" if is_v3 else scoring)
+            n_group = getattr(cfg, "n_group", n_group)
+            topk_group = getattr(cfg, "topk_group", topk_group)
+            norm = getattr(cfg, "norm_topk_prob", None)
+            norm_topk_prob = bool(norm) if norm is not None else (True if is_v3 else norm_topk_prob)
+            routed_scaling_factor = getattr(cfg, "routed_scaling_factor", routed_scaling_factor)
+            use_bias = use_bias or is_v3
+            if method == "greedy":
+                n_group, topk_group = 1, 1
+            elif method not in (None, "group_limited_greedy", "noaux_tc"):
+                raise ValueError(f"未支持的topk_method: {method}")
         assert all(v is not None for v in (hidden_size, n_expert, top_k, expert_dim)), \
             "缺几何参数：hidden_size/n_expert/top_k/expert_dim"
         self.gate = DeepseekRouter(hidden_size, n_expert, top_k, scoring=scoring, n_group=n_group,
@@ -142,6 +172,8 @@ class DeepSeekMoE(nn.Module):
                                    routed_scaling_factor=routed_scaling_factor,
                                    use_bias=use_bias, bias_u=bias_u)
         self.experts = ExpertBank(hidden_size, n_expert, expert_dim)       # ch02 件复用（E,2w,d)/(E,d,w)
+        if n_shared < 1 or expert_dim < 1:
+            raise ValueError("本共享专家教学块要求n_shared和expert_dim为正")
         self.shared_experts = ExpertSwiGLU(hidden_size, n_shared * expert_dim)   # (B,n,d)->(B,n,d)
         self.n_expert, self.top_k, self.expert_dim, self.n_shared = n_expert, top_k, expert_dim, n_shared
         self.hidden_size = hidden_size
@@ -179,7 +211,9 @@ def main(out_name):
     device = torch.device("cpu")                                           # 数值对拍一律 CPU fp32（纪律）
     t0 = time.perf_counter()
     os.makedirs(OUT_DIR, exist_ok=True)
-    report = {"seed": SEED, "device": "cpu fp32", "torch": torch.__version__}
+    import transformers
+    report = {"seed": SEED, "device": "cpu fp32", "torch": torch.__version__,
+              "transformers": transformers.__version__}
 
     # ---- ① 教学件 vs 正身 HFDeepseekMoE：同权重前向，期望逐位一致 ----
     d, E, k, w, s = 64, 4, 2, 128, 1                                       # 小而全几何（共享 1）
@@ -219,7 +253,7 @@ def main(out_name):
         y_h = hf(x)                                                        # (2,32,64)
     delta = (y_o - y_h).abs().max().item()
     n_par = sum(p.numel() for p in ours.parameters())
-    print(f"[② vs HF 5.18.0 DeepseekV2Moe] strict 直搬通过 {n_par:,} 参 | max|Δhidden| = {delta:.2e}")
+    print(f"[② vs HF {transformers.__version__} DeepseekV2Moe] strict 直搬通过 {n_par:,} 参 | max|Δhidden| = {delta:.2e}")
     report["vs_hf_deepseekv2moe"] = {"params": n_par, "max_abs_diff_hidden": delta,
                                      "router_logits_shape": list(rl_o.shape),
                                      "verdict": "PASS" if delta < 1e-5 else "FAIL"}
@@ -263,6 +297,10 @@ def main(out_name):
         _, w0, i0 = gate(h2)
         gate.e_score_correction_bias.copy_(torch.tensor([0.25, 0.10, -0.05, -0.30]))
         _, w1, i1 = gate(h2)
+        # 无序top-k的槽顺序不代表集合变化；先按专家号对齐门值。
+        order0, order1 = i0.argsort(-1), i1.argsort(-1)
+        i0, i1 = i0.gather(1, order0), i1.gather(1, order1)
+        w0, w1 = w0.gather(1, order0), w1.gather(1, order1)
         same = (i0 == i1).all(dim=-1)                                      # (N,) 选择集未变的 token
         w_diff_on_same = (w0[same] - w1[same]).abs().max().item() if same.any() else 0.0
         n_changed = int((~same).sum())
@@ -298,9 +336,11 @@ def main(out_name):
           and all(v["verdict"] == "PASS" for v in checks.values()))
     report["verdict"] = "PASS" if ok else "FAIL"
     path = os.path.join(OUT_DIR, f"deepseek_moe_parity_{out_name}.json")
-    with open(path, "w", encoding="utf-8") as f:
+    with open(path, "x", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
     print(f"[判定] {report['verdict']} | 产物 {path} | 墙钟 {report['wall_sec']} s")
+    if not ok:
+        raise AssertionError("组件对拍未通过，详见结果文件")
 
 
 if __name__ == "__main__":

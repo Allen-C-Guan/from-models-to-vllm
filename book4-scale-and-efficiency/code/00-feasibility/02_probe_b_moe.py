@@ -14,6 +14,7 @@
 #   （dense 约 1-2 min、MoE 约 3-6 min——若投影超 25 min 自动降档并留痕）
 # 产物：log/book4-feasibility/probeB_moe_{out}.json（不入库）
 import argparse
+from moe_mla_slots import prepare_output
 import time
 
 import numpy as np
@@ -32,7 +33,7 @@ def lr_at(step, total):
 
 
 def eval_loss(model, device, batches=8):
-    """heldout eval loss（eval.bin 独立文件，B=8/T=512，8 批 fp32 口径）。"""
+    """heldout eval loss（eval.bin 独立文件，B=8/T=512，8批；MPS BF16前向，CPU FP32）。"""
     model.eval()
     arr = np.memmap(EVAL_SP8K, dtype=np.uint16, mode="r")
     offs = np.linspace(0, len(arr) - 8 * 512 - 1, batches).astype(int)
@@ -65,7 +66,9 @@ def train_arm(tag, cfg, steps, batch, block, device):
     hist0 = expert_hist(model, device)                # 随机初始化时的负载分布
     secs, losses, mem_trace = [], [], []
     t_wall = time.perf_counter()
-    for step in range(1, steps + 1):
+    step = 0
+    while step < steps:
+        step += 1
         for g in opt.param_groups:
             g["lr"] = lr_at(step, steps)
         x, y = stream.batch(step, device)
@@ -84,13 +87,13 @@ def train_arm(tag, cfg, steps, batch, block, device):
         if device.type == "mps":
             mem_trace.append(torch.mps.current_allocated_memory() / 1024 / 1024)
         if step == 4 and sum(secs) / 4 * steps > 1500:      # 25 min 守卫 → 降档留痕
-            new_steps = max(60, int(1500 / (sum(secs) / 4)))
+            new_steps = max(step, min(steps, int(1500 / (sum(secs) / 4))))
             print(f"[降档] {tag}: 单步 {sum(secs)/4:.2f}s 投影超 25 min → 减至 {new_steps} 步（如实记录）")
             steps = new_steps
 
     hist1 = expert_hist(model, device)                # 短训后的负载分布
     ev = eval_loss(model, device)
-    steady = secs[1:]
+    steady = secs[1:] or secs
     res = {"tag": tag, "params_total": model.n_params(), "params_active": act, "params_active_nonemb": act_ne,
            "steps_run": steps, "sec_per_step_steady": round(float(np.median(steady)), 3),
            "wall_sec": round(time.perf_counter() - t_wall, 1),
@@ -141,6 +144,8 @@ def load_imbalance(hist):
 
 
 def main(out_name, steps, batch, block):
+    prepare_output("probeB_moe", out_name)
+    if min(steps,batch,block) < 1:raise ValueError("步数、batch与block须为正")
     device = pick_device("mps")
     print(f"[设备] {device} | 语料 tokens.bin（V=8192，Book2 ch08 遗产）| 种子 {SEED}")
     common = dict(vocab_size=8192, hidden_size=512, num_hidden_layers=6,
@@ -156,7 +161,7 @@ def main(out_name, steps, batch, block):
     rec = {"seed": SEED, "device": str(device), "bt": f"B={batch}/T={block}",
            "config": {k: v for k, v in common.items()},
            "moe_spec": {"E": 8, "top_k": 2, "expert_dim": 704,
-                        "等激活口径": "每 token 激活 2×704=1408 = dense d_ff；总参 3.75× dense FFN 槽"},
+                        "等激活口径": "每 token 激活 2×704=1408 = dense d_ff；专家矩阵4× dense FFN槽；路由另计"},
            "dense": dense, "moe": moe,
            "load_imbalance_init": load_imbalance(moe["expert_hist_init"]),
            "load_imbalance_trained": load_imbalance(moe["expert_hist_trained"]),

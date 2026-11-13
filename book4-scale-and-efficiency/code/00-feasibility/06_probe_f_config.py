@@ -2,19 +2,20 @@
 # 用途：Book3 207M 骨架两刀方案（FFN→MoE + GQA→MLA）的候选定档——ch9 大项目「整合短训」的底数：
 #       三个候选（参数逐项手算账 + 模型实测 assert 逐位）：
 #       cand1 等激活·重 MLA：MoE(E=8/top2/共享1, 专家宽 w=938——k·w+w_shared=3×938=2814≈dense 2816
-#             即「等激活 FFN 宽」自算公式：w = d_ff/(k+n_shared) 向下取整) + MLA(d_c=512/d_c'=64,
+#             即「等激活 FFN 宽」自算公式：w = d_ff/(k+n_shared) 向下取整) + MLA(d_c=512/d_h^R=64,
 #             d_nope=128/d_v=128, r_q=512——旗舰比例的等比缩小)；
-#       cand2 等激活·轻 MLA：同 MoE + MLA(d_c=256/d_c'=64, d_nope=64/d_v=64, r_q=256)——
+#       cand2 等激活·轻 MLA：同 MoE + MLA(d_c=256/d_h^R=64, d_nope=64/d_v=64, r_q=256)——
 #             注意力参数近 GQA、KV −68.75%；
 #       cand3 等总参·轻 MLA：MLA 同 cand2，MoE 专家宽 w 扫描取「总参最逼近 207,119,360」的值
 #             （等总参 FFN 自算公式：3·d·d_ff_dense = 3·d·(E+n_shared)·w + E·d（路由门）→ 解 w）。
-#       每候选：MPS bf16（fp32 权重 autocast，Book3 同口径）前向+反向 10 步 sec/step + 内存峰值；
+#       每候选：MPS bf16（fp32 权重 autocast，Book3 同口径）前向+反向 10 步 sec/step + 步末allocated采样（MiB，非完整峰值）；
 #       与 207M 稠密（Book3 底座）同批（tokens32k，B=8/T=1024）3 步中位 wall-clock 对照。
 #       全部数字=ch9 设计文档「预算表」与「整合短训档位」的实测底数。
 # 所属章节：Book4 ch9（DSV2→DSV3 整机拆解 + 单轨两刀整合）；00-feasibility 探针 F。
 # 运行方式：source env.sh && python 06_probe_f_config.py [--out-name run1]（约 5-8 min）
 # 产物：log/book4-feasibility/probeF_config_{out}.json（不入库）
 import argparse
+from moe_mla_slots import prepare_output
 import time
 
 import numpy as np
@@ -28,9 +29,9 @@ BASE_TOTAL = 207_119_360          # Book3 215M 定版（对照锚）
 BT = (8, 1024)                    # Book3 基线口径 B/T（1.702 s/step @ MPS bf16）
 
 MLA_HEAVY = dict(kv_lora_rank=512, q_lora_rank=512, qk_nope_head_dim=128,
-                 qk_rope_head_dim=64, v_head_dim=128)      # 旗舰比例缩小（d_c=512/d_c'=64）
+                 qk_rope_head_dim=64, v_head_dim=128)      # 旗舰比例缩小（d_c=512/d_h^R=64）
 MLA_LITE = dict(kv_lora_rank=256, q_lora_rank=256, qk_nope_head_dim=64,
-                qk_rope_head_dim=64, v_head_dim=64)        # 小尺度友好（d_c=256/d_c'=64）
+                qk_rope_head_dim=64, v_head_dim=64)        # 小尺度友好（d_c=256/d_h^R=64）
 
 
 def moe_spec(w, mode="mixtral"):
@@ -81,6 +82,9 @@ def run_10step(cfg, tag, device, steps=10):
 
 
 def main(out_name):
+    prepare_output("probeF_config", out_name)
+    if not torch.backends.mps.is_available():
+        raise RuntimeError("探针F是历史MPS性能实验；参数计数请用ch09/llama409.py --fast")
     device = pick_device("mps")
     slots = bootstrap_book3()
     ln_v = float(np.log(32000))
@@ -145,7 +149,7 @@ def main(out_name):
     print(f"[对照] 207M 稠密 {base_perf['sec_per_step_median3']} s/step（Book3 记录 1.702 / 探针 A 复测 1.907）"
           f"| 峰值 {base_perf['mps_peak_mb']} MB")
 
-    # 整合短训档位建议（ch9 设计文档底数）：≤30 min 能跑多少步
+    # 整合短训档位建议（ch9 设计文档底数）：只按训练稳态步时折算，不含评测/保存/波动
     rec = {}
     for tag, row in report["candidates"].items():
         s = row["perf_mps_bf16"]["sec_per_step_steady"]

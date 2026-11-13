@@ -15,12 +15,13 @@
 #           （top-k 权重不重归一化，直接 × routed_scaling_factor）；
 #       (c) Mixtral 路由重归一化 top-k 概率（和为 1）；两家的路由 dtype 处理不同（DSV2 强制 fp32）；
 #       (d) DSV2 的 RoPE 用复数约定（view_as_complex），llama/mixtral 用 rotate_half——q/k 同约定时
-#           q·k 点积等价，手写用 rotate_half 不影响对拍；
+#           须同步置换投影行才能保持点积；原样同权重只换配对方式不等价；
 #       (e) 5.x 把 rope 参数收进 rope_parameters 子对象，但 config(rope_theta=...) 旧 kwarg 仍被接受。
 # 所属章节：Book4 ch4（Mixtral 组装术）/ ch5（DeepseekMoE）/ ch6（MLA）对拍链路；00-feasibility 探针 G。
 # 运行方式：source env.sh && python 07_probe_g_parity.py [--out-name run1]（分钟级，CPU fp32）
 # 产物：log/book4-feasibility/probeG_parity_{out}.json（不入库）
 import argparse
+from moe_mla_slots import prepare_output
 import time
 
 import torch
@@ -33,7 +34,7 @@ VER = __import__("transformers").__version__
 
 
 def compare(ours, hf, x, tag):
-    """同输入对拍 logits：max|Δ| / argmax / top-5 一致率 + 独立初始化 sanity。"""
+    """同输入对拍logits：最大差、argmax与top-5；本函数不含独立初始化反证。"""
     torch.manual_seed(SEED)
     with torch.no_grad():
         lo, _ = ours(x, x)                              # SlotLLaMA 接口：(logits, loss)
@@ -62,6 +63,7 @@ def arm_mixtral(device):
                         num_experts_per_tok=2, max_position_embeddings=512, rope_theta=10000.0,
                         rms_norm_eps=1e-5, tie_word_embeddings=False, attention_bias=False,
                         mlp_bias=False, attention_dropout=0.0)
+    cfg._attn_implementation = "eager"
     hf = MixtralForCausalLM(cfg).eval()
     missing_unexpected = {}
     try:
@@ -89,18 +91,19 @@ def arm_deepseek(device):
     mla = dict(kv_lora_rank=64, q_lora_rank=64, qk_nope_head_dim=32,
                qk_rope_head_dim=16, v_head_dim=32, rope_style="complex")   # DSV2 复数约定（坑 d）
     ours = SlotLLaMA(SlotConfig(vocab_size=512, hidden_size=256, num_hidden_layers=2,
-                                num_attention_heads=4, num_key_value_heads=1, intermediate_size=704,
+                                num_attention_heads=4, num_key_value_heads=4, intermediate_size=704,
                                 moe=dict(n_expert=4, top_k=2, expert_dim=128, n_shared=1,
                                          variant="hf_deepseek", routed_scaling_factor=1.0),
                                 moe_first_k_dense=1, mla=mla, rope_theta=10000.0, rms_norm_eps=1e-5))
     cfg = DeepseekV2Config(vocab_size=512, hidden_size=256, intermediate_size=704,
                            moe_intermediate_size=128, num_hidden_layers=2, num_attention_heads=4,
-                           num_key_value_heads=1, first_k_dense_replace=1, n_routed_experts=4,
+                           num_key_value_heads=4, first_k_dense_replace=1, n_routed_experts=4,
                            n_shared_experts=1, num_experts_per_tok=2, kv_lora_rank=64,
                            q_lora_rank=64, qk_nope_head_dim=32, qk_rope_head_dim=16, v_head_dim=32,
                            topk_method="greedy", routed_scaling_factor=1.0, norm_topk_prob=False,
                            rope_theta=10000.0, rms_norm_eps=1e-5, tie_word_embeddings=False,
                            max_position_embeddings=512)
+    cfg._attn_implementation = "eager"
     hf = DeepseekV2ForCausalLM(cfg).eval()
     try:
         hf.load_state_dict(ours.state_dict(), strict=True, assign=True)
@@ -126,12 +129,13 @@ def lite_assessment():
             "download_gb_bf16": round(total_b * 2 / 1e9, 1),
             "mem_gb_bf16": round(total_b * 2 / 1e9 * 1.15, 1),
             "mem_gb_fp32": round(total_b * 4 / 1e9 * 1.15, 1),
-            "hardware_48gb_unified": "bf16 可载（~36GB，紧）；fp32 不可载（~72GB>48GB）",
+            "hardware_48gb_unified": "仅按权重及15%假设余量估算；未测加载峰值或前向临时量，不能保证可载",
             "verdict": "条件性可行：bf16 口径整机对拍（tolerance 放宽到 1e-2 级）或分层对拍；"
                        "写作期再决策是否下载（~31GB，夜间任务）"}
 
 
 def main(out_name):
+    prepare_output("probeG_parity", out_name)
     bootstrap_book3()
     device = torch.device("cpu")                        # 对拍一律 CPU fp32（纪律）
     t0 = time.perf_counter()
@@ -151,7 +155,7 @@ def main(out_name):
                                "不随 config.rms_norm_eps（层内 LN 才用 config 值）——手写组件需分别对齐",
         "rope_parameters_nesting": "5.x rope 参数收进 rope_parameters；rope_theta=... 旧 kwarg 仍被接受",
     }
-    report = {"seed": SEED, "transformers_version": VER, "device": "cpu fp32",
+    report = {"seed": SEED, "historical_notes_version": "5.18.0；quirks为历史备注，实际执行版本另列", "transformers_version": VER, "device": "cpu fp32",
               "mixtral_mini": mix, "deepseek_mini": ds,
               "quirks_5_18_0": quirks, "deepseek_v2_lite_real_weight": lite_assessment(),
               "wall_sec": round(time.perf_counter() - t0, 1)}
@@ -159,6 +163,7 @@ def main(out_name):
     report["verdict"] = "PASS" if ok else "FAIL"
     print(f"[判定] {'两臂均 PASS' if ok else '存在 FAIL 臂——见上'} | 墙钟 {report['wall_sec']} s")
     save_json("probeG_parity", report, out_name)
+    if not ok:raise SystemExit(1)
 
 
 if __name__ == "__main__":

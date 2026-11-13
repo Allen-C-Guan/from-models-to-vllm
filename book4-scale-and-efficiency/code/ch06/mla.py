@@ -19,6 +19,8 @@
 #   （inv_freq 按 d_h^R 归一），插槽级的全宽 cos/sin 表无法切片复用——签名保留以对齐整机调用，
 #   旋转角在模块内自建（与正身同款行为）。
 import argparse
+import hashlib
+from pathlib import Path
 import glob
 import json
 import os
@@ -34,7 +36,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(HERE, "..", "00-feasibility")))
 from moe_mla_slots import (SEED, MLAAttention, SlotConfig, SlotLLaMA,       # noqa: E402
                            bootstrap_book3, mla_absorbed_forward)
 
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
+REPO_ROOT = os.getcwd()
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book4-ch06")
 
 
@@ -42,7 +44,7 @@ def save_json(name, obj, out_name="run1"):
     """产物落本章 log 目录（防覆写后缀）。"""
     os.makedirs(OUT_DIR, exist_ok=True)
     path = os.path.join(OUT_DIR, f"{name}_{out_name}.json")
-    with open(path, "w", encoding="utf-8") as f:
+    with open(path, "x", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False, indent=2)
     print(f"[产物] {path}")
     return path
@@ -94,6 +96,19 @@ class MultiHeadLatentAttention(nn.Module):
         self.q_lora_rank = _field(src, "q_lora_rank", default=None)
         self.rope_theta = _field(src, "rope_theta", default=10000.0)
         self.rope_style = _field(src, "rope_style", default="complex")   # complex=HF DSV2 约定
+        if min(d, self.h, self.d_c, self.d_nope, self.d_rope, self.d_v) < 1 or self.d_rope % 2:
+            raise ValueError("MLA维度须为正，RoPE维度须为偶数")
+        if self.q_lora_rank is not None and self.q_lora_rank < 1:
+            raise ValueError("q_lora_rank须为正或None")
+        if self.rope_style not in ("complex", "half"):
+            raise ValueError("rope_style须为complex或half")
+        if self.rope_theta <= 0:
+            raise ValueError("rope_theta须为正")
+        if _field(src, "attention_bias", default=False) or _field(src, "attention_dropout", default=0):
+            raise ValueError("教学件仅支持无投影偏置、零attention dropout")
+        rope_options = _field(src, "rope_scaling", "rope_parameters", default=None)
+        if rope_options:
+            raise ValueError("教学件只实现基础RoPE；不接受带外推配置的检查点直接代入")
         self.qk_head_dim = self.d_nope + self.d_rope
         self.scaling = self.qk_head_dim ** -0.5        # √(d_h+d_h^R)：192^-0.5 档（非 128 非 512）
         self._mask_cache = {}
@@ -147,8 +162,9 @@ class MultiHeadLatentAttention(nn.Module):
         return self._mask_cache[n]
 
     def latents(self, x):
-        """产出「可缓存」的两份潜向量——KV cache 只存它们（写入点在压缩态）：
-        c_KV (B,n,d_c，已过 kv_a_layernorm) 与 k_R (B,n,d_r，未旋转——旋转后定型写缓存亦可)。"""
+        """返回c_KV (B,n,d_c，已归一)与原始k_R (B,n,d_r，尚未旋转)。
+        本类没有增量缓存；按论文实现缓存时应另保存旋转后的位置键。
+        """
         c_raw = self.kv_a_proj_with_mqa(x)                                 # (B,n,d_c+d_r) [W^DKV;W^KR] 一次算
         c_kv, k_r = c_raw.split([self.d_c, self.d_rope], dim=-1)           # (B,n,d_c)+(B,n,d_r)
         return self.kv_a_layernorm(c_kv), k_r                              # LN 只住 c 段（解耦的一部分）
@@ -172,7 +188,8 @@ class MultiHeadLatentAttention(nn.Module):
     # ---------------- 前向：双路径 ----------------
     def forward(self, x, cos=None, sin=None, path="explicit", return_attn_probs=False):
         """x (B,n,d) -> (B,n,d)。cos/sin 为插槽契约参数（整机统一调用），解耦 RoPE 通道
-        自建角度表（见类 docstring）；path 见类 docstring。return_attn_probs=True 额外返回
+        自建从0开始的位置表；本类仅为完整序列双路径验证，无增量cache接口。
+        return_attn_probs=True 额外返回
         注意力权重 (B,h,n,n)（双路径互拍用）。"""
         B, n, _ = x.shape
         q_nope, q_pe = self._queries(x)                                    # (B,h,n,d_n) / (B,h,n,d_r)
@@ -266,7 +283,7 @@ def check_dual_path(geom, q_lora, seq_lens=(16, 256, 1024)):
                                      qk_rope_head_dim=geom["d_r"], v_head_dim=geom["d_v"],
                                      q_lora_rank=q_lora, rope_style="complex").float()
     g = torch.Generator().manual_seed(SEED)
-    out = {"seq_lens": {}, "q_lora": q_lora}
+    out = {"seq_lens": {}, "q_lora": q_lora, "output_kind": "attention_hidden; legacy logits_max_abs key"}
     with torch.no_grad():
         for n in seq_lens:
             x = torch.randn(2, n, geom["d"], generator=g)                   # (2,n,d)
@@ -295,6 +312,7 @@ def check_dual_path(geom, q_lora, seq_lens=(16, 256, 1024)):
 def check_hf_model(q_lora):
     """探针 G 同口径复跑：小 config 随机权重 strict 直搬。注意力插槽=本教学件（其余=正身件），
     state_dict 键名与 MLAAttention 一致，直搬不受影响——「插槽可换」本身的现场验证。"""
+    import transformers
     from transformers import DeepseekV2Config, DeepseekV2ForCausalLM
     torch.manual_seed(SEED)
     mla = dict(kv_lora_rank=64, q_lora_rank=q_lora, qk_nope_head_dim=32,
@@ -309,12 +327,13 @@ def check_hf_model(q_lora):
             {**mla, "hidden_size": 256, "num_attention_heads": 4, "rope_theta": 10000.0})
     cfg = DeepseekV2Config(vocab_size=512, hidden_size=256, intermediate_size=704,
                            moe_intermediate_size=128, num_hidden_layers=2, num_attention_heads=4,
-                           num_key_value_heads=1, first_k_dense_replace=1, n_routed_experts=4,
+                           num_key_value_heads=4, first_k_dense_replace=1, n_routed_experts=4,
                            n_shared_experts=1, num_experts_per_tok=2, kv_lora_rank=64,
                            q_lora_rank=q_lora, qk_nope_head_dim=32, qk_rope_head_dim=16, v_head_dim=32,
                            topk_method="greedy", routed_scaling_factor=1.0, norm_topk_prob=False,
                            rope_theta=10000.0, rms_norm_eps=1e-5, tie_word_embeddings=False,
                            max_position_embeddings=512)
+    cfg._attn_implementation = "eager"
     hf = DeepseekV2ForCausalLM(cfg).eval()
     hf.load_state_dict(ours.state_dict(), strict=True, assign=True)        # strict 直搬
     g = torch.Generator().manual_seed(SEED)
@@ -324,7 +343,7 @@ def check_hf_model(q_lora):
         lh = hf(x).logits
     delta = (lo - lh).abs().max().item()
     agree = (lo.argmax(-1) == lh.argmax(-1)).float().mean().item()
-    print(f"[④ vs HF 5.18.0 q_lora={q_lora if q_lora else 'null'}] strict 直搬通过 "
+    print(f"[④ vs HF {transformers.__version__} q_lora={q_lora if q_lora else 'null'}] strict 直搬通过 "
           f"{sum(p.numel() for p in ours.parameters()):,} 参 | max|Δlogits| = {delta:.3e} | "
           f"argmax 一致率 = {agree:.4f}")
     assert delta < 1e-4 and agree == 1.0
@@ -333,67 +352,85 @@ def check_hf_model(q_lora):
 
 
 # ---------------- 对拍 ⑤：V2-Lite 真权重条件性（config 已核；权重完整则 safe_open 逐层形状账本） ----------------
-def check_v2lite():
-    """条件性真权重核验（大纲前置任务 13）：
-    a) config.json（本地缓存，一手）字段核对——Lite 的 MLA 几何与 q_lora_rank=null 事实；
-    b) safetensors 分片若已完整落地：safe_open 惰性读（零数值加载）逐层验证
-       kv_b_proj（W^UK/W^UV 折叠在一个矩阵）等五投影形状账本；
-    c) 未落地/不完整：如实记录降级——结构对拍（①④）已足够支撑正文。"""
-    res = {"config_verified": False, "weights_complete": False, "shapes": {}, "degraded": False}
-    # snapshots/<revision>/ 目录下才是 config.json 与分片——glob 必须再进一层（写浅一层会永远找不到文件）
-    snaps = sorted(glob.glob(os.path.join(LITE_SNAP, "*", "*")))
-    cfg_path = next((p for p in snaps if p.endswith("config.json")), None)
-    if cfg_path and os.path.exists(cfg_path):
-        with open(cfg_path, "r", encoding="utf-8") as f:
-            c = json.load(f)
-        res["config"] = {k: c.get(k) for k in
-                         ("hidden_size", "num_hidden_layers", "num_attention_heads", "kv_lora_rank",
-                          "q_lora_rank", "qk_nope_head_dim", "qk_rope_head_dim", "v_head_dim",
-                          "n_routed_experts", "n_shared_experts", "num_experts_per_tok",
-                          "first_k_dense_replace")}
-        ok = (c["hidden_size"] == 2048 and c["num_hidden_layers"] == 27 and c["num_attention_heads"] == 16
-              and c["kv_lora_rank"] == 512 and c["q_lora_rank"] is None
-              and c["qk_nope_head_dim"] == 128 and c["qk_rope_head_dim"] == 64 and c["v_head_dim"] == 128
-              and c["n_routed_experts"] == 64 and c["num_experts_per_tok"] == 6
-              and c["n_shared_experts"] == 2 and c["first_k_dense_replace"] == 1)
-        res["config_verified"] = ok
-        print(f"[⑤ V2-Lite config] 本地缓存核验{'通过' if ok else '失败'}：n_h=16、q_lora_rank=null、"
-              f"d_c=512、d_h^R=64、L=27（64 选 6+2 共享、首层稠密）")
-    st_files = [p for p in snaps if p.endswith(".safetensors") and os.path.exists(os.path.realpath(p))]
-    total = sum(os.path.getsize(p) for p in st_files)
-    res["safetensors_files"], res["safetensors_bytes"] = len(st_files), total
-    if not st_files or total < 30 * 2**30:
-        res["degraded"] = True
-        res["note"] = (f"权重分片未完整落地（{len(st_files)} 个文件 / {total/2**30:.1f} GiB，"
-                       f"预期约 31.4 GiB）——按预登记降级：config 已核 + 结构对拍（①④）足够支撑正文；"
-                       "权重落地后重跑本臂可补逐层形状账本")
-        print(f"[⑤ V2-Lite 权重] 降级记录：{res['note']}")
-        return res
-    # 完整落地：safe_open 惰性读逐层形状账本（峰值单张量数百 MB 以内——只读 kv_b_proj）
+def inspect_weight_index(snapshot, expected_shapes):
+    """只核一个snapshot的索引、文件和键/形状；不运行真实权重前向。"""
+    snapshot = Path(snapshot)
+    index_path = snapshot / "model.safetensors.index.json"
+    if not index_path.exists():
+        return {"index_complete": False, "note": "没有分片索引，不凭总字节数判断完整"}
+    index = json.loads(index_path.read_text())
+    weight_map = index.get("weight_map", {})
+    if not weight_map:
+        raise ValueError("权重索引没有weight_map")
+    files = sorted(set(weight_map.values()))
+    if any(Path(name).name != name for name in files):
+        raise ValueError("索引分片名须为当前snapshot内的文件名")
+    missing = [name for name in files if not (snapshot / name).is_file()]
+    if missing:
+        return {"index_complete": False, "missing_shards": missing}
     from safetensors import safe_open
-    h, d_c, d_n, d_r, d_v, d, L = 16, 512, 128, 64, 128, 2048, 27
-    expect = {"kv_a_proj_with_mqa": (d_c + d_r, d), "kv_b_proj": (h * (d_n + d_v), d_c),
-              "o_proj": (d, h * d_v), "q_proj": (h * (d_n + d_r), d)}
-    n_checked = 0
-    for path in st_files:
-        with safe_open(path, framework="pt") as f:
-            for key in f.keys():
-                if ".self_attn.kv_" in key or ".self_attn.o_proj" in key or ".self_attn.q_proj." in key:
-                    name = key.split(".")[-2]
-                    if name not in expect:
-                        continue
-                    shape = tuple(f.get_slice(key).get_shape())
-                    assert shape == expect[name], (key, shape, expect[name])
-                    res["shapes"][f"L{key.split('.')[2]}.{name}"] = shape
-                    n_checked += 1
-    res["weights_complete"] = True
-    res["n_tensors_checked"] = n_checked
-    print(f"[⑤ V2-Lite 权重] {len(st_files)} 分片完整：逐层投影形状账本核验 {n_checked} 项全过"
-          f"（kv_b_proj {expect['kv_b_proj']} = W^UK/W^UV 折叠、kv_a_proj_with_mqa {expect['kv_a_proj_with_mqa']}）")
-    return res
+    seen, shapes = set(), {}
+    for name in files:
+        with safe_open(snapshot / name, framework="pt") as handle:
+            declared = {key for key, file in weight_map.items() if file == name}
+            actual = set(handle.keys())
+            if not declared <= actual:
+                raise ValueError(f"{name}缺少索引声明的键")
+            for key in declared:
+                if key in seen:raise ValueError(f"重复键：{key}")
+                seen.add(key)
+                if key in expected_shapes:
+                    shape = tuple(handle.get_slice(key).get_shape())
+                    if shape != tuple(expected_shapes[key]):
+                        raise ValueError(f"{key}形状错误：{shape}")
+                    shapes[key] = list(shape)
+    if set(expected_shapes) - seen:
+        raise ValueError("索引缺少所需注意力张量")
+    return {"index_complete": True, "index_sha256": hashlib.sha256(index_path.read_bytes()).hexdigest(),
+            "indexed_tensors": len(seen), "shapes": shapes,
+            "note": "文件及索引键齐全，所列注意力形状已核；未验证真实权重数值前向"}
 
 
-def main(out_name):
+def check_v2lite(snapshot=None):
+    """配置来自随书原始快照；权重只读用户指定或唯一缓存revision，不混合快照。"""
+    cfg_path = Path(__file__).with_name("v2lite_config.json")
+    c = json.loads(cfg_path.read_text())
+    fields = {"hidden_size":2048,"num_hidden_layers":27,"num_attention_heads":16,
+        "kv_lora_rank":512,"q_lora_rank":None,"qk_nope_head_dim":128,
+        "qk_rope_head_dim":64,"v_head_dim":128,"n_routed_experts":64,
+        "n_shared_experts":2,"num_experts_per_tok":6,"first_k_dense_replace":1}
+    assert all(c.get(k)==v for k,v in fields.items())
+    result={"config_verified":True,"config":fields,
+            "config_source":"https://huggingface.co/deepseek-ai/DeepSeek-V2-Lite/resolve/main/config.json",
+            "config_sha256":hashlib.sha256(cfg_path.read_bytes()).hexdigest(),
+            "weights_complete":False,"degraded":True}
+    if snapshot is None:
+        candidates=[p for p in Path(LITE_SNAP).glob("*") if (p/"model.safetensors.index.json").is_file()]
+        if len(candidates)!=1:
+            result["note"]="未找到唯一权重snapshot；如有本地权重，请显式传--snapshot"
+            print("[⑤ V2-Lite] 配置已核；"+result["note"])
+            return result
+        snapshot=candidates[0]
+    snapshot=Path(snapshot)
+    weight_cfg=json.loads((snapshot/"config.json").read_text())
+    if any(weight_cfg.get(k)!=v for k,v in fields.items()):
+        raise ValueError("所选snapshot的配置与所核V2-Lite几何不符")
+    expected={}
+    layer_shapes={"kv_a_proj_with_mqa":(576,2048),"kv_b_proj":(4096,512),
+                  "q_proj":(3072,2048),"o_proj":(2048,2048),"kv_a_layernorm":(512,)}
+    for layer in range(27):
+        for name,shape in layer_shapes.items():
+            expected[f"model.layers.{layer}.self_attn.{name}.weight"]=shape
+    checked=inspect_weight_index(snapshot,expected)
+    result.update(checked)
+    result["snapshot"]=str(snapshot)
+    result["weights_complete"]=checked["index_complete"]  # 兼容旧键，只表示索引完整
+    result["degraded"]=not checked["index_complete"]
+    print(f"[⑤ V2-Lite] 配置已核；索引完整={checked['index_complete']}；真实权重前向未运行")
+    return result
+
+
+def main(out_name, fast=False, snapshot=None):
     os.makedirs(OUT_DIR, exist_ok=True)
     t0 = time.perf_counter()
     torch.manual_seed(SEED)
@@ -408,7 +445,9 @@ def main(out_name):
         vs_canon[str(q_lora)] = {"explicit": d_expl, "absorbed": d_abs}
 
     # ② 双路径互拍（probe C 几何 + q_lora=null 变体；注意力权重级 + 多窗长）
-    dual = {"q128": check_dual_path(geom_probe, 128), "qnull": check_dual_path(geom_probe, None)}
+    lengths = (8, 16, 32) if fast else (16, 256, 1024)
+    dual = {"q128": check_dual_path(geom_probe, 128, lengths),
+            "qnull": check_dual_path(geom_probe, None, lengths)}
 
     # ③（并入 ①）吸收路径 vs 正身吸收——同权重逐位（check_vs_canonical 已含）
 
@@ -416,7 +455,7 @@ def main(out_name):
     hf = {"q_lora=64": check_hf_model(64), "q_lora=null": check_hf_model(None)}
 
     # ⑤ V2-Lite 真权重条件性
-    lite = check_v2lite()
+    lite = check_v2lite(snapshot)
 
     # 参数账 assert（两分支手算=实测）
     torch.manual_seed(SEED)
@@ -430,7 +469,9 @@ def main(out_name):
         print(f"[参数账] {tag}: 手算 {led['total']:,} = 实测 {n_real:,}（q_side={led['q_side']:,} "
               f"kv_down={led['kv_down']:,} kv_up={led['kv_up']:,} o={led['o']:,}）")
 
-    report = {"seed": SEED, "device": "cpu fp32",
+    import transformers
+    report = {"seed": SEED, "device": "cpu fp32", "torch":torch.__version__,
+              "transformers":transformers.__version__, "fast":fast,
               "geom_registry": geom_reg, "geom_probe": geom_probe,
               "vs_canonical_bitwise": vs_canon, "dual_path": dual, "hf_model": hf,
               "v2lite_real_weights": lite,
@@ -442,5 +483,7 @@ def main(out_name):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="ch6 教学件 MLA：五层对拍 + V2-Lite 条件性核验")
     ap.add_argument("--out-name", default="run1", help="产物 JSON 后缀（防覆写）")
+    ap.add_argument("--fast",action="store_true",help="双路径仅检查8/16/32长度；不执行训练")
+    ap.add_argument("--snapshot",type=Path,help="可选，本地单个V2-Lite权重snapshot目录")
     args = ap.parse_args()
-    main(args.out_name)
+    main(args.out_name,args.fast,args.snapshot)

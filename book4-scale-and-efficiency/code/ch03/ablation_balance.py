@@ -1,13 +1,13 @@
-# ablation_balance.py —— Book4 ch3 均衡干预消融：none vs Shazeer 式 load-loss 两臂（负载崩塌现场 + 干预）
+# ablation_balance.py —— Book4 ch3 均衡干预消融：none vs 概率质量CV²辅助项 两臂（负载崩塌现场 + 干预）
 # 用途：统一模块档（探针 B 已验配置 d=512/L=6/h=8/h_kv=4/V=8192，B=16/T=512）两臂同数据同种子短训，
 #       单变量 = 负载均衡干预：none 臂（无辅助损失，预期复现赢者通吃/负载崩塌——探针 B 现场为参照：
-#       200 步训后第 0 层 max/min=327.8、多轮出现死专家）vs aux 臂（Shazeer 式 load-loss
+#       200 步训后第 0 层 max/min=327.8、多轮出现死专家）vs aux 臂（概率质量CV²辅助项
 #       L_load = w·CV(Load)²，w=0.1——papers/01 §A.4 R3 正身公式、LM 档权重口径）。
 #       产出每层每专家路由计数直方图 CSV（训前 init + 训中各 eval 边界——ch3 正文第一手现场素材）
 #       与均衡度量（max/min、CV、MaxVio——noaux 论文 R35 的 MaxVio 口径）。
 # 正身改编说明（诚实条款）：Shazeer 的 Load 用噪声门控下的 Φ 概率代理（Eq 8-11）；本实验门为确定性
 #       softmax top-k（moe_mla_slots.TopkGate，无 W_noise 项），noise→0 时 Φ 代理退化为硬计数不可导，
-#       故 aux 臂的 Load 用 softmax 概率质量 Σ_x P(x,i) 作平滑代理（可导、方向一致）；
+#       故 aux 臂的 Load 用 softmax 概率质量 Σ_x P(x,i) 作平滑代理（可导，但概率质量均匀不保证top-k条数均匀）；
 #       度量环节一律用硬计数（离散路由的真实现场），损失环节用概率代理——两者分开念。
 # 协议口径（Book2 五件套，与 ch02/ablation_moe.py 同款）：AdamW(0.9/0.95, wd=0.1) + clip 1.0
 #       + lr 1e-3 余弦降至 1e-4 + warmup 100；train bf16 autocast / eval fp32；
@@ -20,6 +20,7 @@
 # 模块来源：不私搭模型——整机/手算账 import 自正身 moe_mla_slots（其内部 bootstrap 引 Book3 llama_slots）。
 import argparse
 import csv
+import hashlib
 import json
 import math
 import os
@@ -35,7 +36,7 @@ from moe_mla_slots import (SEED, SlotConfig, SlotLLaMA, TokenStream, activated_a
                            hand_account)
 
 # ---------------- 固定口径 ----------------
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
+REPO_ROOT = os.getcwd()  # 从工作区根目录运行，数据与产物不进入书仓
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book4-ch03")
 TOKENS_BIN = os.path.join(REPO_ROOT, "log", "book2-ch08", "tokens.bin")
 EVAL_BIN = os.path.join(REPO_ROOT, "log", "book2-ch08", "eval.bin")
@@ -48,6 +49,7 @@ TPB = BATCH * BLOCK
 EVAL_BATCHES = 49                                                  # 固定 49 窗 = 401,408 token
 PROBE_B, PROBE_T = 4, 2048                                         # 路由探针：8192 token（eval.bin 首段）
 PEAK_LR, MIN_LR_RATIO, WARMUP, WDECL, TAIL = 1e-3, 0.1, 100, 0.1, 300
+ACTIVE_PARAMS = 26_089_984  # 历史双表、不含路由门
 MOE_PARAMS = 65_042_944                                            # 探针 B 逐位锚点
 ARMS = ("none", "aux")
 
@@ -100,7 +102,7 @@ def build_arm(arm):
     assert m.n_params() == hand["total"] == MOE_PARAMS, \
         f"参数对账失败 {m.n_params()} != {MOE_PARAMS}（探针 B 锚点）"
     act, _ = activated_account(cfg)
-    assert act == 26_089_984, f"等激活口径被破坏：{act}"
+    assert act == ACTIVE_PARAMS, f"等激活口径被破坏：{act}"
     return m, cfg
 
 
@@ -147,7 +149,7 @@ def routing_snapshot(model, probe_x, device):
       frac_li = count_li / (N_tok·k)（每层选择总数归一，均匀 = 1/E）
       max_over_min = max(count_l) / max(min(count_l), 1)   ← 死专家（count=0）时下限取 1，防 ∞
       CV_l = std(count_l)/mean(count_l)（总体标准差）
-      MaxVio_l = max_i |frac_li − 1/E|（noaux R35 的 MaxVio 口径的逐层版）
+      max_vio = max_i |frac_li − 1/E|（本书绝对占比差，不是noaux的相对超载）
       MaxVio_global = 跨层聚合每专家计数后再取 max_i |frac_i − 1/E|
     """
     model.eval()
@@ -163,30 +165,35 @@ def routing_snapshot(model, probe_x, device):
         _, idx = logits.float().softmax(dim=-1).topk(TOP_K, dim=-1)
         counts.append(torch.bincount(idx.reshape(-1), minlength=N_EXPERT).tolist())
     model.train()
-    n_sel = PROBE_B * PROBE_T * TOP_K               # 每层总选择数 = 16384
-    metrics, agg = [], [0] * N_EXPERT
-    for row in counts:
-        arr = np.array(row, dtype=float)
-        frac = arr / n_sel
-        for i, c in enumerate(row):
-            agg[i] += c
-        metrics.append({"counts": row,
-                        "frac": [round(float(f), 5) for f in frac],
-                        "max_over_min": round(float(arr.max() / max(arr.min(), 1.0)), 2),
-                        "cv": round(float(arr.std() / arr.mean()), 4),
-                        "max_vio": round(float(np.abs(frac - 1.0 / N_EXPERT).max()), 5),
-                        "n_zero_experts": int((arr == 0).sum())})
-    agg_arr = np.array(agg, dtype=float)            # 跨层聚合（L 层 × 每专家）
-    agg_frac = agg_arr / (n_sel * N_LAYER)
-    return {"counts": counts,
-            "per_layer": metrics,
-            "global": {"counts": agg,
-                       "frac": [round(float(f), 5) for f in agg_frac],
-                       "cv": round(float(agg_arr.std() / agg_arr.mean()), 4),
-                       "max_vio": round(float(np.abs(agg_frac - 1.0 / N_EXPERT).max()), 5),
-                       "n_zero_cells": int(sum(m["n_zero_experts"] for m in metrics))},
-            "layer_mean_max_over_min": round(float(np.mean([m["max_over_min"] for m in metrics])), 2),
-            "layer_mean_cv": round(float(np.mean([m["cv"] for m in metrics])), 4)}
+    return balance_metrics(counts)
+
+
+def balance_metrics(counts):
+    """L×E实际派发计数；旧max_vio为绝对份额差，新增相对超载，不混用noaux聚合定义。"""
+    arr = np.asarray(counts, dtype=float)
+    if arr.ndim != 2 or min(arr.shape) < 1 or np.any(arr < 0) or not np.isfinite(arr).all():
+        raise ValueError("counts须为非负有限L×E矩阵")
+    if np.any(arr.sum(axis=1) == 0):
+        raise ValueError("每层总派发数须大于0")
+    layers, experts = arr.shape
+    metrics=[]
+    for row in arr:
+        frac=row/row.sum()
+        metrics.append({"counts":row.astype(int).tolist(),"frac":np.round(frac,5).tolist(),
+            "max_over_min":round(float(row.max()/max(row.min(),1)),2),
+            "cv":round(float(row.std()/row.mean()),4),
+            "max_vio":round(float(np.abs(frac-1/experts).max()),5),
+            "relative_overload":round(float(experts*frac.max()-1),5),
+            "n_zero_experts":int((row==0).sum())})
+    agg=arr.sum(axis=0);frac=agg/agg.sum()
+    return {"counts":arr.astype(int).tolist(),"per_layer":metrics,
+        "global":{"counts":agg.astype(int).tolist(),"frac":np.round(frac,5).tolist(),
+            "cv":round(float(agg.std()/agg.mean()),4),
+            "max_vio":round(float(np.abs(frac-1/experts).max()),5),
+            "n_zero_cells":int((arr==0).sum())},
+        "layer_mean_max_over_min":round(float(np.mean([x["max_over_min"] for x in metrics])),2),
+        "layer_mean_cv":round(float(np.mean([x["cv"] for x in metrics])),4),
+        "layer_mean_relative_overload":round(float(np.mean([x["relative_overload"] for x in metrics])),5)}
 
 
 def append_routing_csv(arm, out_name, phase, step, snap):
@@ -216,6 +223,8 @@ def run_arm(arm, steps, eval_every, device, stream, ex, ey, probe_x, report, out
     resumed_from = None
     if os.path.exists(ckpt_path):
         ck = torch.load(ckpt_path, map_location=device, weights_only=False)
+        if ck.get("run_contract") != report["run_contract"] or ck.get("arm") != arm:
+            raise ValueError("checkpoint与当前运行不匹配")
         m.load_state_dict(ck["model"])
         opt.load_state_dict(ck["opt"])
         train_losses, aux_losses = ck["train_losses"], ck["aux_losses"]
@@ -291,6 +300,7 @@ def run_arm(arm, steps, eval_every, device, stream, ex, ey, probe_x, report, out
                   f"{snap['global']['max_vio']} | 死专家 {snap['global']['n_zero_cells']}/{N_LAYER*N_EXPERT}",
                   flush=True)
             torch.save({"model": m.state_dict(), "opt": opt.state_dict(), "step": step,
+                        "run_contract": report["run_contract"], "arm": arm,
                         "train_losses": train_losses, "aux_losses": aux_losses, "lrs": lrs,
                         "times": times, "evals": evals, "snaps": snaps,
                         "elapsed_train": elapsed_train, "elapsed_eval": elapsed_eval}, ckpt_path)
@@ -303,18 +313,21 @@ def run_arm(arm, steps, eval_every, device, stream, ex, ey, probe_x, report, out
     rec = {
         "arm": arm,
         "arm_def": ("none：纯 CE 训练（无均衡干预——赢者通吃现场）" if arm == "none" else
-                    f"aux：CE + {AUX_W}·层均值 CV(Load)²（Shazeer R3 正身公式，Load=softmax 概率质量代理）"),
+                    f"aux：CE + {AUX_W}·层均值 CV(Load)²（CV²启发的改编，Load=softmax 概率质量代理）"),
         "config": {"d": D_MODEL, "L": N_LAYER, "h": N_HEAD, "h_kv": N_KV, "V": VOCAB,
                    "B": BATCH, "T": BLOCK, "n_expert": N_EXPERT, "top_k": TOP_K,
                    "expert_dim": D_EXPERT, "aux_w": AUX_W if arm == "aux" else 0.0},
-        "params_total": m.n_params(), "params_active": 26_089_984,
+        "params_total": m.n_params(), "params_active": activated_account(cfg)[0],
+        "params_active_convention": "双表，不含router",
+        "params_active_with_head_and_router": activated_account(cfg)[0] - VOCAB*D_MODEL
+            + N_LAYER*N_EXPERT*D_MODEL,
         "steps_done": steps_done, "steps_planned": steps, "resumed_from_step": resumed_from,
         "tail300_train_loss": round(sum(tail) / len(tail), 5),
         "evals": evals,
         "eval_final": evals[-1]["eval_loss"] if evals else None,
         "eval_final_se": evals[-1]["eval_se"] if evals else None,
-        "aux_loss_first10_mean": (round(sum(aux_losses[:10]) / 10, 6) if aux_losses else None),
-        "aux_loss_last10_mean": (round(sum(aux_losses[-10:]) / 10, 6) if aux_losses else None),
+        "aux_loss_first10_mean": (round(sum(aux_losses[:10]) / min(10, len(aux_losses)), 6) if aux_losses else None),
+        "aux_loss_last10_mean": (round(sum(aux_losses[-10:]) / min(10, len(aux_losses)), 6) if aux_losses else None),
         "snapshots": snaps,
         "balance_init": snaps[0]["global"] if snaps else None,
         "balance_final": snaps[-1]["global"] if snaps else None,
@@ -324,12 +337,13 @@ def run_arm(arm, steps, eval_every, device, stream, ex, ey, probe_x, report, out
                           "final": snaps[-1]["layer_mean_cv"] if snaps else None},
         "sec_per_step_steady": round(sum(steady) / len(steady), 4),
         "sec_per_step_median": round(float(np.median(steady)), 4),
-        "mem_peak_delta_mb": round(peak - base_alloc, 1),
+        "mem_peak_delta_mb": round(peak - base_alloc, 1) if device.type == "mps" else None,
+        "memory_metric": "MPS步末采样最大增量，MiB；非算子瞬时峰值",
         "elapsed_train_sec": round(elapsed_train, 1), "elapsed_eval_sec": round(elapsed_eval, 1),
         "wallclock_sec": round(time.perf_counter() - t_arm, 1),
         "diverged": diverged_at is not None, "diverged_at_step": diverged_at,
         "divergence_reason": reason,
-        "precision": "train bf16 autocast / eval fp32",
+        "precision": "train bf16 autocast / eval fp32" if device.type == "mps" else "CPU fp32",
     }
     curve_path = os.path.join(OUT_DIR, f"curve_{arm}_{report['meta']['out_name']}.csv")
     with open(curve_path, "w", newline="", encoding="utf-8") as cf:
@@ -375,12 +389,14 @@ def add_pair_summary(report):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="ch3 均衡干预消融：none vs Shazeer 式 load-loss（负载直方图）")
+    ap = argparse.ArgumentParser(description="ch3 均衡干预消融：none vs 概率质量CV²辅助项（负载直方图）")
     ap.add_argument("--steps", type=int, default=2000, help="每臂步数（fast=300 / full=2000）")
     ap.add_argument("--out-name", type=str, default=None)
     ap.add_argument("--arms", type=str, default="none,aux", help="臂选择（none/aux，逗号分隔）")
     ap.add_argument("--eval-every", type=int, default=None, help="eval 间隔（默认 max(100, steps//4)）")
     args = ap.parse_args()
+    if args.steps < 1 or (args.eval_every is not None and args.eval_every < 1):
+        ap.error("steps与eval-every必须为正整数")
     out_name = args.out_name or ("fast" if args.steps <= 500 else "full")
     eval_every = args.eval_every or max(100, args.steps // 4)
     arms = [a.strip() for a in args.arms.split(",")]
@@ -397,32 +413,45 @@ def main():
     probe_x = build_probe_batch(device)
     out_json = os.path.join(OUT_DIR, f"ablation_balance_{out_name}.json")
 
+    def file_id(path):
+        st = os.stat(path)
+        return {"path": os.path.realpath(path), "size": st.st_size, "mtime_ns": st.st_mtime_ns}
+    # 语料以路径/大小/mtime辨认；不声称这是内容哈希。源码另取SHA256。
+    contract = {"version": 1, "steps": args.steps, "eval_every": eval_every,
+                "seed": SEED, "batch": BATCH, "block": BLOCK,
+                "train_data": file_id(TOKENS_BIN), "eval_data": file_id(EVAL_BIN),
+                "script_sha256": hashlib.sha256(open(__file__, "rb").read()).hexdigest(),
+                "core_sha256": hashlib.sha256(open(sys.modules[SlotLLaMA.__module__].__file__, "rb").read()).hexdigest(),
+                "torch": torch.__version__, "device": str(device), "aux_w": AUX_W,
+                "probe": [PROBE_B, PROBE_T], "eval_batches": EVAL_BATCHES}
     if os.path.exists(out_json):
         with open(out_json, encoding="utf-8") as f:
             report = json.load(f)
+        if report.get("run_contract") != contract:
+            raise ValueError("已有报告与当前日程/数据/实现不符；请使用新的out-name")
         report.setdefault("arms", {})          # 保留已完成的未请求臂（防 --arms 子集覆写丢记录）
         print(f"[续跑] 已有报告载入：臂 {sorted(report['arms'])}", flush=True)
     else:
-        report = {"arms": {}}
+        report = {"arms": {}, "run_contract": contract}
     report["meta"] = {
         "date": time.strftime("%Y-%m-%d %H:%M:%S"), "seed": SEED, "device": str(device),
         "torch": torch.__version__, "out_name": out_name,
-        "experiment": "ch3 均衡干预：none vs aux（Shazeer 式 load-loss）——单变量 = 负载均衡干预",
+        "experiment": "ch3 均衡干预：none vs aux（概率质量CV²辅助项）——单变量 = 负载均衡干预",
         "module_tier": f"d={D_MODEL}/L={N_LAYER}/h={N_HEAD}/h_kv={N_KV}/V={VOCAB}，B={BATCH}/T={BLOCK}"
                        f"（{TPB:,} tok/步，探针 B 已验配置；MoE=E{N_EXPERT}/top{TOP_K}/w{D_EXPERT}）",
         "aux_loss": f"L_load = {AUX_W} · mean_layers CV(Load)²，Load_i = Σ_x softmax(x)_i"
                     "（R3 正身公式的确定性门改编：Φ 概率代理在 noise→0 退化为硬计数，故用概率质量）",
         "metrics_def": "度量用硬计数：frac=count/(N·k)；max/min 下限取 1（防死专家除零）；"
-                       "CV=std/mean（总体 std）；MaxVio=max|frac−1/E|（noaux R35 口径，"
-                       "global=跨层聚合后）",
+                       "CV=std/mean（总体 std）；旧MaxVio=max|frac−1/E|，global跨层合并，非noaux口径；"
+                       "新增layer_mean_relative_overload=逐层(E·max(frac)-1)再均值",
         "corpus": "log/book2-ch08/tokens.bin（sp-8k，306M token 流）",
         "optimizer": f"AdamW(betas=0.9,0.95,wd={WDECL}) + grad_clip 1.0（Book2 五件套）",
         "schedule": f"lr {PEAK_LR} 余弦降至 {PEAK_LR*MIN_LR_RATIO:.0e}，warmup={WARMUP}；两臂统一日程",
         "data_protocol": "顺序连续分块一次通过（moe_mla_slots.TokenStream）；两臂按步号取同批",
-        "eval_protocol": f"每 {eval_every} 步+终步：eval.bin 固定 49 窗 {EVAL_BATCHES*TPB:,} token，fp32",
+        "eval_protocol": f"每 {eval_every} 步+终步：固定{EVAL_BATCHES}批×{BATCH}窗，共{EVAL_BATCHES*TPB:,}评测位置；fp32",
         "routing_probe_protocol": f"eval.bin 首段 {PROBE_B}×{PROBE_T}={PROBE_B*PROBE_T:,} token 固定探针，"
                                   "init + 每 eval 边界快照；长表 routing_{arm}_{out}.csv",
-        "precision": "train bf16 autocast / eval fp32",
+        "precision": "train bf16 autocast / eval fp32" if device.type == "mps" else "CPU fp32",
         "ckpt": "每 eval 边界存 ckpt，臂完成即删；中断后重跑同命令自动续跑",
         "argv": " ".join(sys.argv[1:]),
     }

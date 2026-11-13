@@ -8,7 +8,7 @@
 #       前馈插槽（第一刀）   import 自本册 ch05/deepseek_moe.py::DeepSeekMoE(cfg)
 #                            ——dense SwiGLU 退役，E=8/top-2/共享 1、softmax+greedy+rsf 1.0（DSV2-Lite 式）
 #       config 双臂：cand2 主臂（等激活·轻 MLA，总参 409,115,648）与 cand3 等参对照臂（207,064,064，
-#       与 Book3 207M 差 55,296=0.03%）；cand1（重 MLA 512 档）只留参数账教学点（+3,735,552/层，见 ch6）。
+#       与 Book3 207M 差 55,296=0.03%）；cand1（重 MLA 512 档）只留参数账教学点（+3,736,576/层，见 ch6）。
 #       首层稠密（first_k_dense_replace，DSV2 同款机构）由层循环处理；cand2/cand3 定版取 0（12/12 层 MoE，
 #       与探针 F 锁定参数账逐位一致——置 1 的反事实账与出入登记见 DESIGN-409M.md §3）。
 # 所属章节：Book4 第 9 章（9.4 两刀机 / 9.5 整合验收）；DESIGN-409M.md 的架构正身。
@@ -21,6 +21,7 @@ import argparse
 import json
 import math
 import os
+from pathlib import Path
 import sys
 import time
 
@@ -31,7 +32,7 @@ import torch.nn.functional as F
 HERE = os.path.dirname(os.path.abspath(__file__))
 BOOK4 = os.path.abspath(os.path.join(HERE, ".."))
 REPO_ROOT = os.path.abspath(os.path.join(BOOK4, "..", ".."))
-OUT_DIR = os.path.join(REPO_ROOT, "log", "book4-ch09")
+OUT_DIR = os.path.join(os.getcwd(), "log", "book4-ch09")
 SEED = 20261002                                            # 全书统一种子
 
 # ---------------- 跨册双候选 bootstrap：Book3/Book4 兄弟目录的物理落点，存在即插入 ----------------
@@ -69,6 +70,7 @@ def bootstrap():
 
 RMSNorm, SwiGLUMLP, rope_mod = bootstrap()
 from deepseek_moe import DeepSeekMoE              # noqa: E402  本册第 5 章：DSV2 键位 MoE（第一刀）
+from mla import check_v2lite as inspect_v2lite, inspect_weight_index
 from mla import MultiHeadLatentAttention           # noqa: E402  本册第 6 章：MLA 双路径（第二刀）
 
 # ---------------- 两刀 config 定版（探针 F 锁定；逐字段依据见 DESIGN-409M.md §3） ----------------
@@ -112,6 +114,10 @@ class TwoKnifeConfig:
         self.rms_norm_eps, self.initializer_range = rms_norm_eps, initializer_range
         self.n_expert, self.top_k, self.n_shared = n_expert, top_k, n_shared
         self.w_expert, self.mla = w_expert, (mla or MLA_LITE)
+        if not 0 <= first_k_dense_replace <= num_hidden_layers:
+            raise ValueError("first_k_dense_replace须在[0,L]内")
+        if scoring != "softmax":
+            raise ValueError("本整机仅实现softmax/greedy路由；sigmoid+noaux需另行设计")
         self.first_k_dense_replace = first_k_dense_replace
         self.scoring, self.routed_scaling_factor = scoring, routed_scaling_factor
         self.max_position_embeddings = max_position_embeddings
@@ -296,14 +302,16 @@ def kv_per_token_elements(cfg: TwoKnifeConfig):
 
 
 # ---------------- 自测：双臂参数账 assert + 初始 loss 的数学自检 ----------------
-def self_test(out_name):
+def self_test(out_name, fast=False):
     os.makedirs(OUT_DIR, exist_ok=True)
+    out_path = output_path("llama409_selftest", out_name)
     torch.manual_seed(SEED)
-    report = {"seed": SEED, "arms": {}}
+    report = {"seed": SEED, "fast": fast, "parameter_device": "meta" if fast else "cpu", "arms": {}}
     print(f"[bootstrap] Book3 兄弟目录自：{next(p for p in _B3_CANDS if os.path.isdir(os.path.join(p, 'ch02')))}")
     for arm in ("cand2", "cand3", "cand1"):
         cfg = make_cfg(arm)
-        model = TwoKnifeLM(cfg)
+        with torch.device("meta" if fast else "cpu"):
+            model = TwoKnifeLM(cfg)
         hand, total = hand_account(cfg), model.n_params()
         exp = CANDS[arm]["expect_total"]
         assert total == hand["total"] == exp, f"{arm}: {total} != {hand['total']} != {exp}"
@@ -326,11 +334,15 @@ def self_test(out_name):
           f"差 {gap:,} = {abs(gap) / BASE_TOTAL_207M * 100:.3f}%")
     report["cand3_vs_207m_gap"] = gap
 
-    # 初始 loss 自检（cand2，随机 token，CPU fp32）：预言 ln V + d*s^2/2 = 10.578（untied 无自泄漏）
-    cfg = make_cfg("cand2")
+    # 初始 loss 自检（cand2，随机 token，CPU fp32）：预言 ln V + d*s^2/2 = 10.578（独立输出权重的小方差近似，不是标签泄漏检查）
+    cfg = make_cfg("cand2") if not fast else TwoKnifeConfig(
+        vocab_size=512, hidden_size=256, num_hidden_layers=2, num_attention_heads=4,
+        num_key_value_heads=1, head_dim=64, intermediate_size=704, n_expert=4,
+        top_k=2, n_shared=1, w_expert=128, first_k_dense_replace=1,
+        mla=dict(kv_lora_rank=64,q_lora_rank=64,qk_nope_head_dim=32,qk_rope_head_dim=16,v_head_dim=32))
     model = TwoKnifeLM(cfg).eval()
     g = torch.Generator().manual_seed(SEED)
-    x = torch.randint(0, cfg.vocab_size, (2, 256), generator=g)                # (2,256)
+    x = torch.randint(0, cfg.vocab_size, (2, 32 if fast else 256), generator=g)                # (2,256)
     xp, yp = x[:, :-1], x[:, 1:]                                               # next-token 目标
     with torch.no_grad():
         logits, loss = model(xp, yp)                                           # (2,255,V) / 标量
@@ -341,7 +353,8 @@ def self_test(out_name):
           f"E[z_t] = {z_t.mean().item():+.4f}）")
     assert abs(loss.item() - (ln_v + sig2 / 2)) < 0.06, "初始 loss 偏离 ln V + d*s^2/2"
     assert math.isfinite(loss.item())
-    report["init_loss"] = {"measured": loss.item(), "predicted": ln_v + sig2 / 2}
+    report["init_loss"] = {"measured": loss.item(), "predicted": ln_v + sig2 / 2,
+                           "vocab": cfg.vocab_size, "hidden_size": cfg.hidden_size, "full_cand2": not fast}
 
     # 首层稠密机构演练（mini 几何 first_k_dense=1：层循环切换稠密/MoE，账本跟着分册）
     mini = TwoKnifeConfig(vocab_size=512, hidden_size=256, num_hidden_layers=2,
@@ -360,7 +373,7 @@ def self_test(out_name):
     report["first_k_dense_mini"] = {"params": m.n_params(), "n_dense": 1, "n_moe": 1}
 
     report["verdict"] = "PASS"
-    with open(os.path.join(OUT_DIR, f"llama409_selftest_{out_name}.json"), "w", encoding="utf-8") as f:
+    with open(out_path, "x", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
     print(f"[判定] PASS | 产物 {OUT_DIR}/llama409_selftest_{out_name}.json")
     return report
@@ -373,7 +386,7 @@ def _hf_kwargs(cfg: TwoKnifeConfig):
                 intermediate_size=cfg.intermediate_size,
                 moe_intermediate_size=cfg.w_expert, num_hidden_layers=cfg.num_hidden_layers,
                 num_attention_heads=cfg.num_attention_heads,
-                num_key_value_heads=cfg.num_key_value_heads,
+                num_key_value_heads=cfg.num_attention_heads,  # 当前HF展开K/V，不能沿用退役GQA头数
                 first_k_dense_replace=cfg.first_k_dense_replace,
                 n_routed_experts=cfg.n_expert, n_shared_experts=cfg.n_shared,
                 num_experts_per_tok=cfg.top_k,
@@ -390,22 +403,25 @@ def _hf_kwargs(cfg: TwoKnifeConfig):
 def parity_one(tag, cfg: TwoKnifeConfig, x_len=128):
     """一臂对拍：本类 vs HF DeepseekV2ForCausalLM——strict 直搬 + CPU fp32 logits 对拍。
 
-    实现注记（5.18.0 坑，本机实测）：HF 的融合专家默认按 config._experts_implementation 分发到
-    grouped_mm 内核，后者要求权重步长 16 字节对齐（fp32 下即各维为 4 的倍数）——官方旗舰档
-    （1536/2048/1408）天然满足，教学档奇宽（cand2 的 938、cand3 的 329）会在前向崩
+    实现注记（5.18.0/torch2.13历史记录；本轮5.14.1/2.10）：HF 的融合专家默认按 config._experts_implementation 分发到
+    grouped_mm 内核，后者要求相关矩阵步长16字节对齐（当时布局下要求对应宽度为4的倍数）——官方旗舰档
+    （1536/2048/1408）天然满足，教学档非4倍数宽度（cand2 的 938、cand3 的 329）会在前向崩
     「strides should be multiple of 16 bytes」（strict 搬运本身已通过——键位/形状证书先拿到）。
     对拍切回 "eager"（逐专家循环，与本册教学件同构、语义等价）。
     """
     from transformers import DeepseekV2Config, DeepseekV2ForCausalLM
     torch.manual_seed(SEED)
     ours = TwoKnifeLM(cfg).eval()
-    hf = DeepseekV2ForCausalLM(DeepseekV2Config(**_hf_kwargs(cfg))).eval()
+    hcfg = DeepseekV2Config(**_hf_kwargs(cfg))
+    hcfg._attn_implementation = "eager"
+    hcfg._experts_implementation = "eager"
+    hf = DeepseekV2ForCausalLM(hcfg).eval()
     hf.config._experts_implementation = "eager"          # grouped_mm 的 16 字节对齐约束——见 docstring
     hf.load_state_dict(ours.state_dict(), strict=True, assign=True)            # 键不一致直接抛错——本身就是验收
     g = torch.Generator().manual_seed(SEED)
     x = torch.randint(0, cfg.vocab_size, (2, x_len), generator=g)              # (2,128)
     with torch.no_grad():
-        lo, _ = ours(x, x)                                                     # (2,128,V)
+        lo, _ = ours(x)                                                     # (2,128,V)
         lh = hf(x).logits                                                      # (2,128,V)
     delta = (lo - lh).abs().max().item()
     agree = (lo.argmax(-1) == lh.argmax(-1)).float().mean().item()
@@ -423,7 +439,8 @@ def parity_one(tag, cfg: TwoKnifeConfig, x_len=128):
             "top5_agreement": top5, "sanity_unshared": sanity, "verdict": "PASS" if ok else "FAIL"}
 
 
-def parity_hf(out_name):
+def parity_hf(out_name, fast=False):
+    out_path = output_path("llama409_parity", out_name)
     t0 = time.perf_counter()
     print(f"[对拍] transformers {__import__('transformers').__version__} | CPU fp32 | 种子 {SEED}")
     # 臂 A mini（探针 G 路径复跑：d=256/L=2/first_k_dense=1/E4/top2/共享1/MLA 64 档）
@@ -436,13 +453,14 @@ def parity_hf(out_name):
                               first_k_dense_replace=1)
     arm_a = parity_one("A mini（探针 G 路径）", mini_cfg)
     # 臂 B cand2 全机（409M 两刀机 vs HF 同 config——本机最大的 strict 直搬）
-    arm_b = parity_one("B cand2 全机 409M", make_cfg("cand2"))
+    arm_b = None if fast else parity_one("B cand2 全机 409M", make_cfg("cand2"))
     report = {"seed": SEED, "transformers": __import__("transformers").__version__,
               "device": "cpu fp32", "mini": arm_a, "cand2_full": arm_b,
               "wall_sec": round(time.perf_counter() - t0, 1),
-              "verdict": "PASS" if arm_a["verdict"] == "PASS" and arm_b["verdict"] == "PASS" else "FAIL"}
+              "fast": fast,
+              "verdict": "PASS" if arm_a["verdict"] == "PASS" and (arm_b is None or arm_b["verdict"] == "PASS") else "FAIL"}
     os.makedirs(OUT_DIR, exist_ok=True)
-    with open(os.path.join(OUT_DIR, f"llama409_parity_{out_name}.json"), "w", encoding="utf-8") as f:
+    with open(out_path, "x", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
     print(f"[判定] {report['verdict']} | 墙钟 {report['wall_sec']} s | 产物 "
           f"{OUT_DIR}/llama409_parity_{out_name}.json")
@@ -450,51 +468,30 @@ def parity_hf(out_name):
 
 
 # ---------------- V2-Lite 真权重条件性核验（落地则 safe_open 选择性张量；否则降级声明） ----------------
-LITE_SNAP = os.path.join(REPO_ROOT, "log", "huggingface", "hub",
-                         "models--deepseek-ai--DeepSeek-V2-Lite", "snapshots")
+def output_path(kind, out_name):
+    if Path(out_name).name != out_name or out_name in {".", ".."}:
+        raise ValueError("out-name须为单个文件名后缀")
+    path = Path(OUT_DIR) / f"{kind}_{out_name}.json"
+    if path.exists():raise FileExistsError(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
 
 
-def check_v2lite(out_name):
-    """两刀机的「大表哥」实物核验（条件性，失败降级不阻塞）：
-
-    DeepSeek-V2-Lite 与 cand2 同族（MLA+细粒度 MoE+共享专家+softmax greedy），且 q_lora_rank=null
-    是 cand2 未覆盖的分支。权重完整落地（≈31.4 GiB）则 safe_open 惰性读逐层形状账本（零数值加载，
-    峰值单张量数百 MB）：kv_a/kv_b/q_proj/o_proj 与 shared_experts 宽度（n_shared·w 的活证据）。
-    """
-    import glob
-    res = {"checked": False, "degraded": True}
-    snaps = sorted(glob.glob(os.path.join(LITE_SNAP, "*", "*")))
-    st = [p for p in snaps if p.endswith(".safetensors") and os.path.exists(os.path.realpath(p))]
-    total = sum(os.path.getsize(p) for p in st)
-    res["safetensors_files"], res["safetensors_bytes"] = len(st), total
-    if not st or total < 30 * 2 ** 30:
-        res["note"] = (f"权重未完整落地（{len(st)} 分片 / {total / 2 ** 30:.1f} GiB，预期 ≈31.4 GiB）——"
-                       "按预登记降级：随机权重结构对拍（--parity 两臂）已足够支撑正文；"
-                       "权重落地后重跑 --v2lite 补逐层形状账本")
-        print(f"[V2-Lite] 降级记录：{res['note']}")
-    else:
-        from safetensors import safe_open
-        h, d_c, d_n, d_r, d_v, d = 16, 512, 128, 64, 128, 2048
-        expect = {"kv_a_proj_with_mqa": (d_c + d_r, d), "kv_b_proj": (h * (d_n + d_v), d_c),
-                  "o_proj": (d, h * d_v), "q_proj": (h * (d_n + d_r), d),         # Lite 无 q 压缩
-                  "shared_experts.gate_proj": (2 * 1408, d)}                       # 共享 2 × w 1408 的活证据
-        shapes, n = {}, 0
-        for path in st:
-            with safe_open(path, framework="pt") as f:
-                for key in f.keys():
-                    for name, want in expect.items():
-                        if key.endswith(f".{name}.weight") and ".0." not in key:
-                            got = tuple(f.get_slice(key).get_shape())
-                            assert got == want, (key, got, want)
-                            shapes[name] = got
-                            n += 1
-        res.update({"checked": True, "degraded": False, "shapes": shapes, "n_tensors": n})
-        print(f"[V2-Lite] {len(st)} 分片完整：逐层形状账本 {n} 项全过——kv_b_proj {shapes['kv_b_proj']} "
-              f"（W^UK/W^UV 折叠）、shared_experts.gate_proj {shapes['shared_experts.gate_proj']} "
-              f"（共享 2×1408 的加宽实物）、q_proj {shapes['q_proj']}（Lite 不压 q）")
-    os.makedirs(OUT_DIR, exist_ok=True)
-    with open(os.path.join(OUT_DIR, f"llama409_v2lite_{out_name}.json"), "w", encoding="utf-8") as f:
-        json.dump(res, f, ensure_ascii=False, indent=2)
+def check_v2lite(out_name, snapshot=None):
+    """复用单snapshot索引核验，再核26个MoE层的共享专家形状；不作真实权重数值前向。"""
+    out_path = output_path("llama409_v2lite", out_name)
+    res = inspect_v2lite(snapshot)
+    if res.get("index_complete"):
+        expected = {}
+        for layer in range(1, 27):
+            for name, shape in {"gate_proj": (2816,2048), "up_proj": (2816,2048),
+                                "down_proj": (2048,2816)}.items():
+                expected[f"model.layers.{layer}.mlp.shared_experts.{name}.weight"] = shape
+        shared = inspect_weight_index(res["snapshot"], expected)
+        res["shared_expert_shapes"] = shared["shapes"]
+        res["shared_expert_tensors_checked"] = len(shared["shapes"])
+    with out_path.open("x", encoding="utf-8") as handle:
+        json.dump(res, handle, ensure_ascii=False, indent=2)
     return res
 
 
@@ -503,10 +500,12 @@ if __name__ == "__main__":
     ap.add_argument("--parity", action="store_true", help="HF 结构对拍（CPU fp32，分钟级）")
     ap.add_argument("--v2lite", action="store_true", help="V2-Lite 真权重条件性核验（落地则 safe_open 选择性张量）")
     ap.add_argument("--out-name", default="run1", help="产物 JSON 后缀（防覆写）")
+    ap.add_argument("--fast", action="store_true", help="全尺寸meta计数、mini数值与HF对拍")
+    ap.add_argument("--snapshot", type=Path, help="本地唯一V2-Lite snapshot")
     args = ap.parse_args()
     if args.parity:
-        parity_hf(args.out_name)
+        parity_hf(args.out_name, args.fast)
     if args.v2lite:
-        check_v2lite(args.out_name)
+        check_v2lite(args.out_name, args.snapshot)
     if not (args.parity or args.v2lite):
-        self_test(args.out_name)
+        self_test(args.out_name, args.fast)

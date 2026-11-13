@@ -5,14 +5,15 @@
 #           自算公式——等激活 dense d_ff = top_k × expert_dim，若 MoE 有共享专家则再加 n_shared×w_e）；
 #       ③ dense-等总参臂：d_ff = E×w_e = 8×704 = 5632（FFN 槽总参数与 MoE 相同——
 #           3·d·d_ff = 3·d·E·w_e，忽略路由门 E·d 的 ~0.05% 差额）。
-#       三臂同 token 预算（B=8/T=512 × 300 步 = 12.3M token）、同配方同种子；
+#       三臂同 token 预算（B=8/T=512 × 300 步 = 1.2288M token）、同配方同种子；
 #       只验「管道跑通 + 方向初读」（MoE 是否在两个口径下都不输），正式消融（多种子/长训/eval 曲线）
 #       归写作期。等激活臂=同 FLOPs 多参数，等总参臂=同参数多 FLOPs——ch1 三口径账本的现场对照。
 # 所属章节：Book4 ch4（Mixtral 组装术的对照逻辑）/ ch5（细粒度专家的消融设计）；00-feasibility 探针 D。
 # 运行方式：source env.sh && python 04_probe_d_dense_vmoe.py [--out-name run1] [--steps 300]
-#   （三臂合计约 5-8 min；若投影超 25 min 自动降档并留痕）
+#   （三臂合计约 5-8 min；本入口不自动降档；运行前自行估时）
 # 产物：log/book4-feasibility/probeD_dense_vmoe_{out}.json（不入库）
 import argparse
+from moe_mla_slots import prepare_output
 import time
 
 import numpy as np
@@ -36,7 +37,7 @@ def run_arm(tag, cfg, steps, batch, block, device):
     t0 = time.perf_counter()
     secs, losses, _ = train_loop(model, steps, batch, block, device, TOKENS_SP8K, peak_lr=LR)
     ev = eval_loss(model, device)
-    steady = secs[1:]
+    steady = secs[1:] or secs
     res = {"tag": tag, "params_total": model.n_params(), "params_active": act,
            "params_active_nonemb": act_ne, "steps_run": steps,
            "sec_per_step_steady": round(float(np.median(steady)), 3),
@@ -51,6 +52,8 @@ def run_arm(tag, cfg, steps, batch, block, device):
 
 
 def main(out_name, steps):
+    prepare_output("probeD_dense_vmoe", out_name)
+    if steps < 1:raise ValueError("steps须为正")
     device = pick_device("mps")
     common = dict(vocab_size=8192, hidden_size=512, num_hidden_layers=6,
                   num_attention_heads=8, num_key_value_heads=4)
@@ -67,9 +70,9 @@ def main(out_name, steps):
     da, mo, dt = results["dense_eq_active"], results["moe"], results["dense_eq_total"]
     reading = {
         "等激活口径 (MoE vs dense_eq_active)": f"eval {mo['eval_loss']} vs {da['eval_loss']} "
-        f"（Δ={round(mo['eval_loss']-da['eval_loss'],4)} nat；同激活参/FLOPs，MoE 多 2.5× 总参）",
+        f"（Δ={round(mo['eval_loss']-da['eval_loss'],4)} nat；专家激活主项相近、路由另计；MoE总参约为稠密2.5倍）",
         "等总参口径 (MoE vs dense_eq_total)": f"eval {mo['eval_loss']} vs {dt['eval_loss']} "
-        f"（Δ={round(mo['eval_loss']-dt['eval_loss'],4)} nat；同总参，dense 多 ~2.5× FLOPs/步）",
+        f"（Δ={round(mo['eval_loss']-dt['eval_loss'],4)} nat；总参近似匹配，主要矩阵计算量不同；不是完整FLOPs或耗时相等）",
         "提示": "300 步 fast 冒烟只读方向；正式结论归写作期消融（多种子+长训+曲线）",
     }
     for kk, vv in reading.items():
