@@ -1,18 +1,18 @@
 # train_hybrid.py —— Book5 ch9 训练 CLI：三刀整机冒烟（smoke）/ 整合短训（integrated）
 # 用途：三刀机（两刀底座 + 9 层 GDN + w=810 等总参补偿）的点火健康检查与 ≤30 分钟整合短训
 #   （作者决策形态：全量长训暂缓——预算账与重启手册归 DESIGN-3TO1.md，写作期归写手）：
-#   --task smoke       20 步（MPS bf16，分钟级）：初始 loss 健康检查（锚 ln 32000=10.3735；精确预言
+#   --task smoke       20 步（MPS bf16，分钟级）：初始 loss 健康检查（锚 ln 32000=10.3735；初始化近似
 #                      ln V + d·σ²/2 = 10.578——untied 无自泄漏，承 Book3/4 判据）+ 有限性 + 有限下降；
 #   --task integrated  整合短训（管道验收口径：三刀协同无冲突的真凭据，非效果训练）：默认 100 步
 #                      ——大纲推算「2-3 s/step → 600-900 步」经 smoke s1 实测 11.715 s/step 作废
-#                      （GDN chunk=64 块循环在 MPS 无融合 kernel——ch5 scaling 已实录 MPS 慢 ~25×；
+#                      （GDN chunk=64 块循环在 MPS 无融合 kernel——ch5旧scaling曲线因轴错误已撤回复杂度证据作用；
 #                      9 层 GDN fwd+bwd 实测 6.1 s + 其余 ~5.6 s）。一窗 30 min 降档定版 100 步
-#                      ≈19.5 min 训练 + 2 次 49 窗 fp32 eval ≈6.6 min（留 12% 漂移余量贴窗）；
+#                      ≈19.5 min 训练 + 2 次 49批×8条 fp32 eval ≈6.6 min（留 12% 漂移余量贴窗）；
 #                      超窗 ckpt 断点续跑补齐、判据不降；降档留痕入 JSON。无 NaN、eval 下降为判据。
 # 配方（Book2 ch10 五件套原样继承，与 Book4 train_409 同宗——跨册 import 复用不复制）：
 #   AdamW(0.9,0.95,wd=0.1)+clip 1.0+cosine 1e-3→1e-4（终 lr=峰值 10%）+warmup 100+训练 bf16 autocast/eval fp32。
 # 语料：log/book3-ch10/tokens32k.bin（sp-32000，Book3 P-03 重切，56,284,791 tok 训练池 + 1.2M eval 独立池）
-#   ——与 Book4 两刀机同一语料与 eval 协议（49 窗 401,408 tok fp32），跨章可比。
+#   ——与 Book4 两刀机同一语料与 eval 协议（49批×8条 401,408 tok fp32），跨章可比。
 # 断点续跑：每 eval 边界写 ckpt（模型+优化器+步号）；中断后重跑同命令自动续；curve CSV 增量落盘。
 # 运行方式：source env.sh && python "code/ch09/train_hybrid.py" --task smoke --out-name s1
 #           python "code/ch09/train_hybrid.py" --task integrated --steps 600 --out-name run1
@@ -23,6 +23,8 @@ import csv
 import json
 import math
 import os
+from pathlib import Path
+from datetime import datetime, timezone
 import sys
 import time
 
@@ -46,8 +48,14 @@ from train_409 import (BATCH, BLOCK, CURVE_FIELDS, EVAL_BATCHES, LN_V, MIN_LR_RA
                        _rewrite_curve, build_eval_batches, corpus_checks, corpus_stats,
                        eval_loss, lr_at, load_curve_rows)
 
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
+REPO_ROOT = str(next((p for p in Path(__file__).resolve().parents if (p/"env.sh").is_file()),Path.cwd()))
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book5-ch09")
+import train_409 as _train_base
+_train_base.REPO_ROOT=REPO_ROOT
+for _name,_file in [("TOKENS_BIN","tokens32k.bin"),("EVAL_BIN","eval32k.bin"),
+                    ("SP_MODEL","sp32000_owt.model"),("SLICE_META","slice_meta_32k.json")]:
+    setattr(_train_base,_name,os.path.join(REPO_ROOT,"log","book3-ch10",_file))
+_train_base.DOCS_JSONL_CANDS=[os.path.join(REPO_ROOT,"log",p,"owt_docs.jsonl") for p in ("book2-scaling","book3-ch10")]
 
 # smoke 20 步（分钟级）；integrated 100 步（smoke s1 实测 11.715 s/step 的一窗降档定版——见文件头留痕）
 TASKS = {"smoke": dict(steps=20, eval_every=10),
@@ -56,11 +64,17 @@ TASKS = {"smoke": dict(steps=20, eval_every=10),
 
 def run(task, out_name, steps=None, device_pref="mps"):
     spec = TASKS[task]
-    steps = steps or spec["steps"]
+    steps = spec["steps"] if steps is None else steps
+    if steps<1:raise ValueError("steps必须为正")
+    if not out_name or Path(out_name).name!=out_name or out_name in (".",".."):
+        raise ValueError("out-name必须为单个文件名")
+    if device_pref not in ("cpu","mps"):raise ValueError("本历史训练入口只支持cpu/mps")
+    old_json=Path(OUT_DIR)/f"trainhyb_{task}_{out_name}.json"
+    if old_json.exists():raise FileExistsError("已有完成记录；新实验请换out-name")
     eval_every = spec["eval_every"]
     print("[语料] tokens32k 七件套校验（Book3 P-03 产物复检——与两刀机同一语料口径）", flush=True)
     corpus = corpus_checks()
-    device = torch.device(device_pref if torch.backends.mps.is_available() else "cpu")
+    device = torch.device("mps" if device_pref=="mps" and torch.backends.mps.is_available() else "cpu")
     torch.manual_seed(SEED)
 
     cfg = make_hybrid_cfg()
@@ -85,9 +99,13 @@ def run(task, out_name, steps=None, device_pref="mps"):
             print(f"[跳过] {tag} 已完成，产物在 {json_path}；重跑请换 --out-name", flush=True)
             return
         if ck["step"] >= steps:
-            os.remove(ckpt_path)
+            raise ValueError("checkpoint已到目标但缺完成记录；保留现场，禁止删除重训")
         else:
+            if ck.get("protocol")!="book5-r2-hybrid-v1" or ck.get("target_steps")!=steps:
+                raise ValueError("checkpoint版本或目标日程不同；需另起运行")
             model.load_state_dict(ck["model"]); opt.load_state_dict(ck["opt"])
+            healthy=ck["healthy"]
+            torch.set_rng_state(ck["torch_rng"].cpu())
             start_step = ck["step"] + 1
             init_loss0, logit_var0, zt_mean0 = ck["init_loss"], ck["logit_var"], ck["zt_mean"]
             print(f"[续跑] 自 ckpt 第 {ck['step']} 步起（{ckpt_path}）——超窗补齐口径，判据不降", flush=True)
@@ -100,7 +118,7 @@ def run(task, out_name, steps=None, device_pref="mps"):
     os.makedirs(OUT_DIR, exist_ok=True)
     curve_path = os.path.join(OUT_DIR, f"curve_{tag}.csv")
     if start_step == 1 and os.path.exists(curve_path):
-        os.remove(curve_path)
+        raise FileExistsError("已有曲线但没有可续接checkpoint，保留原件")
     prev_curve = load_curve_rows(curve_path, upto=start_step - 1)
     curve, flushed = list(prev_curve), len(prev_curve)
     if start_step > 1:
@@ -118,8 +136,9 @@ def run(task, out_name, steps=None, device_pref="mps"):
                 else torch.autocast("cpu", enabled=False):
             logits, loss = model(x, y)                   # (8,1024,V) / 标量
         opt.zero_grad(set_to_none=True)
+        if not torch.isfinite(loss):raise FloatingPointError(f"非有限loss step={step}")
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0, error_if_nonfinite=True)
         opt.step()
         if device.type == "mps":
             torch.mps.synchronize()                      # 逐步同步——与 train_409 秒/步同口径（含完成）
@@ -144,10 +163,11 @@ def run(task, out_name, steps=None, device_pref="mps"):
         if step % eval_every == 0 or step == steps:
             ev = eval_loss(model, ex, ey)
             curve[-1]["eval_loss"] = round(ev, 5)
-            print(f"  [eval @{step:>4}] {ev:.4f}（fp32，49 窗 401,408 tok）", flush=True)
+            print(f"  [eval @{step:>4}] {ev:.4f}（fp32，49批×8条 401,408 tok）", flush=True)
             torch.save({"model": model.state_dict(), "opt": opt.state_dict(), "step": step,
                         "init_loss": init_loss0, "logit_var": logit_var0, "zt_mean": zt_mean0,
-                        "eval_loss": ev}, ckpt_path)
+                        "eval_loss": ev, "healthy":healthy, "torch_rng":torch.get_rng_state(),
+                        "protocol":"book5-r2-hybrid-v1", "target_steps":steps}, ckpt_path)
             need_header = not os.path.exists(curve_path) or os.path.getsize(curve_path) == 0
             with open(curve_path, "a", newline="", encoding="utf-8") as f:   # eval 边界增量落盘
                 w = csv.DictWriter(f, fieldnames=CURVE_FIELDS)
@@ -158,7 +178,7 @@ def run(task, out_name, steps=None, device_pref="mps"):
             flushed = len(curve)
 
     wall = time.perf_counter() - t_start
-    # 末步恰为 eval 边界时复用该边界 eval（同权重同协议——省一次 49 窗 fp32 前向；JSON 留痕）
+    # 末步恰为 eval 边界时复用该边界 eval（同权重同协议——省一次 49批×8条 fp32 前向；JSON 留痕）
     last_boundary = next((c["eval_loss"] for c in reversed(curve)
                           if c.get("eval_loss") is not None and c.get("step") == steps), None)
     if last_boundary is not None:
@@ -183,7 +203,9 @@ def run(task, out_name, steps=None, device_pref="mps"):
              "finite": all(math.isfinite(c["train_loss"]) for c in curve if "train_loss" in c),
              "dropped": next((c["train_loss"] for c in reversed(curve) if "train_loss" in c), None),
              "healthy": healthy if init_loss0 is not None else None}
-    finite_ok = smoke["finite"] and final_ev < curve[0].get("train_loss", math.inf)
+    eval_values=[float(c["eval_loss"]) for c in curve if c.get("eval_loss") is not None and not c.get("final")]
+    eval_drop=len(eval_values)>=2 and eval_values[-1]<eval_values[0]
+    finite_ok=smoke["finite"] and all(math.isfinite(v) for v in eval_values) and eval_drop
     meta = {"task": task, "model": "hybrid409 三刀机", "out_name": out_name,
             "seed": SEED, "device": str(device),
             "params": total, "vs_cand2_gap": total - 409_115_648,
@@ -194,10 +216,12 @@ def run(task, out_name, steps=None, device_pref="mps"):
                        "layer_types_config0": cfg.layer_types,
                        "mla_human_reading": "第 4/8/12 层（1 起）= 3/7/11（0 起）",
                        "scoring": cfg.scoring, "routed_scaling_factor": cfg.routed_scaling_factor},
-            "recipe": "AdamW(0.9,0.95,wd=0.1)+clip1.0+cosine 1e-3->1e-4+warmup100（Book2 五件套，train_409 同宗）",
-            "precision": "train bf16 autocast / eval fp32（MPS 逐步 sync 计时）",
+            "recipe": "AdamW(0.9,0.95,wd=0.1)+clip1.0；前100步线性warmup，仅更长日程才有余弦段",
+            "torch":torch.__version__, "date":datetime.now(timezone.utc).isoformat(),
+            "lr_first":lr_at(1,steps), "lr_last":lr_at(steps,steps),
+            "precision": "train bf16 autocast / eval fp32" if device.type=="mps" else "train/eval fp32",
             "steps": steps, "tokens": steps * TPB,
-            "note_integrated": "管道验收口径非效果训练（三刀协同无冲突的真凭据；距 Chinchilla 档差三个数量级）",
+            "note_integrated": "管道验收口径非效果训练（三刀协同无冲突的真凭据；短预算不能验收完整语言质量）",
             "downgrade_trace": ("大纲推算 2-3 s/step→600-900 步作废：smoke s1 实测稳态 11.715 s/step"
                                 "（9 层 GDN chunk=64 块循环 MPS 无融合 kernel）→ 一窗 30 min 降档 100 步留痕"),
             "data": {"train_bin": os.path.join(REPO_ROOT, "log", "book3-ch10", "tokens32k.bin"),
@@ -209,7 +233,7 @@ def run(task, out_name, steps=None, device_pref="mps"):
             "wall_note": "独占 MPS 窗口、单进程单实验（计时纪律）" if device.type == "mps" else "CPU 口径",
             "mps_peak_mb": round(mem_peak / 1024 / 1024, 1) if mem_peak else None,
             "smoke_check": smoke,
-            "final_eval": round(final_ev, 5),
+            "final_eval": round(final_ev, 5), "eval_drop":eval_drop, "eval_values":eval_values,
             "final_eval_note": final_ev_note,
             "first_train_loss": curve[0].get("train_loss"),
             "last_train_loss": next((c["train_loss"] for c in reversed(curve) if "train_loss" in c), None),

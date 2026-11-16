@@ -1,48 +1,12 @@
-# needle_probe.py —— Book5 ch2 正式实验件：lost-in-the-middle mini 复现（needle 位置扫描，两臂对照）
-# 用途（大纲 ch2 2.6「本机复现 lost-in-the-middle」正身实验；探针 02 升格——升格判据：凡入正文
-#   数字=本脚本重跑+JSON 落 log/book5-ch02/；探针 02 JSON 只作设计记录，其 T=64 试点 acc 0.83
-#   （fast 8k，位置 18/28/38）为档位选择依据，不直接入正文）：
-#   合成 needle-recall 任务（MQAR 式）上训练两臂——full（满因果注意力）vs swa_sink（滑窗+每头可学
-#   sink 标量，gpt-oss 语义：cat([attn_weights, sinks])→softmax→probs[...,:-1] 丢 sink 位，
-#   transformers 5.18.0 modeling_gpt_oss.py L251-259），然后做 needle 位置扫描 eval：
-#   每个 eval 位置的 acc = argmax 预测命中 needle 值的比例——「needle 放得越远越记不住」的本机读数。
-# 【正档几何（探针 02 实测定版，与试点记录一致）】T=64 / w=16 / L=2 / d=256 / h=8 / h_kv=4 /
-#   d_k=64 / d_ff=704 / 无 rope（隔离 mask 变量）/ B=32 / lr 3e-3 + warmup 50 + cosine；
-#   词表分区：filler∈[0,4000) / 值∈[4000,4064)（64 个，随机 CE 基线 ln 64=4.16、acc 基线 ≈1/64≈0.016）/
-#   needle 键 K=8099 / 干扰键∈[8100,8180)；干扰 (k,v) 对占 [0,16)，查询区占 [T-16,T)=[48,64)，
-#   needle 可放位置 p∈[16,46]（p+1≤47 不撞查询区——试点教训④：撞查询区产生位置伪影）。
-#   训练分布 50/50：远端带 [16,42) ∪ 可达位 {46}（唯一干净可达位——见判据 B）。
-#   可达性（cliff）：needle 查询在 T-2=62，窗口 16 覆盖 [47,62]；归纳头电路需「值位 p+1」可见
-#   → p+1 ≥ 47 → cliff = 46（探针 02 同式：cliff = T-2-(w-1)-1）。
-# 【判据预注册（跑前写定，防事后择优；以 full 20k 档为正档结算；负结论照报）】
-#   A. full 臂·任意位置召回：fast 8k 所有位置 acc ≥ 0.7；full 20k 所有位置 acc ≥ 0.8
-#      （试点复现带：acc 0.83@8k）。不达 = 「满注意力在小任务上也欠训」照实报，档位延长而非换几何。
-#   B. swa_sink 臂·可达性决定论：不可达位置（16/22/28/34/40，均 < cliff=46）acc ≤ 0.15
-#      （随机基线 0.016 + 干扰值混淆余量）。可达位 46 两分支预注册：
-#      B1 acc ≥ 0.7 → 「窗内召回成立」：滑窗把可达范围内召回学到与 full 相当（正文主线写法）；
-#      B2 acc < 0.7 → 「窗内召回不成立」：即使训练分布 50% 钉在唯一可达位、监督信号充分，
-#      滑窗仍学不会 → 正文按可达性决定论的更强表述如实写（SWA 在该任务几何下的可学性边界；
-#      「不成立」是合法结果，不算失败、不追加预算翻案）。
-#   C. sink 语义核对（两臂制下读法）：sink 是 softmax 分母的可学质量锚，不传递远端内容——
-#      swa_sink 臂不可达位置仍在随机带（≤0.15，含在 B 内）即 C 成立；若不可达位置 acc ≥ 0.3
-#      = 反例信号（sink 侧信道），如实追查。与探针 02 三臂制（swa vs swa_sink）结论互证：
-#      sink 不救远端、不伤窗内。
-#   结算规则：冒烟 300 只验管道（loss 有限下降 + eval 可跑），不参与判据；fast 8k = 写作期参照；
-#   full 20k = 正文正档。单种子 20261002（纪律：模块实验单种子+JSON 存档+趋势判据+结果分支预注册）。
-# 【超窗降档留痕条款】full 20k 预计 ≈8 min/臂（T=64 L=2 实测 ≈24 ms/步）。若单臂 wall-clock 超
-#   --time-budget-min（full 档运行命令统一给 25 min ≈ 预计 3×，MPS 降频/后台争用兜底），训练环
-#   主动截断：JSON 落 "truncated": true 与已跑步数，正文降档改用 fast 8k 作正档、full 只报趋势；
-#   降档事实与原因必须留痕写进 notes/06（不许静默丢弃）。
-# 运行方式（三档；单臂单进程，两臂分两次跑——nohup 链式串行见 notes/06）：
-#   冒烟（≈10 s/臂）  ：source env.sh && python "code/ch02/needle_probe.py" --arm full  --steps 300   --out-name smoke300
-#   fast 8k（≈3.5 min/臂）：... --arm full  --steps 8000  --out-name fast8k   （另一臂 --arm swa_sink）
-#   full 20k（≈8 min/臂） ：... --arm swa_sink --steps 20000 --out-name full20k --time-budget-min 25
-# 产物：log/book5-ch02/needle_probe_{out-name}_{arm}.json（单臂数字，文件名恒带臂名防覆写）+
-#   log/book5-ch02/needle_scan.csv（两臂位置扫描合并曲线：arm,steps,position,acc 四列，按
-#   (arm,steps) upsert——两臂跑完即得「full vs 滑窗+sink」对照曲线；ch2 图 2.3 的数据源）。
-# 升格注：本件内嵌 FullAttn/SwaSinkAttn 插槽与 MiniLM 骨架自包含（ch03 nsa_block.py 复用）；
-#   ch2 写作期交付 swa_sink.py::SlidingWindowSinkAttention(cfg) 后，可将内嵌插槽对齐/替换为
-#   import（行为须保持：banded mask、sink 语义 L251-259、零初始化、同初始化灌注接口）。
+# needle_probe.py —— Book5 第2章：位置可控的合成检索，两臂共享初始公共权重。
+# 运行：source env.sh && python code/ch02/needle_probe.py --arm full --steps 300 --out-name smoke
+# 正文历史档：T64 / w16 / L2 / d256 / h8 / h_kv4 / d_k64 / 无RoPE；8k 与20k采用各自余弦日程。
+# 本任务目标键固定，干扰键有放回抽样；目标召回不代表一般 MQAR 能力，平均查询损失还可能受歧义影响。
+# 两层查询62的输入依赖最早到32，目标值p+1可达需p>=31；旧单层阈值46已撤回。
+# full 与 swa_sink 同时改变掩码及sink，不能用两臂独立判断sink收益。
+# 冒烟只检管道；截断运行不按完整预算验收。JSON/CSV独立命名且拒绝覆盖，checkpoint支持相同日程续跑。
+# 续跑：同参数、同 --out-name 加 --resume；不得把8k日程的checkpoint续成20k而冒称同一实验。
+# 产物 log/book5-ch02/needle_probe_<name>_<arm>.json 与对应 CSV/checkpoint。
 import argparse
 import csv
 import json
@@ -50,6 +14,9 @@ import math
 import os
 import sys
 import time
+import hashlib
+from pathlib import Path
+from datetime import datetime, timezone
 
 import numpy as np
 import torch
@@ -57,15 +24,17 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
+REPO_ROOT = str(next((p for p in Path(__file__).resolve().parents if (p / "env.sh").is_file()), Path(__file__).resolve().parents[3]))
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book5-ch02")
 SEED = 20261002
 
 # 跨册三候选 bootstrap（llama409 `_B3_CANDS` 同款已验证模式：工作区 / 书仓嵌套 / 书仓裸布局）
 _B4_FEAS_CANDS = [
-    os.path.join(REPO_ROOT, "code", "Book4-规模与效率", "00-feasibility"),
+    str(p / "book4-scale-and-efficiency/code/00-feasibility")
+    for p in Path(__file__).resolve().parents
+] + [
     os.path.join(REPO_ROOT, "from-models-to-vllm", "book4-scale-and-efficiency", "code", "00-feasibility"),
-    os.path.join(REPO_ROOT, "book4-scale-and-efficiency", "code", "00-feasibility"),
+    os.path.join(REPO_ROOT, "code", "Book4-规模与效率", "00-feasibility"),
 ]
 
 
@@ -133,7 +102,7 @@ class FullAttn(nn.Module):
         v = v.repeat_interleave(rep, dim=1)
         att = (q @ k.transpose(-2, -1)) * self.scale                             # (B,h,n,n)
         att = att.masked_fill(~band_causal_mask(n, None, x.device), float("-inf"))
-        p = F.softmax(att.float(), dim=-1).to(x.dtype)
+        p = F.softmax(att.float(), dim=-1).to(v.dtype)
         y = (p @ v).transpose(1, 2).contiguous().view(B, n, self.h * self.d_k)   # (B,n,h·d_k)
         return self.o_proj(y)                                                    # (B,n,d)
 
@@ -171,9 +140,9 @@ class SwaSinkAttn(nn.Module):
             sink = self.sinks.view(1, self.h, 1, 1).expand(B, self.h, n, 1)      # (B,h,n,1) 虚拟 sink logit
             att = torch.cat([att, sink], dim=-1)                                 # (B,h,n,n+1)
             att = att - att.max(dim=-1, keepdim=True).values                     # 数值稳定（HF 同款）
-            p = F.softmax(att.float(), dim=-1)[..., :n].to(x.dtype)              # 丢 sink 概率质量 (B,h,n,n)
+            p = F.softmax(att.float(), dim=-1)[..., :n].to(v.dtype)              # 丢 sink 概率质量 (B,h,n,n)
         else:
-            p = F.softmax(att.float(), dim=-1).to(x.dtype)
+            p = F.softmax(att.float(), dim=-1).to(v.dtype)
         y = (p @ v).transpose(1, 2).contiguous().view(B, n, self.h * self.d_k)   # (B,n,h·d_k)
         return self.o_proj(y)                                                    # (B,n,d)
 
@@ -220,7 +189,7 @@ class MiniLM(nn.Module):
 # ---------------- 合成 needle-recall 任务（MQAR 式；设计承探针 02 v4，T=64 定版） ----------------
 # 词表分区：filler∈[0,4000) / 值∈[4000,4064) / needle 键 K=8099 / 干扰键∈[8100,8180)。
 # 序列布局（T=64）：[0,16) 8 个干扰 (k,v) 对；needle 对 (K,v) 在受控位置 p；[48,64) 查询区——
-#   7 个干扰查询（键值流内紧随应答——因果上查询位尚未见答案，必须回检索）+ 末位 needle 查询
+#   7 个干扰查询（键值流内紧随应答——紧邻答案在未来，但键值区已有答案）+ 末位 needle 查询
 #   q=K@62、应答 a=v@63；监督只放 8 个查询位（查询-only，防自拷贝捷径——试点教训②）。
 NEEDLE_K = 8099
 N_PAIRS, N_QUERIES = 8, 8
@@ -231,6 +200,8 @@ FAR_BAND, NEAR_BAND = (16, 42), (46, 47)
 def make_needle_batch(B, T, rng, p_min=None, device="cpu"):
     """p_min 给定时钉死 needle 位置（eval 扫描）；否则 50/50 远端/可达混合（训练）。
     返回 (x, p)：x (B,T) int64，p (B,) needle 位置。随机 CE 基线 ln(64)=4.16。"""
+    if B < 1 or T < 64 or (p_min is not None and not 16 <= p_min < T - 17):
+        raise ValueError("需要 B>0、T>=64，目标键值对不得覆盖干扰区或查询区")
     x = torch.from_numpy(rng.integers(0, 4000, size=(B, T)).astype(np.int64))    # filler (B,T)
     dk = rng.integers(8100, 8180, size=(B, N_PAIRS))                            # 干扰键 (B,8)
     dv = rng.integers(4000, 4064, size=(B, N_PAIRS))                            # 干扰值 (B,8)
@@ -266,29 +237,74 @@ def needle_loss(model, x, p, T):
 @torch.no_grad()
 def needle_eval(model, T, positions, n_seq=60, seed=SEED + 999, device="cpu"):
     """位置扫描：各位置 acc = argmax(logits[:,T-2]) == x[:,T-1]（needle 应答）的比例。"""
+    if n_seq < 1:
+        raise ValueError("n_seq 必须为正")
+    was_training = model.training
     model.eval()
     rng = np.random.default_rng(seed)
     out = {}
-    for pp in positions:
-        accs = []
-        for _ in range(n_seq // 12):
-            x, _ = make_needle_batch(12, T, rng, p_min=pp, device=device)
-            pred = model(x)[0][:, T - 2].argmax(dim=-1)                          # (12,) 查询位预测
-            accs.append((pred == x[:, T - 1]).float().mean().item())
-        out[int(pp)] = float(np.mean(accs))
-    model.train()
+    try:
+        for pp in positions:
+            hits = 0
+            for start in range(0, n_seq, 12):
+                x, _ = make_needle_batch(min(12, n_seq-start), T, rng, p_min=pp, device=device)
+                pred = model(x)[0][:, T-2].argmax(dim=-1)
+                hits += int((pred == x[:, T-1]).sum())
+            out[int(pp)] = hits / n_seq
+    finally:
+        model.train(was_training)
     return out
 
 
 def train_mini(model, steps, batch_fn, device, lr=1e-3, warmup=50, tag="",
-               cosine=False, time_budget_min=0.0, log_every=200):
+               cosine=False, time_budget_min=0.0, log_every=200,
+               checkpoint_path=None, resume=False, checkpoint_every=200, stop_after=None):
     """共用短训环（AdamW 0.9/0.95 wd0.1 + clip1.0 + warmup[+cosine]；MPS bf16 autocast）。
     time_budget_min>0 时超窗主动截断（返回 truncated=True——超窗降档留痕条款，见文件头）。"""
     opt = torch.optim.AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95), weight_decay=0.1)
+    if steps < 1 or warmup < 1 or checkpoint_every < 1:
+        raise ValueError("steps/warmup/checkpoint_every 必须为正")
+    contract = dict(steps=steps, lr=lr, warmup=warmup, cosine=cosine,
+                    batch_type=type(batch_fn).__name__, B=getattr(batch_fn,"B",None),
+                    T=getattr(batch_fn,"T",None), device=str(device), torch=torch.__version__,
+                    shapes={k:list(v.shape) for k,v in model.state_dict().items()},
+                    attentions=[{key:getattr(a,key,None) for key in
+                                 ("window","block","n_selected","use_sink","use_rope","h","h_kv","d_k")}
+                                for a in getattr(model,"attns",[])],
+                    code_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest())
+    if checkpoint_path and Path(checkpoint_path).exists() and not resume:
+        raise FileExistsError(checkpoint_path)
+    if resume and (not checkpoint_path or not Path(checkpoint_path).exists()):
+        raise FileNotFoundError(checkpoint_path)
     model.train()
     t_start, secs, losses, truncated = time.perf_counter(), [], [], False
     ran = 0
-    for step in range(1, steps + 1):
+    if resume:
+        # 仅加载本脚本自产、受信任的本地 checkpoint。
+        ck = torch.load(checkpoint_path, map_location=device, weights_only=False)
+        if ck["contract"] != contract:
+            raise ValueError("checkpoint 与当前模型、批配置、总步数或日程不一致")
+        model.load_state_dict(ck["model"])
+        opt.load_state_dict(ck["optimizer"])
+        ran, losses, secs = ck["step"], ck["losses"], ck["secs"]
+        torch.set_rng_state(ck["torch_rng"].cpu())
+        if ck.get("batch_rng") is not None:
+            batch_fn.rng.bit_generator.state = ck["batch_rng"]
+        if ck.get("mps_rng") is not None:
+            torch.mps.set_rng_state(ck["mps_rng"].cpu())
+    def save_checkpoint():
+        if not checkpoint_path:
+            return
+        path = Path(checkpoint_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        ck = dict(contract=contract, model=model.state_dict(), optimizer=opt.state_dict(),
+                  step=ran, losses=losses, secs=secs, torch_rng=torch.get_rng_state(),
+                  batch_rng=batch_fn.rng.bit_generator.state if hasattr(batch_fn,"rng") else None,
+                  mps_rng=torch.mps.get_rng_state() if device.type=="mps" else None)
+        tmp = path.with_suffix(path.suffix+".tmp")
+        torch.save(ck, tmp)
+        os.replace(tmp, path)
+    for step in range(ran + 1, steps + 1):
         sched = min(1.0, step / warmup)
         if cosine:
             sched *= 0.5 * (1 + math.cos(math.pi * step / steps))
@@ -298,9 +314,12 @@ def train_mini(model, steps, batch_fn, device, lr=1e-3, warmup=50, tag="",
         with torch.autocast(device_type=device.type, dtype=torch.bfloat16) if device.type == "mps" \
                 else torch.autocast("cpu", enabled=False):
             loss = batch_fn.loss(model, x, y)
+        if not torch.isfinite(loss):
+            save_checkpoint()
+            raise FloatingPointError(f"非有限 loss，step={step}")
         opt.zero_grad(set_to_none=True)
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0, error_if_nonfinite=True)
         opt.step()
         if device.type == "mps":
             torch.mps.synchronize()
@@ -311,11 +330,14 @@ def train_mini(model, steps, batch_fn, device, lr=1e-3, warmup=50, tag="",
             el = time.perf_counter() - t_start
             print(f"    [{tag}] step {step}/{steps} loss {loss.item():.4f} "
                   f"| elapsed {el:.0f}s | median {np.median(secs)*1e3:.0f} ms/step", flush=True)
-        if time_budget_min > 0 and (time.perf_counter() - t_start) > time_budget_min * 60:
-            print(f"    [{tag}] 超窗截断 @step {step}（>{time_budget_min} min）——降档留痕条款触发",
+        if step % checkpoint_every == 0:
+            save_checkpoint()
+        if (stop_after is not None and step >= stop_after) or (time_budget_min > 0 and (time.perf_counter() - t_start) > time_budget_min * 60):
+            print(f"    [{tag}] 保存停止点 @step {step}/{steps}（时间或局部测试步数上限）",
                   flush=True)
-            truncated = True
+            truncated = step < steps
             break
+    save_checkpoint()
     return {"sec_per_step_p50": float(np.median(secs)), "loss_first": losses[0],
             "loss_last_20_mean": float(np.mean(losses[-20:])), "steps_ran": ran,
             "wall_clock_sec": round(time.perf_counter() - t_start, 1), "truncated": truncated}
@@ -336,6 +358,7 @@ class NeedleBatch:
 class SpBatch:
     """sp-8k 语料批（TokenStream 确定性顺序批）——ch03 质量对照复用。"""
     def __init__(self, m4, batch, block):
+        self.B, self.T = batch, block
         self.stream = m4.TokenStream(m4.TOKENS_SP8K, batch, block)
         self.device = m4.pick_device("mps")
     def __call__(self, step):
@@ -347,11 +370,13 @@ class SpBatch:
 
 def build_arm(kind, cfg, state_dict=None):
     """两臂构建：full / swa_sink。同初始化：state_dict 由 full 臂（干净种子下构建）灌注，
-    形状全同；sink 为 swa_sink 臂独有参数、零初始化（gpt-oss 语义试点教训⑤）。"""
+    形状全同；sink 为 swa_sink 臂独有参数，零初始化是教学选择。"""
+    if kind not in {"full", "swa", "swa_sink"}:
+        raise ValueError(kind)
     d, L, h, h_kv, d_k, d_ff = cfg["d"], cfg["L"], cfg["h"], cfg["h_kv"], cfg["d_k"], cfg["d_ff"]
     w, use_rope = cfg.get("window"), cfg.get("use_rope", True)
     attns = [FullAttn(d, h, h_kv, d_k, use_rope) if kind == "full"
-             else SwaSinkAttn(d, h, h_kv, d_k, w, use_sink=(kind != "full"), use_rope=use_rope)
+             else SwaSinkAttn(d, h, h_kv, d_k, w, use_sink=(kind == "swa_sink"), use_rope=use_rope)
              for _ in range(L)]
     m = MiniLM(d=d, n_layer=L, d_ff=d_ff, attn_modules=attns)
     if state_dict is not None:
@@ -361,25 +386,15 @@ def build_arm(kind, cfg, state_dict=None):
     return m
 
 
-def upsert_csv(arm, steps, acc_by_pos):
-    """合并位置扫描 CSV：arm,steps,position,acc 四列；按 (arm,steps,position) upsert——
-    两臂（各档）跑完后 needle_scan.csv 即图 2.3 的两臂对照曲线数据源。"""
+def upsert_csv(arm, steps, acc_by_pos, out_name="run"):
+    """保留函数名兼容调用；新产物按运行隔离，绝不覆盖旧曲线。"""
     os.makedirs(OUT_DIR, exist_ok=True)
-    path = os.path.join(OUT_DIR, "needle_scan.csv")
-    rows = {}
-    if os.path.exists(path):
-        with open(path, newline="", encoding="utf-8") as f:
-            for r in csv.DictReader(f):
-                rows[(r["arm"], int(r["steps"]), int(r["position"]))] = r
-    for pp, acc in acc_by_pos.items():
-        rows[(arm, steps, int(pp))] = {"arm": arm, "steps": str(steps),
-                                       "position": str(int(pp)), "acc": f"{acc:.4f}"}
-    with open(path, "w", newline="", encoding="utf-8") as f:
-        wtr = csv.DictWriter(f, fieldnames=["arm", "steps", "position", "acc"])
-        wtr.writeheader()
-        for key in sorted(rows, key=lambda k: (k[1], k[0], k[2])):
-            wtr.writerow(rows[key])
-    print(f"[产物] {path}（{len(rows)} 行）")
+    path = os.path.join(OUT_DIR, f"needle_scan_{out_name}_{arm}.csv")
+    with open(path, "x", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=["arm", "steps", "position", "acc"])
+        writer.writeheader()
+        for pp, acc in sorted(acc_by_pos.items()):
+            writer.writerow(dict(arm=arm, steps=steps, position=pp, acc=f"{acc:.6f}"))
     return path
 
 
@@ -391,15 +406,22 @@ def main():
     ap.add_argument("--out-name", default=None, help="产物后缀（默认 {arm}_s{steps}）")
     ap.add_argument("--time-budget-min", type=float, default=0.0,
                     help="单臂训练 wall-clock 上限（分钟；超窗主动截断留痕，0=不设限）")
+    ap.add_argument("--resume", action="store_true", help="同总步数、日程与参数恢复自产checkpoint")
     args = ap.parse_args()
     m4, hits = bootstrap_book4()
     device = m4.pick_device("mps")
     out_name = args.out_name or f"{args.arm}_s{args.steps}"
+    os.makedirs(OUT_DIR, exist_ok=True)
+    base = Path(OUT_DIR) / f"needle_probe_{out_name}_{args.arm}"
+    ckpath = str(base)+".pt"
+    # 截断报告以实际步数独立保存；恢复后最终报告仍写 base.json。
+    if base.with_suffix(".json").exists() or (Path(ckpath).exists() and not args.resume):
+        raise FileExistsError(base)
     print(f"[bootstrap] moe_mla_slots 自：{hits[0]} | device {device} | arm {args.arm} | {out_name}",
           flush=True)
 
     cfg = dict(d=256, L=2, h=8, h_kv=4, d_k=64, d_ff=704, window=16, use_rope=False)  # 正档几何（文件头）
-    T, cliff = 64, 46                                                            # cliff = T-2-(w-1)-1
+    T, cliff = 64, 31                                                            # 值可达边界：T-2-L*(w-1)-1
     positions = [16, 22, 28, 34, 40, 46]                                         # 全部避开查询区 [48,64)
 
     # 同初始化：干净种子下建 full 臂取 state_dict，再灌入目标臂（跨进程可复现）
@@ -412,33 +434,36 @@ def main():
 
     bf = NeedleBatch(32, T, SEED + 7, device)
     res = train_mini(m, args.steps, bf, device, lr=3e-3, warmup=50, cosine=True,
-                     tag=f"{args.arm}/{out_name}", time_budget_min=args.time_budget_min)
+                     tag=f"{args.arm}/{out_name}", time_budget_min=args.time_budget_min,
+                     checkpoint_path=ckpath, resume=args.resume)
     acc = needle_eval(m, T, positions, device=device)
     print(f"[{args.arm}] train {res['loss_first']:.3f}→{res['loss_last_20_mean']:.3f} "
           f"| {res['sec_per_step_p50']*1e3:.0f} ms/step | acc@pos "
           f"{ {k: round(v, 2) for k, v in acc.items()} }", flush=True)
 
     os.makedirs(OUT_DIR, exist_ok=True)
-    jpath = os.path.join(OUT_DIR, f"needle_probe_{out_name}_{args.arm}.json")   # 文件名恒带臂名防覆写
-    with open(jpath, "w", encoding="utf-8") as f:
-        json.dump({"arm": args.arm, "steps": args.steps, "seed": SEED, "date": "2026-10-05",
+    suffix = f"_partial_s{res['steps_ran']}" if res["truncated"] else ""
+    jpath = str(base)+suffix+".json"   # 文件名恒带臂名防覆写
+    with open(jpath, "x", encoding="utf-8") as f:
+        json.dump({"arm": args.arm, "steps": args.steps, "seed": SEED, "date": datetime.now(timezone.utc).isoformat(),
+                   "device": str(device), "torch": torch.__version__,
+                   "evaluation": "complete_budget" if not res["truncated"] and args.steps>=8000 else "smoke_or_partial",
                    "cfg": cfg, "T": T, "reach_cliff": cliff, "positions": positions,
                    "far_band": list(FAR_BAND), "near_band": list(NEAR_BAND),
                    "train": res, "recall_acc_by_pos": acc,
-                   "prereg_verdict_this_arm": {
-                       "A_full_all_pos": all(v >= (0.8 if args.steps >= 20000 else 0.7)
-                                             for v in acc.values()) if args.arm == "full" else None,
-                       "B_unreachable_random": all(acc[p] <= 0.15 for p in positions if p < cliff)
-                       if args.arm == "swa_sink" else None,
-                       "B_branch_at_cliff": ("B1_窗内召回成立" if acc[cliff] >= 0.7
-                                             else "B2_窗内召回不成立→可达性决定论如实写")
-                       if args.arm == "swa_sink" else None},
+                   "revised_checks": {
+                       "A_full_all_pos": all(v >= (0.8 if args.steps >= 20000 else 0.7) for v in acc.values())
+                           if args.arm=="full" and args.steps>=8000 and not res["truncated"] else None,
+                       "unreachable_positions": [p for p in positions if p<cliff],
+                       "reachable_positions": [p for p in positions if p>=cliff],
+                       "sink_independent_effect": "not_identifiable_from_two_arms",
+                       "legacy_cliff_46": "invalid_for_two_layer_model"},
                    "references": {"gpt_oss_sink_semantics":
-                                  "transformers 5.18.0 modeling_gpt_oss.py L251-259",
+                                  "历史 5.18.0 行号见冻结稿；当前数学语义 cat-softmax-drop，由 swa_sink.py 对拍",
                                   "design_record": "00-feasibility/02_probe_swa_sink.py（探针，T=64 试点 acc 0.83@8k）"},
                    }, f, ensure_ascii=False, indent=2)
     print(f"[产物] {jpath}", flush=True)
-    upsert_csv(args.arm, args.steps, acc)
+    upsert_csv(args.arm, res["steps_ran"], acc, out_name+suffix)
     print(f"{args.arm}/{out_name} 完成。", flush=True)
 
 

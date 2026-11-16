@@ -16,14 +16,16 @@
 import argparse
 import json
 import os
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
+from pathlib import Path
+from datetime import datetime, timezone
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
+REPO_ROOT = str(next((p for p in Path(__file__).resolve().parents if (p / "env.sh").is_file()), Path.cwd()))
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book5-ch02")
 SEED = 20261002
 
@@ -34,6 +36,8 @@ def banded_causal_mask(n, window, device="cpu"):
     输入 n:int, window:int → 输出 (n,n) bool——例 2.1（w=3, n=4）的手画矩阵即此函数的 4x4 特例。
     与 HF masking_utils 同式：sliding_window_overlay 的 kv_idx > q_idx - window AND causal 的 j <= i。
     """
+    if n < 1 or (window is not None and window < 1):
+        raise ValueError("n 与 window 必须为正数")
     i = torch.arange(n, device=device)[:, None]                                  # (n,1)
     j = torch.arange(n, device=device)[None, :]                                  # (1,n)
     m = j <= i
@@ -52,6 +56,15 @@ class SWACfg:
     window: int = 16        # 滑窗宽 W：每 token 只回看最近 W 个
     use_sink: bool = True   # 每头 1 个可学 sink 标量（gpt-oss 语义）
     use_rope: bool = False  # 本章实验关 rope（隔离 mask 变量）；True 时 forward 需给 cos/sin
+
+
+    def __post_init__(self):
+        if min(self.d, self.n_head, self.n_kv_head, self.d_k) <= 0:
+            raise ValueError("维度必须为正")
+        if self.n_head % self.n_kv_head or (self.window is not None and self.window < 1):
+            raise ValueError("查询头数须整除 KV 头数，窗宽须为正")
+        if self.use_rope and self.d_k % 2:
+            raise ValueError("RoPE 头维须为偶数")
 
 
 class SlidingWindowSinkAttention(nn.Module):
@@ -83,7 +96,9 @@ class SlidingWindowSinkAttention(nn.Module):
         q = self.q_proj(x).view(B, n, self.h, self.d_k).transpose(1, 2)          # (B,h,n,d_k)
         k = self.k_proj(x).view(B, n, self.h_kv, self.d_k).transpose(1, 2)       # (B,h_kv,n,d_k)
         v = self.v_proj(x).view(B, n, self.h_kv, self.d_k).transpose(1, 2)
-        if cfg.use_rope and cos is not None:
+        if cfg.use_rope:
+            if cos is None or sin is None:
+                raise ValueError("use_rope=True 时必须提供 cos 与 sin")
             q, k = apply_rope(q, cos, sin), apply_rope(k, cos, sin)
         rep = self.h // self.h_kv
         k = k.repeat_interleave(rep, dim=1)                                      # (B,h,n,d_k) GQA 展开
@@ -95,9 +110,9 @@ class SlidingWindowSinkAttention(nn.Module):
             sink = self.sinks.view(1, self.h, 1, 1).expand(B, self.h, n, 1)      # (B,h,n,1) 虚拟 sink logit
             att = torch.cat([att, sink], dim=-1)                                 # (B,h,n,n+1) sink 进分母
             att = att - att.max(dim=-1, keepdim=True).values                     # 数值稳定（HF 同款，非原实现）
-            p = F.softmax(att.float(), dim=-1)[..., :n].to(x.dtype)              # 丢 sink 概率质量 (B,h,n,n)
+            p = F.softmax(att.float(), dim=-1)[..., :n].to(v.dtype)              # 丢 sink 概率质量 (B,h,n,n)
         else:
-            p = F.softmax(att.float(), dim=-1).to(x.dtype)
+            p = F.softmax(att.float(), dim=-1).to(v.dtype)
         y = (p @ v).transpose(1, 2).contiguous().view(B, n, self.h * self.d_k)   # (B,n,h·d_k)
         return self.o_proj(y)                                                    # (B,n,d)
 
@@ -114,16 +129,15 @@ def apply_rope(x, cos, sin):
 
 # ---------------- ① mask 对拍：自研 banded mask vs HF masking_utils（逐元素） ----------------
 def parity_mask():
-    from transformers.models.gemma3.configuration_gemma3 import Gemma3Config
+    from transformers.models.gemma3.configuration_gemma3 import Gemma3TextConfig
     from transformers.masking_utils import create_sliding_window_causal_mask
 
     out = {}
-    for n, w in [(96, 32), (64, 16), (50, 7)]:                                   # 含例 2.1 几何与奇数窗
-        g3 = Gemma3Config(vocab_size=256, hidden_size=64, num_hidden_layers=2,
+    for n, w in [(96, 32), (64, 16), (50, 7), (4, 3), (5, 1), (5, 8)]:                                   # 含例 2.1 几何与奇数窗
+        g3 = Gemma3TextConfig(vocab_size=256, hidden_size=64, num_hidden_layers=2,
                           sliding_window=w, _attn_implementation="eager")
         emb = torch.zeros(1, n, 64)                                              # (B,q_len,hidden) 只取形状
-        hf = create_sliding_window_causal_mask(g3, emb, None, None,
-                                               allow_is_causal_skip=False)       # 强制物化（滑窗≠纯因果）
+        hf = create_sliding_window_causal_mask(g3, emb, None, None)       # 强制物化（滑窗≠纯因果）
         block = hf[0, 0]                                                         # (n,n) additive：可见=0
         mine = banded_causal_mask(n, w)
         dense = torch.zeros(n, n).masked_fill(~mine, float("-inf"))
@@ -152,7 +166,7 @@ def parity_sink_closed_form():
 
 
 # ---------------- ③ 整层对拍：SlidingWindowSinkAttention vs HF GptOssAttention（同权重 strict） ----------------
-def parity_gptoss_layer():
+def parity_gptoss_layer(nonidentity_rope=False):
     from transformers.models.gpt_oss.configuration_gpt_oss import GptOssConfig
     from transformers.models.gpt_oss.modeling_gpt_oss import GptOssAttention
 
@@ -162,14 +176,19 @@ def parity_gptoss_layer():
                           num_key_value_heads=h_kv, head_dim=d_k, sliding_window=w,
                           attention_bias=False, _attn_implementation="eager")
     hf = GptOssAttention(cfg_hf, layer_idx=0)                                    # layer 0 = sliding_attention
-    mine = SlidingWindowSinkAttention(SWACfg(d=d, n_head=h, n_kv_head=h_kv, d_k=d_k, window=w))
+    with torch.no_grad():
+        hf.sinks.normal_()  # 直接构造注意力层时 empty 参数尚未初始化
+    mine = SlidingWindowSinkAttention(SWACfg(d=d, n_head=h, n_kv_head=h_kv, d_k=d_k, window=w, use_rope=True))
     missing, unexpected = mine.load_state_dict(hf.state_dict(), strict=True), None
     x = torch.randn(2, n, d)                                                     # (B,n,d)
     cos = torch.ones(1, n, d_k // 2)                                             # 恒等 rope（打平位置变量：
     sin = torch.zeros(1, n, d_k // 2)                                            #   gpt-oss 系 cos/sin 宽=d_k/2——chunk 半旋转）
+    if nonidentity_rope:
+        angles = torch.arange(n)[:, None] * torch.linspace(0.01, 0.2, d_k // 2)[None, :]
+        cos, sin = angles.cos()[None], angles.sin()[None]
     mask4 = torch.zeros(1, 1, n, n).masked_fill(~banded_causal_mask(n, w), torch.finfo(torch.float32).min)
     y_hf, _ = hf(x, (cos, sin), mask4)                                           # (B,n,d)——eager 正身
-    y_mine = mine(x)                                                             # (B,n,d)——use_rope=False ≡ 恒等
+    y_mine = mine(x, torch.cat((cos, cos), -1)[:, None], torch.cat((sin, sin), -1)[:, None])                                                             # (B,n,d)——use_rope=False ≡ 恒等
     return {"strict_load": "ok", "max_abs_diff": float((y_hf - y_mine).abs().max().detach()),
             "note": "同 config 同权重（q/k/v/o_proj+sinks 全同名）；GptOssConfig attention_bias=False 对齐"}
 
@@ -199,7 +218,8 @@ def kv_account():
                      "mixed_total": mix, "full_total": full,
                      "saving_pct": round((1 - mix / full) * 100, 1),
                      "sliding_share_pct": round(s_elems / mix * 100, 2),
-                     "asym_slope_pct": round(Lg / L * 100, 1)})                   # 渐近斜率=L_g/L（n→∞）
+                     "asym_slope_pct": round(Lg / L * 100, 1),  # 保留旧键名供调用者兼容；值为比率
+                     "absolute_slope_elems": per_tok * Lg})                   # 渐近存储比 L_g/L
     return rows
 
 
@@ -207,20 +227,30 @@ def main():
     ap = argparse.ArgumentParser(description="ch2 教学件：滑窗+sink 组件与三重对拍+分类型账本")
     ap.add_argument("--out-name", default="run1", help="产物后缀（防覆写）")
     args = ap.parse_args()
+    path = os.path.join(OUT_DIR, f"swa_sink_{args.out_name}.json")
+    if os.path.exists(path):
+        raise FileExistsError(path)
     torch.manual_seed(SEED)
+    import transformers
 
-    res = {"seed": SEED, "date": "2026-10-05", "device": "cpu(fp32)",
+    res = {"seed": SEED, "date": datetime.now(timezone.utc).isoformat(),
+           "torch": torch.__version__, "transformers": transformers.__version__, "device": "cpu(fp32)",
            "mask_parity_vs_hf": parity_mask(),
            "sink_impl_vs_closed_form": parity_sink_closed_form(),
            "layer_parity_vs_gptoss_eager": parity_gptoss_layer(),
+           "rotated_layer_parity": parity_gptoss_layer(True),
            "kv_account_typed": kv_account()}
+    assert all(v["elementwise_equal"] for v in res["mask_parity_vs_hf"].values())
+    assert res["sink_impl_vs_closed_form"]["max_abs_diff"] < 1e-6
+    assert res["layer_parity_vs_gptoss_eager"]["max_abs_diff"] < 1e-6
+    assert res["rotated_layer_parity"]["max_abs_diff"] < 1e-6
     # 例 2.1 自检：w=3, n=4 的 banded mask 打印（正文手画矩阵的同源实物）
     m = banded_causal_mask(4, 3).int()
     res["toy_mask_w3_n4"] = ["".join(str(int(v)) for v in row) for row in m]
 
     os.makedirs(OUT_DIR, exist_ok=True)
     path = os.path.join(OUT_DIR, f"swa_sink_{args.out_name}.json")
-    with open(path, "w", encoding="utf-8") as f:
+    with open(path, "x", encoding="utf-8") as f:
         json.dump(res, f, ensure_ascii=False, indent=2)
 
     print(f"[① mask 对拍] {res['mask_parity_vs_hf']}")

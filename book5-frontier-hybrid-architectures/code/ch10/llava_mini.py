@@ -1,7 +1,7 @@
 # llava_mini.py —— Book5 ch10 正式件：LLaVA mini（冻结 CLIP-base + 冻结 Qwen3-0.6B + 一层 projector 微调）
 # 用途：ch10（能力扩展专题）多模态投影的最小可跑正身——LLaVA 三件套的玩具级复刻：
 #   ① 视觉塔（冻结）：openai/clip-vit-base-patch32 的 CLIPVisionModel——末层 patch 隐状态均值池化
-#      → 768 维图像特征（真实 LLaVA 用 ViT-L/14@336 的 256-576 token 序列；本件单 token 玩具简化，
+#      → 768 维图像特征（真实 LLaVA 用 ViT-L/14@224的256或后续@336的576 token 序列；本件单 token 玩具简化，
 #      偏离声明预登记——单 token 是「投影对齐两个嵌入空间」的最小形态）；
 #   ② 语言塔（冻结）：Qwen/Qwen3-0.6B（d=1024，bf16）——文本侧零训练；
 #   ③ projector（唯一可学件）：一层线性 768→1024（无 bias，786,432 参）——把图像特征推进语言塔的
@@ -11,7 +11,7 @@
 # 【判据预注册（跑前写定 2026-10-08；notes/08 同文留档）】
 #   - prep 判据：≥300 图成功落地 + manifest 配对完整（图/问/答三字段齐全）；
 #   - smoke 判据：20 步 loss 有限且下降、projector 梯度有限；
-#   - formal 判据：数百步 loss 曲线持续下降（过拟合口径如实报——数百图小样本必然过拟合，读数意义
+#   - formal 判据：数百步 loss 曲线持续下降（过拟合口径如实报——数百图反复采样有明显过拟合风险，读数意义
 #     在「投影学得动」而非泛化）；两条生成样例落 JSON（人读对照：应答是否开始与图像内容相关——
 #     定性判读，不设自动判分）。
 # 运行方式：cd 工作区根目录 && source env.sh &&
@@ -24,6 +24,8 @@ import argparse
 import csv
 import json
 import os
+from pathlib import Path
+from datetime import datetime, timezone
 import subprocess
 import time
 
@@ -33,7 +35,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
+REPO_ROOT = str(next((p for p in Path(__file__).resolve().parents if (p/"env.sh").is_file()),Path.cwd()))
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book5-ch10")
 VG_DIR = os.path.join(OUT_DIR, "vg")
 SEED = 20261002
@@ -78,11 +80,21 @@ def fetch_vg_image(image_id):
     return None, None
 
 
+def output_paths(task,out_name):
+    if not out_name or Path(out_name).name!=out_name or out_name in (".",".."):
+        raise ValueError("out-name必须为单个文件名")
+    tag=f"{task}_{out_name}"
+    return [Path(OUT_DIR)/f"llava_mini_{tag}.json",
+            Path(OUT_DIR)/f"curve_llava_{tag}.csv",Path(OUT_DIR)/f"ckpt_llava_{tag}.pt"]
+
+
 def prep(out_name):
     """VG 子集下载 + instruction 配对。
 
     标注源=region_descriptions.json.zip（Washington 镜像 2026-10-08 实测可达；image_metadata.json.zip
     各镜像 404——弃用，改「双目录探测 + PIL 尺寸复核」重建图源）。"""
+    for p in [output_paths("prep",out_name)[0],Path(VG_DIR)/"manifest.json"]:
+        if p.exists():raise FileExistsError(f"保留已有数据清单：{p}")
     os.makedirs(VG_DIR, exist_ok=True)
     name = "region_descriptions.json"                # zip 内文件名已含 .json——解压目标与 zip 同名异后缀
     dst = os.path.join(VG_DIR, f"{name}.zip")
@@ -114,14 +126,16 @@ def prep(out_name):
         try:
             with Image.open(path) as im:
                 if im.width < 400 or im.height < 300:
-                    os.remove(path)
+                    # 保留已有下载文件，避免清理用户缓存
                     skipped += 1
                     continue
         except Exception:
-            os.remove(path)
+            # 保留失败文件供检查
             failures += 1
             continue
-        phrase = max(rs, key=lambda r: len(r.get("phrase", "")))["phrase"].strip()
+        rs=[r for r in rs if r.get("phrase","").strip()]
+        if not rs:continue
+        phrase = max(rs, key=lambda r: len(r["phrase"]))["phrase"].strip()
         phrase = phrase[0].upper() + phrase[1:]
         if not phrase.endswith("."):
             phrase += "."
@@ -149,26 +163,27 @@ def prep(out_name):
 
 
 # ---------------- 模型三件套：冻结 CLIP + 冻结 Qwen3 + 一层 projector ----------------
-def load_towers(device):
+def load_towers(device, allow_download=False):
     from transformers import AutoProcessor, CLIPVisionModel, AutoModelForCausalLM, AutoTokenizer
     try:
-        clip = CLIPVisionModel.from_pretrained(CLIP_ID, dtype=torch.float32)
+        clip = CLIPVisionModel.from_pretrained(CLIP_ID, local_files_only=not allow_download, dtype=torch.float32)
     except TypeError:                                            # 老接口回退（torch_dtype→dtype 改名期）
-        clip = CLIPVisionModel.from_pretrained(CLIP_ID, torch_dtype=torch.float32)
+        clip = CLIPVisionModel.from_pretrained(CLIP_ID, local_files_only=not allow_download, torch_dtype=torch.float32)
     clip = clip.to(device).eval()
     for p in clip.parameters():
         p.requires_grad_(False)
-    proc = AutoProcessor.from_pretrained(CLIP_ID)
-    tok = AutoTokenizer.from_pretrained(LM_ID)
+    proc = AutoProcessor.from_pretrained(CLIP_ID,local_files_only=not allow_download)
+    tok = AutoTokenizer.from_pretrained(LM_ID,local_files_only=not allow_download)
     try:
-        lm = AutoModelForCausalLM.from_pretrained(LM_ID, dtype=torch.bfloat16)
+        lm = AutoModelForCausalLM.from_pretrained(LM_ID, local_files_only=not allow_download, dtype=torch.bfloat16)
     except TypeError:
-        lm = AutoModelForCausalLM.from_pretrained(LM_ID, torch_dtype=torch.bfloat16)
+        lm = AutoModelForCausalLM.from_pretrained(LM_ID, local_files_only=not allow_download, torch_dtype=torch.bfloat16)
     lm = lm.to(device).eval()
     for p in lm.parameters():
         p.requires_grad_(False)
     img_id = tok.convert_tokens_to_ids(IMG_TOK)
-    assert isinstance(img_id, int) and img_id >= 0, f"词表无占位符 {IMG_TOK}"
+    if not isinstance(img_id,int) or img_id<0 or tok.convert_ids_to_tokens(img_id)!=IMG_TOK:
+        raise ValueError(f"词表无精确占位符{IMG_TOK}")
     d = lm.config.hidden_size
     proj = nn.Linear(clip.config.hidden_size, d, bias=False).to(device)
     nn.init.normal_(proj.weight, mean=0.0, std=0.02)
@@ -179,27 +194,39 @@ def load_towers(device):
 def image_feats(clip, proc, files, device):
     """(B,3,224,224) → 末层 patch 隐状态均值池化 (B,768)——CLIP 视觉塔冻结只前向。"""
     from PIL import Image
-    imgs = [Image.open(os.path.join(VG_DIR, f)).convert("RGB") for f in files]
+    imgs=[]
+    for f in files:
+        with Image.open(os.path.join(VG_DIR,f)) as im:imgs.append(im.convert("RGB"))
     px = proc(images=imgs, return_tensors="pt").to(device)       # pixel_values (B,3,224,224)
     h = clip(**px).last_hidden_state                             # (B,50,768)——1 CLS + 49 patch
     return h[:, 1:, :].mean(dim=1)                               # (B,768) patch 均值（单 token 玩具简化）
+
+
+def make_prompt(instruction):
+    """只接受问题，不接受参考答案；训练/生成共用同一提示格式。"""
+    return (f"<|im_start|>user\n{IMG_TOK}{instruction}<|im_end|>\n"
+            f"<|im_start|>assistant\n")
 
 
 def build_batch(tok, rows, img_id, device):
     """instruction 配对批：prompt=用户问句（含图像占位），response=区域描述；labels 只监督应答段。"""
     ids_list, labels_list, n_img_tok = [], [], []
     for r in rows:
-        prompt = (f"<|im_start|>user\n{IMG_TOK}{r['instruction']}<|im_end|>\n"
-                  f"<|im_start|>assistant\n")
+        prompt = make_prompt(r["instruction"])
         resp = f"{r['response']}<|im_end|>"
         p_ids = tok(prompt, add_special_tokens=False).input_ids
         r_ids = tok(resp, add_special_tokens=False).input_ids
         ids_list.append(p_ids + r_ids)
         labels_list.append([-100] * len(p_ids) + r_ids)
         n_img_tok.append(p_ids.count(img_id))
+        if p_ids.count(img_id)!=1 or img_id in r_ids:
+            raise ValueError("每条prompt恰好一个图像占位，答案不得含图像占位")
     L = max(len(x) for x in ids_list)
     assert L <= MAXLEN, L
-    ids = torch.full((len(ids_list), L), tok.pad_token_id or img_id, dtype=torch.long)
+    pad=tok.pad_token_id
+    if pad is None:pad=tok.eos_token_id
+    if pad is None or pad==img_id:raise ValueError("需要独立于图像占位的pad/eos")
+    ids = torch.full((len(ids_list), L), pad, dtype=torch.long)
     labels = torch.full((len(ids_list), L), -100, dtype=torch.long)
     att = torch.zeros((len(ids_list), L), dtype=torch.long)
     for i, (x, y) in enumerate(zip(ids_list, labels_list)):
@@ -213,19 +240,32 @@ def embed_with_image(lm, proj, ids, feats, img_id):
     """文本嵌入 + 图像 token 位替换：emb(占位) → proj(图像特征)——LLaVA 投影机制的最小实现。"""
     emb = lm.get_input_embeddings()(ids)                         # (B,L,d)
     mask = ids == img_id                                        # (B,L)
-    assert mask.any(), "批内无图像占位 token"
-    assert mask.sum() == mask.shape[0], "每序列应恰有 1 个图像 token"
+    if not bool((mask.sum(-1)==1).all()):
+        raise ValueError("每条序列须恰好一个图像占位；不能只核全批总数")
+    if feats.ndim!=2 or feats.shape[0]!=ids.shape[0]:
+        raise ValueError("图像特征必须为(B,视觉宽)")
     emb = emb.clone()
     emb[mask] = proj(feats).to(emb.dtype)                        # (B,d) → 占位位
     return emb                                                  # (B,L,d)
 
 
-def run_train(task, out_name, steps, device_pref="mps"):
-    device = torch.device(device_pref if torch.backends.mps.is_available() else "cpu")
+def run_train(task, out_name, steps, device_pref="mps", allow_download=False):
+    if steps<1:raise ValueError("steps必须为正")
+    paths=output_paths(task,out_name)
+    for path in paths:
+        if path.exists():raise FileExistsError(path)
+    if device_pref not in ("cpu","mps"):raise ValueError("本历史入口仅cpu/mps")
+    device=torch.device("mps" if device_pref=="mps" and torch.backends.mps.is_available() else "cpu")
+    torch.manual_seed(SEED)  # 必须先固定种子，再初始化projector
+    os.makedirs(OUT_DIR,exist_ok=True)
     manifest = json.load(open(os.path.join(VG_DIR, "manifest.json"), encoding="utf-8"))
     train_rows = [r for r in manifest if r["split"] == "train"]
-    hold_rows = [r for r in manifest if r["split"] == "holdout"][:2]
-    clip, proc, lm, tok, proj, img_id = load_towers(device)
+    all_hold_rows=[r for r in manifest if r["split"]=="holdout"]
+    hold_rows=all_hold_rows[:2]
+    if not train_rows or len(hold_rows)<2:raise ValueError("需要训练集和至少2条留出样例")
+    train_ids={r["image_id"] for r in train_rows}
+    if train_ids & {r["image_id"] for r in all_hold_rows}:raise ValueError("训练/留出图像重叠")
+    clip, proc, lm, tok, proj, img_id = load_towers(device,allow_download=allow_download)
     n_proj = sum(p.numel() for p in proj.parameters())
     n_lm = sum(p.numel() for p in lm.parameters())
     n_clip = sum(p.numel() for p in clip.parameters())
@@ -233,7 +273,6 @@ def run_train(task, out_name, steps, device_pref="mps"):
     print(f"[三件套] 冻结 CLIP-base {n_clip / 1e6:.1f}M + 冻结 Qwen3-0.6B {n_lm / 1e6:.1f}M + "
           f"可学 projector {n_proj:,}（768→{lm.config.hidden_size}，一层无 bias）| device {device}", flush=True)
     opt = torch.optim.AdamW(trainable, lr=1e-3, betas=(0.9, 0.95), weight_decay=0.0)
-    torch.manual_seed(SEED)
     rng = np.random.default_rng(SEED)
     curve, t0 = [], time.perf_counter()
     for step in range(1, steps + 1):
@@ -242,12 +281,14 @@ def run_train(task, out_name, steps, device_pref="mps"):
         with torch.no_grad():
             feats = image_feats(clip, proc, [r["file"] for r in rows], device)   # (B,768)
         emb = embed_with_image(lm, proj, ids, feats, img_id)     # (B,L,d)
-        logits = lm(inputs_embeds=emb, attention_mask=att).logits  # (B,L,V)
+        logits = lm(inputs_embeds=emb, attention_mask=att, use_cache=False).logits  # (B,L,V)
         loss = F.cross_entropy(logits[:, :-1].reshape(-1, logits.size(-1)).float(),
                                labels[:, 1:].reshape(-1))
         opt.zero_grad(set_to_none=True)
+        if not torch.isfinite(loss):raise FloatingPointError(f"非有限loss step={step}")
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(trainable, 1.0)
+        if proj.weight.grad is None:raise RuntimeError("投影梯度断开")
+        torch.nn.utils.clip_grad_norm_(trainable, 1.0, error_if_nonfinite=True)
         opt.step()
         if device.type == "mps":
             torch.mps.synchronize()
@@ -262,8 +303,7 @@ def run_train(task, out_name, steps, device_pref="mps"):
     # 应答拼进了生成前缀，样例判读被污染；本版独立拼 prompt，参考只在 JSON 里作对照字段）
     samples = []
     for r in hold_rows:
-        prompt = (f"<|im_start|>user\n{IMG_TOK}Describe this image.<|im_end|>\n"
-                  f"<|im_start|>assistant\n")
+        prompt = make_prompt("Describe this image.")
         p_ids = tok(prompt, add_special_tokens=False).input_ids
         ids = torch.tensor([p_ids], device=device)                   # (1,L_p)
         att = torch.ones_like(ids)
@@ -271,8 +311,14 @@ def run_train(task, out_name, steps, device_pref="mps"):
             feats = image_feats(clip, proc, [r["file"]], device)
             emb = embed_with_image(lm, proj, ids, feats, img_id)
             out = lm.generate(inputs_embeds=emb, attention_mask=att, max_new_tokens=64,
-                              do_sample=False, pad_token_id=img_id)
-        text = tok.decode(out[0], skip_special_tokens=True).strip()
+                              do_sample=False, pad_token_id=tok.pad_token_id if tok.pad_token_id is not None else tok.eos_token_id)
+        generated=out[0]
+        think_end=tok.convert_tokens_to_ids("</think>")
+        # 先按token找结束标记，再去特殊token；否则skip_special_tokens可能先删掉它。
+        if think_end is not None and tok.convert_ids_to_tokens(think_end)=="</think>":
+            hit=(generated==think_end).nonzero().flatten()
+            if hit.numel():generated=generated[int(hit[-1])+1:]
+        text = tok.decode(generated, skip_special_tokens=True).strip()
         if "</think>" in text:                                       # 思考模式介入：取末次 </think> 之后
             text = text.rsplit("</think>", 1)[1].strip()
         samples.append({"file": r["file"], "instruction": "Describe this image.",
@@ -285,7 +331,11 @@ def run_train(task, out_name, steps, device_pref="mps"):
             "models": {"clip": CLIP_ID, "lm": LM_ID, "frozen": True},
             "params": {"clip": n_clip, "lm": n_lm, "projector": n_proj},
             "image_token": "单 token 均值池化（真实 LLaVA 为 256-576 token 序列——玩具简化预登记）",
-            "data": {"n_train": len(train_rows), "n_holdout": len(hold_rows),
+            "date":datetime.now(timezone.utc).isoformat(), "torch":torch.__version__,
+            "transformers":__import__("transformers").__version__,
+            "data": {"n_train": len(train_rows), "n_holdout": len(all_hold_rows),
+                     "generation_sample_count":len(hold_rows),
+                     "expected_exposures_per_train_image":steps*BATCH/len(train_rows),
                      "license": "VG CC BY 4.0，图像只落 log/ 不入书仓"},
             "recipe": "AdamW(0.9,0.95,wd0)+clip1.0+lr1e-3（仅 projector 可学）bf16 语言塔",
             "loss_first": losses[0], "loss_last10_mean": round(float(np.mean(losses[-10:])), 5),
@@ -293,14 +343,14 @@ def run_train(task, out_name, steps, device_pref="mps"):
             "wall_sec": round(wall, 1),
             "verdict": "PASS" if (all(np.isfinite(losses)) and losses[-1] < losses[0]) else "CHECK"}
     os.makedirs(OUT_DIR, exist_ok=True)
-    with open(os.path.join(OUT_DIR, f"llava_mini_{task}_{out_name}.json"), "w", encoding="utf-8") as f:
+    with open(paths[0], "x", encoding="utf-8") as f:
         json.dump(meta, f, ensure_ascii=False, indent=2)
-    with open(os.path.join(OUT_DIR, f"curve_llava_{out_name}.csv"), "w", newline="", encoding="utf-8") as f:
+    with open(paths[1], "x", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=["step", "loss"])
         w.writeheader()
         w.writerows(curve)
     torch.save({"proj": proj.state_dict(), "step": steps},
-               os.path.join(OUT_DIR, f"ckpt_llava_{out_name}.pt"))
+               paths[2])
     print(f"[完成] loss {losses[0]:.4f} → {losses[-1]:.4f} | wall {wall / 60:.1f} min | "
           f"产物 {OUT_DIR}/llava_mini_{task}_{out_name}.json", flush=True)
 
@@ -311,12 +361,14 @@ def main():
     ap.add_argument("--steps", type=int, default=None,
                     help="smoke 20 / formal 默认 600（数百步档；贴窗以实测 s/step 调整留痕）")
     ap.add_argument("--out-name", default="run1")
+    ap.add_argument("--device",choices=["cpu","mps"],default="mps")
+    ap.add_argument("--download-models",action="store_true",help="显式允许首次获取模型；默认只读本地缓存")
     args = ap.parse_args()
     if args.task == "prep":
         prep(args.out_name)
         return
-    steps = args.steps or (20 if args.task == "smoke" else 600)
-    run_train(args.task, args.out_name, steps)
+    steps = args.steps if args.steps is not None else (20 if args.task=="smoke" else 600)
+    run_train(args.task,args.out_name,steps,args.device,args.download_models)
 
 
 if __name__ == "__main__":

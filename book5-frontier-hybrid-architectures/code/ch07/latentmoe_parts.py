@@ -18,7 +18,7 @@
 #      换成 StableLatentMoE，m4 训练环同配方；判据预注册见 notes/07 §4（先落盘再跑）。
 # 【Symptom↔处方对应（ch7 图 7.1 骨架）】没有①→聚合尺度漂移 / 没有②→激活尖峰（无界乘积）/
 #   没有③→负载塌缩（无均衡的 sigmoid topk 会赢者通吃）——失效模式与处方一一对应；
-#   玩具档若不复现 = 规模绑定声明如实写（报告失效模式明确绑定 2.8T 规模）。
+#   玩具与报告条件不同；未复现须如实记录（报告失效模式明确绑定 2.8T 规模）。
 # 运行方式：cd 工作区根目录 && source env.sh &&
 #   python "code/ch07/latentmoe_parts.py" --mode units [--out-name run1]   # 秒级
 #   python "code/ch07/latentmoe_parts.py" --mode ablate --arm full --steps 300
@@ -27,6 +27,7 @@ import argparse
 import importlib.util
 import json
 import os
+from pathlib import Path
 import sys
 
 import numpy as np
@@ -35,20 +36,21 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
+REPO_ROOT = str(next((p for p in Path(__file__).resolve().parents if (p/"env.sh").is_file()),Path.cwd()))
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book5-ch07")
 SEED = 20261002
 CH06 = os.path.join(HERE, "..", "ch06")                 # 本册件 HERE 相对——工作区/书仓双布局同构
-_B4_FEAS_CANDS = [                                      # 三候选（hybrid409 同款；书仓布局同款可命中）
-    os.path.join(REPO_ROOT, "code", "Book4-规模与效率", "00-feasibility"),
-    os.path.join(REPO_ROOT, "from-models-to-vllm", "book4-scale-and-efficiency", "code", "00-feasibility"),
-    os.path.join(REPO_ROOT, "book4-scale-and-efficiency", "code", "00-feasibility"),
+_B4_FEAS_CANDS = [str(p/"book4-scale-and-efficiency/code/00-feasibility") for p in Path(__file__).resolve().parents]
+_B4_FEAS_CANDS += [
+    os.path.join(REPO_ROOT,"from-models-to-vllm/book4-scale-and-efficiency/code/00-feasibility"),
+    os.path.join(REPO_ROOT,"code/Book4-规模与效率/00-feasibility"),
 ]
 
 
 def _load(path, name):
     spec = importlib.util.spec_from_file_location(name, path)
     mod = importlib.util.module_from_spec(spec)
+    sys.modules[name] = mod
     spec.loader.exec_module(mod)
     return mod
 
@@ -69,10 +71,18 @@ def bootstrap():
     return m4, k3_toy
 
 
+def output_path(name,out_name):
+    if not out_name or Path(out_name).name!=out_name or out_name in (".",".."):
+        raise ValueError("out-name必须为单个文件名")
+    path=Path(OUT_DIR)/f"{name}_{out_name}.json"
+    if path.exists():raise FileExistsError(path)
+    return path
+
+
 def save_json(name, obj, out_name):
     os.makedirs(OUT_DIR, exist_ok=True)
-    path = os.path.join(OUT_DIR, f"{name}_{out_name}.json")
-    with open(path, "w", encoding="utf-8") as f:
+    path = output_path(name,out_name)
+    with open(path, "x", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False, indent=2)
     print(f"[产物] {path}")
     return path
@@ -81,6 +91,8 @@ def save_json(name, obj, out_name):
 # ---------------- 处方二：SiTU-GLU（Eq.12 + App B） ----------------
 def softcap(x, beta):
     """softcap(x,β) = β·tanh(x/β)——软盖：原点近线性（β tanh(z/β)=z+O(z³/β²)，Eq.18）、远端有界 ±β。"""
+    if beta<=0:
+        raise ValueError("softcap的beta必须为正")
     return beta * torch.tanh(x / beta)
 
 
@@ -118,6 +130,14 @@ class AggRMSNorm(nn.Module):
 
 
 # ---------------- 处方三：Quantile Balancing（Eq.13-14 + Alg.1 + sign 对照） ----------------
+def _qb_shape(s,k):
+    if s.ndim!=2 or s.shape[0]<1 or not 0<k<s.shape[1]:
+        raise ValueError("s必须为非空(N,E)，0<k<E以取得第k+1名")
+    if not s.is_floating_point() or not bool(torch.isfinite(s).all()):
+        raise ValueError("QB分数必须是有限浮点数")
+    return s.shape
+
+
 def qb_alternating(s, k, T=8):
     """QB Alg.1（K3 报告 App C p44「可照写」版——按算法思想自写的 toy 实现）。
 
@@ -126,9 +146,11 @@ def qb_alternating(s, k, T=8):
       β ← desc_sort(s − α, axis=0)[mk/n : mk/n+1] # 专家侧（第 q+1 大 margin，q := mk/n）
     返回 (指派 x (m,n) bool, β (n,))。b = −β（符号约定：路由分 = s + b = s − β）。
     """
-    m, n = s.shape
-    q = m * k // n
-    beta = torch.zeros(1, n, dtype=s.dtype)                                       # (1,n) 全程同形
+    m,n = _qb_shape(s,k)
+    if T<1 or m*k % n:
+        raise ValueError("离散等额指派演示要求T>0且m*k/n为整数")
+    q = m*k//n
+    beta = torch.zeros(1,n,dtype=s.dtype,device=s.device)                                       # (1,n) 全程同形
     for _ in range(T):
         alpha = torch.sort(s - beta, dim=1, descending=True).values[:, k:k + 1]           # (m,1)
         beta = torch.sort(s - alpha, dim=0, descending=True).values[q:q + 1]              # (1,n)
@@ -144,8 +166,10 @@ def qb_bias_update(s, b, k, gamma_mean_center=True):
     s (N,E) 本批 Sigmoid 打分；b (E,) 当前偏置。路由按 Top-(k+1) 的 biased 分取截止 α；
     b̂_j = −(s_{:,j} − α) 的 (1−k/n) 分位数（降序第 q+1 大，q := N·k/E）；去公共偏移。
     """
-    N, E = s.shape
-    q = N * k // E
+    N,E = _qb_shape(s,k)
+    if b.shape!=(E,) or b.device!=s.device or not bool(torch.isfinite(b).all()):
+        raise ValueError("bias的形状、设备和有限值需与s匹配")
+    q = N*k//E  # 非整数目标时选相应坐标最优折点，不承诺离散精确配平
     alpha = torch.sort(s + b[None, :], dim=1, descending=True).values[:, k:k + 1]         # (N,1) Top-(k+1) 截止
     b_hat = -torch.sort(s - alpha, dim=0, descending=True).values[q:q + 1]               # (1,E)
     b_hat = b_hat.flatten()
@@ -170,7 +194,7 @@ def qb_small_example():
     e1/e2 缝 ~0.02（β 下调专家 3/2 即翻这两三行）；其余行缝大（0.3+，翻不动）——与 Fig.5 同构的
     (4,3,1,0)→(2,2,2,2)。**边界教训如实记**：缝宽任意时交替求解可在对偶不动点停在部分配平
     （如 (3,3,1,1)）——greedy argtopk 在近缝/平局处的取整敏感；报告「few steps equilibrate」
-    对训练态近均匀 Sigmoid 打分成立，对构造矩阵不保证逐位配平（正文考据框素材）。
+    属于报告训练观察；近均匀分数也不保证任意构造矩阵逐位配平（正文考据框素材）。
     """
     g = torch.Generator().manual_seed(30)
     s = torch.rand(8, 4, generator=g) * 0.08 + 0.46                               # 基底 ~0.5 微噪
@@ -211,6 +235,8 @@ class StableLatentMoE(nn.Module):
     def __init__(self, d, ell, m, E, top_k, m_shared=None, use_rmsnorm=True, use_situ=True,
                  use_qb=True, beta1=4.0, beta2=25.0):
         super().__init__()
+        if min(d,ell,m,E,top_k,beta1,beta2)<=0 or top_k>=E or (m_shared is not None and m_shared<=0):
+            raise ValueError("维度/软盖需正，且0<top_k<E")
         self.d, self.ell, self.m, self.E, self.top_k = d, ell, m, E, top_k
         self.use_rmsnorm, self.use_situ, self.use_qb = use_rmsnorm, use_situ, use_qb
         self.W_down = nn.Linear(d, ell, bias=False)                               # 潜下投影（共享）
@@ -239,11 +265,16 @@ class StableLatentMoE(nn.Module):
         shape = x.shape
         h = x.reshape(-1, self.d)                                                 # (N,d)
         z = self.W_down(h)                                                        # (N,ℓ) 潜空间
-        s = torch.sigmoid(self.router(h)).float()                                 # (N,E) ∈ (0,1)
-        b = self.bias.float()
+        if h.shape[0]==0:raise ValueError("不接受空token批")
+        with torch.autocast(device_type=h.device.type,enabled=False):
+            s = torch.sigmoid(F.linear(h.float(),self.router.weight.float()))                                 # (N,E) ∈ (0,1)
+        b = self.bias.float() if self.use_qb else torch.zeros_like(self.bias)
         w_sel, idx = (s + b[None, :]).topk(self.top_k, dim=-1)                    # (N,k) biased topk 派发
         p = s.gather(1, idx)                                                      # 混合权重用 s（b 不进权重）
-        p = (p / p.sum(-1, keepdim=True).clamp_min(1e-6)).to(z.dtype)
+        denom=p.sum(-1,keepdim=True)
+        if not bool(torch.isfinite(denom).all()) or bool((denom<=0).any()):
+            raise FloatingPointError("选中裸分和为0或非有限，无法归一")
+        p = (p/denom).to(z.dtype)
         u = torch.zeros_like(z)
         act_max, act_cnt = 0.0, 0
         for e in range(self.E):
@@ -270,7 +301,11 @@ class StableLatentMoE(nn.Module):
             self.last_stats = {
                 "u_rms": float(u.detach().float().pow(2).mean().sqrt()),
                 "act_max": act_max,
-                "load_max_over_min": float(nz.max() / nz.min().clamp_min(1)),
+                "load_max_over_min": float(nz.max()/nz.min()),  # 兼容旧字段：仅非零负载
+                "load_max_over_min_nonzero": float(nz.max()/nz.min()),
+                "idle_experts": int((load==0).sum()),
+                "load_max_over_mean": float(load.max()/load.float().mean()),
+                "loads": load.tolist(),
                 "load_top2_share": float(torch.sort(load, descending=True).values[:2].float().sum()
                                         / max(load.sum().item(), 1)),
                 "s_for_qb": s.detach(),
@@ -307,6 +342,7 @@ def build_ablation_machine(k3_toy, arm, d=512, ell=256, m=256, E=64, top_k=4):
                 "noqb": (True, True, False)}[arm]
     use_rmsnorm, use_situ, use_qb = switches
     cfg = k3_toy.toy_a_cfg(kda_impl="kda")
+    cfg["d"] = d
     torch.manual_seed(SEED)
     model = k3_toy.K3Toy(cfg)
     for layer in model.model.layers:
@@ -318,10 +354,13 @@ def build_ablation_machine(k3_toy, arm, d=512, ell=256, m=256, E=64, top_k=4):
 
 
 def run_ablation(m4, k3_toy, arm, steps, out_name, batch=8, block=512, peak_lr=1e-3):
+    output_path(f"train_ablate_{arm}",out_name)
+    if min(steps,batch,block)<1:raise ValueError("训练步/批/长度须为正")
     device = m4.pick_device("mps")
     model, moe_cfg = build_ablation_machine(k3_toy, arm)
     model = model.to(device)
     stream = m4.TokenStream(m4.TOKENS_SP8K, batch, block)
+    if steps>stream.max_step:raise ValueError("token流不足以覆盖请求步数")
     opt = torch.optim.AdamW(model.parameters(), lr=peak_lr, betas=(0.9, 0.95), weight_decay=0.1)
     moe_params = sum(l.mlp.n_params() for l in model.model.layers) // 8
     print(f"[ablate {arm}] MoE 插槽参数 {moe_params:,}/层 | {steps} 步 @ {device}", flush=True)
@@ -337,8 +376,9 @@ def run_ablation(m4, k3_toy, arm, steps, out_name, batch=8, block=512, peak_lr=1
         with torch.autocast(device_type=device.type, dtype=torch.bfloat16):
             _, loss = model(x, y)
         opt.zero_grad(set_to_none=True)
+        if not torch.isfinite(loss):raise FloatingPointError(f"非有限loss step={step}")
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0, error_if_nonfinite=True)
         opt.step()
         if device.type == "mps":
             torch.mps.synchronize()
@@ -348,10 +388,15 @@ def run_ablation(m4, k3_toy, arm, steps, out_name, batch=8, block=512, peak_lr=1
             layer0 = model.model.layers[0].mlp.last_stats
             stats_trace.append({"step": step, "u_rms": layer0["u_rms"], "act_max": layer0["act_max"],
                                 "load_max_over_min": layer0["load_max_over_min"],
-                                "load_top2_share": layer0["load_top2_share"]})
+                                "load_top2_share": layer0["load_top2_share"],
+                                "idle_experts":layer0["idle_experts"],
+                                "load_max_over_mean":layer0["load_max_over_mean"],
+                                "loads":layer0["loads"]})
             print(f"    step {step}/{steps} loss {loss.item():.4f} act_max {layer0['act_max']:.1f} "
                   f"u_rms {layer0['u_rms']:.3f} load_max/min {layer0['load_max_over_min']:.1f}", flush=True)
     out = {"arm": arm, **moe_cfg, "moe_params_per_layer": moe_params,
+           "stats_scope":"仅第0层；旧load_max_over_min仅非零专家",
+           "torch":torch.__version__, "device":str(device), "seed":SEED,
            "total_params": model.n_params(), "steps": steps,
            "sec_per_step_p50": float(np.median(secs)),
            "loss_first": losses[0], "loss_last": losses[-1], "losses": losses,
@@ -370,9 +415,11 @@ def main():
     ap.add_argument("--steps", type=int, default=300)
     ap.add_argument("--out-name", default="run1")
     args = ap.parse_args()
+    torch.set_num_threads(2)
     m4, k3_toy = bootstrap()
 
     if args.mode == "units":
+        output_path("latentmoe_units",args.out_name)
         torch.manual_seed(SEED)
         results = {"seed": SEED}
         # ① QB 小例（Fig.5 口径 m=8,n=4,k=1,q=2：负载 (4,3,1,0)→(2,2,2,2)）
@@ -389,7 +436,12 @@ def main():
         near = x.abs() <= 1.0
         first_order = float((softcap(x, 4.0) - x)[near].abs().max())                # |x|≤1 区一阶贴合（Eq.18）
         big_beta = float((softcap(x, 1e6) - x).abs().max())                          # β→∞ 回收恒等
-        grad_alive = bool((torch.autograd.grad(softcap(x, 4.0).sum(), x)[0].abs() > 0).any())  # 软盖梯度非零（对照硬 clamp 的死区）
+        edge=torch.tensor(8.,dtype=torch.float64,requires_grad=True)
+        grad_alive = bool(torch.autograd.grad(softcap(edge,4.0),edge)[0]>0)  # 软盖梯度非零（对照硬 clamp 的死区）
+        grid=torch.linspace(-100,100,101,dtype=torch.float64)
+        prod=softcap(grid[:,None],4.)*grid[:,None].sigmoid()*softcap(grid[None,:],25.)
+        assert bound_ok and first_order<.021 and big_beta<1e-4 and grad_alive
+        assert bool((prod.abs()<=100).all())
         results["situ_checks"] = {"softcap_bound_le_beta1": bound_ok,
                                   "first_order_fit_max_dev_x_le_1": first_order,
                                   "beta_inf_recovers_identity_dev": big_beta,

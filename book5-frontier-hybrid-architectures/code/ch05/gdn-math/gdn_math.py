@@ -1,6 +1,6 @@
 """GDN数学教学件：纯CPU可跑，不含融合核、模型权重或性能声明。
 输入布局 (..., N, d)，状态 (..., d_k, d_v)，前缀通常为(B,H)。
-运行：source ./env.sh 后 python code/Book1-5-系统重写/sample-gdn/verify.py
+运行：从书目录 python code/ch05/gdn-math/verify.py --out-name run1
 """
 import torch
 

@@ -23,31 +23,33 @@
 #   D4 共同基座：delta rule 递归（先忘后写 + 写残差）、短卷积+Swish、q/k L2Norm——同族不变。
 # 【实现口径（正文 6.8 素材）】
 #   - 本件 chunkwise 用「逐对衰减」D[i,j,c]=exp(c_i[c]−c_j[c]) 直接计算（i≥j 时 ∈(0,1]，
-#     永不溢出——数学上的安全形态）；K3 的 g_min=−5 是为「因式分解形态」（k̃=k⊙e^{−c} 重标，
+#     衰减指数无上溢；前提是累计log有限，其他运算仍需检查）；K3 的 g_min=−5 是为「因式分解形态」（k̃=k⊙e^{−c} 重标，
 #     e^{−c} 可爆）买回 BF16 动态域——同一数学的两种工程立场，正文对照教学点。
-#   - chunk 默认 16：与 K3 报告的 16-token 数字链对齐（若走因式分解形态，16 是 g_min=−5 下
-#     不溢出的块长；本件逐对形态避免衰减指数上溢；其他数值误差仍需检查，16 取报告口径）。
+#   - chunk 默认 16：与 K3 报告的 16-token 数字链对齐（若走因式分解形态，16 使 g_min=−5 下的重标因子落入BF16指数范围，但不保证乘加结果；本件逐对形态避免衰减指数上溢；其他数值误差仍需检查，16 取报告口径）。
 # 运行方式：cd 工作区根目录 && source env.sh && python "code/ch06/kda.py" [--out-name run1]
 #   对拍 CPU fp32；预计 <1 分钟（秒级）。
 # 产物：log/book5-ch06/kda_{out}.json（不入库）
 import argparse
 import json
 import os
+from pathlib import Path
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
+REPO_ROOT = str(next((p for p in Path(__file__).resolve().parents if (p / "env.sh").is_file()), Path.cwd()))
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book5-ch06")
 SEED = 20261002
 
 
 def save_json(name, obj, out_name):
+    if not out_name or Path(out_name).name != out_name or out_name in (".", ".."):
+        raise ValueError("--out-name 必须为单个文件名")
     os.makedirs(OUT_DIR, exist_ok=True)
     path = os.path.join(OUT_DIR, f"{name}_{out_name}.json")
-    with open(path, "w", encoding="utf-8") as f:
+    with open(path, "x", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False, indent=2)
     print(f"[产物] {path}")
     return path
@@ -59,6 +61,18 @@ def l2norm(x, dim=-1, eps=1e-6):
 
 
 # ---------------- 形态一：recurrent（逐 token 递归——推理形态，Eq.1 三步读法） ----------------
+def _check_inputs(q, k, v, g, beta, initial_state):
+    if k.ndim != 4 or q.shape != k.shape or v.ndim != 4 or v.shape[:3] != k.shape[:3]:
+        raise ValueError("q/k/v 要求 (B,S,H,D)，共享前三轴")
+    B,n,H,dk=k.shape
+    if min(B,n,H,dk,v.shape[-1])<=0 or g.shape!=k.shape or beta.shape!=k.shape[:3]:
+        raise ValueError("非空输入，g 为 (B,S,H,Dk)，beta 为 (B,S,H)")
+    if initial_state is not None and initial_state.shape!=(B,H,dk,v.shape[-1]):
+        raise ValueError("initial_state 要求 (B,H,Dk,Dv)")
+    if not bool(torch.isfinite(g).all()) or bool((g>0).any()):
+        raise ValueError("log门必须有限且非正；该log实现不接受精确alpha=0")
+
+
 def kda_recurrent(q, k, v, g, beta, initial_state=None, output_final_state=False):
     """KDA 递归形态。g 布局 (B,S,H,Dk)——per-channel log 衰减（与 GDN 的 (B,S,H) 标量门唯一差异）。
 
@@ -70,6 +84,8 @@ def kda_recurrent(q, k, v, g, beta, initial_state=None, output_final_state=False
       o_t = Sᵀ q_t                                # 读出（读的是写入后的状态——块形态对角线保留的来源）
     q/k 先 l2norm，q 再乘 Dk^{-1/2}。
     """
+    _check_inputs(q, k, v, g, beta, initial_state)
+    out_dtype = q.dtype
     B, S_len, H, Dk = k.shape
     Dv = v.shape[-1]
     q = l2norm(q.float()).transpose(1, 2) * (Dk ** -0.5)                          # (B,H,S,Dk)
@@ -77,9 +93,9 @@ def kda_recurrent(q, k, v, g, beta, initial_state=None, output_final_state=False
     v = v.float().transpose(1, 2)                                                # (B,H,S,Dv)
     beta = beta.float().transpose(1, 2)                                          # (B,H,S)
     g = g.float().transpose(1, 2)                                                # (B,H,S,Dk)
-    S = (torch.zeros(B, H, Dk, Dv, device=q.device) if initial_state is None
+    S = (torch.zeros(B, H, Dk, Dv, device=q.device, dtype=torch.float32) if initial_state is None
          else initial_state.float().to(q.device))
-    out = torch.empty(B, H, q.shape[2], Dv, device=q.device)
+    out = torch.empty(B, H, q.shape[2], Dv, device=q.device, dtype=torch.float32)
     for t in range(q.shape[2]):
         q_t, k_t, v_t = q[:, :, t], k[:, :, t], v[:, :, t]                       # (B,H,Dk)/(B,H,Dk)/(B,H,Dv)
         S = S * g[:, :, t].exp()[..., None]                                      # (B,H,Dk,Dv)⊙(B,H,Dk,1) 逐通道遗忘
@@ -88,7 +104,7 @@ def kda_recurrent(q, k, v, g, beta, initial_state=None, output_final_state=False
         S = S + torch.einsum("bhk,bhv->bhkv", k_t, delta)                        # 秩一写入
         out[:, :, t] = torch.einsum("bhkv,bhk->bhv", S, q_t)                     # (B,H,Dv) 读出
     out = out.transpose(1, 2).contiguous()                                       # (B,S,H,Dv)
-    return out, (S if output_final_state else None)
+    return out.to(out_dtype), (S if output_final_state else None)
 
 
 # ---------------- 形态二：chunkwise（块并行——训练形态，Eq.3-4） ----------------
@@ -103,6 +119,10 @@ def kda_chunkwise(q, k, v, g, beta, chunk=16, initial_state=None, output_final_s
       intra[i,j] = Σ_c q_i[c]k_j[c]D[i,j,c]（j≤i，含对角——读的是写入后状态）
     块间：v_new = u − k̃S；out = (q⊙e^c)S + intra·v_new；S ← Diag(e^{c_last})S + (k⊙e^{c_last−c})ᵀv_new。
     """
+    _check_inputs(q, k, v, g, beta, initial_state)
+    out_dtype = q.dtype
+    if not isinstance(chunk,int) or chunk<=0:
+        raise ValueError("chunk须为正整数")
     B, S_len, H, Dk = k.shape
     Dv = v.shape[-1]
     q = l2norm(q.float()).transpose(1, 2) * (Dk ** -0.5)                         # (B,H,S,Dk)
@@ -119,6 +139,8 @@ def kda_chunkwise(q, k, v, g, beta, chunk=16, initial_state=None, output_final_s
     NC = (S_len + pad) // chunk
 
     c = g.view(B, H, NC, chunk, Dk).cumsum(dim=-2)                               # (B,H,w,i,c) 通道累积 log 衰减
+    if not bool(torch.isfinite(c).all()):
+        raise ValueError("累计log门溢出；减小块长或检查参数")
     beta_c = beta.view(B, H, NC, chunk)                                          # (B,H,w,i)
     qb = q.view(B, H, NC, chunk, Dk)                                             # (B,H,w,i,d)
     kb = k.view(B, H, NC, chunk, Dk)                                             # (B,H,w,j,d)
@@ -126,7 +148,7 @@ def kda_chunkwise(q, k, v, g, beta, chunk=16, initial_state=None, output_final_s
     k_beta = (k * beta[..., None]).view(B, H, NC, chunk, Dk)                     # (B,H,w,i,d) βk
     v_beta = (v * beta[..., None]).view(B, H, NC, chunk, Dv)                     # (B,H,w,i,e) βv
 
-    # 逐对衰减 D（j≤i 位 (0,1]，永不溢出）；严格上三角位（j>i）先填 −inf 再 exp → 0
+    # 逐对衰减 D（有限非正log下，j≤i 位的指数不大于1）；严格上三角位（j>i）先填 −inf 再 exp → 0
     #   （坑：先填 0 再 exp 会把掩蔽位变成 e⁰=1——被对拍抓出的实现错误，正文「对拍驱动开发」素材）
     iu = torch.ones(chunk, chunk, dtype=torch.bool, device=q.device).triu(1)     # (i,j) j>i 为 True
     D = (c.unsqueeze(-2) - c.unsqueeze(-3)).masked_fill(iu[..., None], float("-inf")).exp()  # (B,H,w,i,j,c)
@@ -134,7 +156,7 @@ def kda_chunkwise(q, k, v, g, beta, chunk=16, initial_state=None, output_final_s
     # UT 系统：M = tril(β_i·Σ_c k_i k_j D, −1)——对角元 β_iΣ_c k_i[c]²·1 必须再去掉（单位对角补偿）
     M = torch.einsum("bhwid,bhwjd,bhwijd->bhwij", k_beta, kb, D)                 # (B,H,w,i,j)
     M = M - torch.diag_embed(M.diagonal(dim1=-2, dim2=-1))                       # 严格下三角
-    eye = torch.eye(chunk, device=q.device).expand(B, H, NC, chunk, chunk).contiguous()
+    eye = torch.eye(chunk, device=q.device, dtype=torch.float32).expand(B, H, NC, chunk, chunk).contiguous()
 
     u = torch.linalg.solve_triangular(eye + M, v_beta, upper=False, unitriangular=True)   # (B,H,w,i,e)
     k_tilde = torch.linalg.solve_triangular(eye + M, k_beta * c.exp(),                     # (B,H,w,i,d)
@@ -144,9 +166,9 @@ def kda_chunkwise(q, k, v, g, beta, chunk=16, initial_state=None, output_final_s
     k_cross = kb * (c[..., -1:, :] - c).exp()                                    # (B,H,w,j,d) k⊙e^{c_last−c}
     c_last = c[..., -1, :].exp()                                                 # (B,H,w,c) e^{c_last}（先 exp 再乘——漏 exp 会被对拍抓出）
 
-    S = (torch.zeros(B, H, Dk, Dv, device=q.device) if initial_state is None
+    S = (torch.zeros(B, H, Dk, Dv, device=q.device, dtype=torch.float32) if initial_state is None
          else initial_state.float().to(q.device))
-    out = torch.empty(B, H, NC, chunk, Dv, device=q.device)
+    out = torch.empty(B, H, NC, chunk, Dv, device=q.device, dtype=torch.float32)
     for w in range(NC):                                                          # 块间线性扫描
         v_new = u[:, :, w] - k_tilde[:, :, w] @ S                                # (B,H,i,e) 真差值 δ
         out[:, :, w] = (q_dec[:, :, w] @ S                                       # (B,H,i,e) 跨块读老状态
@@ -154,7 +176,7 @@ def kda_chunkwise(q, k, v, g, beta, chunk=16, initial_state=None, output_final_s
         S = S * c_last[:, :, w][..., None] \
             + k_cross[:, :, w].transpose(-1, -2) @ v_new                         # (B,H,d,e) Diag(e^{c_last})·S+写
     out = out.reshape(B, H, NC * chunk, Dv)[:, :, :S_len].transpose(1, 2).contiguous()
-    return out, (S if output_final_state else None)
+    return out.to(out_dtype), (S if output_final_state else None)
 
 
 # ---------------- 层模块：K3 化 KDA 正身件 ----------------
@@ -181,6 +203,8 @@ class KimiDeltaAttention(nn.Module):
         super().__init__()
         assert gate_mode in ("per_channel", "per_token")
         assert d_k == d_v, "本教学层的联合QKV卷积要求d_k=d_v；核心递推函数支持不同维度。"
+        if min(d,h,d_k,d_v,conv_kernel,chunk)<=0 or g_min>=0 or (rank is not None and rank<=0):
+            raise ValueError("维度/块长/秩须为正，g_min须为负")
         self.h, self.d_k, self.d_v = h, d_k, d_v
         self.chunk, self.gate_mode, self.g_min = chunk, gate_mode, g_min
         self.qkv_dim = h * d_k
@@ -235,15 +259,15 @@ class KimiDeltaAttention(nn.Module):
         core = (core.float() * torch.rsqrt(var + 1e-6)) * self.o_norm_w.float().view(1, 1, 1, self.d_v)
         gate = torch.sigmoid(self.g_proj(x))                                      # (B,n,d) 满秩门
         core = core * gate.view(B, n, self.h, self.d_v)                           # 玩具 d=h·d_v 自洽
-        return self.o_proj(core.reshape(B, n, self.h * self.d_v))                 # (B,n,d)
+        return self.o_proj(core.reshape(B, n, self.h * self.d_v).to(x.dtype))                 # (B,n,d)
 
 
 # ---------------- 对拍（内置；vs HF kimi_linear torch 双 kernel + 双形态互拍） ----------------
 def parity_hf(B=2, S=256, H=2, Dk=32, Dv=32, seed=SEED, chunk=16):
     """自研 KDA 双形态 vs HF kimi_linear 参考实现（K3 式 g 直接喂给 HF kernel——kernel 只吃
     log 衰减 g，参数化在模块侧，对拍正合「同一递归、不同门」的教学点）。"""
-    from transformers.models.kimi_linear.modeling_kimi_linear import (
-        chunk_kimi_delta_attention, recurrent_kimi_delta_attention)
+    # 固定参考源码节选，移除融合调度装饰器；不依赖当前安装版是否带kimi_linear。
+    from kda_reference import chunk_kimi_delta_attention, recurrent_kimi_delta_attention
     torch.manual_seed(seed)
     q = torch.randn(B, S, H, Dk)
     k = torch.randn(B, S, H, Dk)
@@ -277,14 +301,15 @@ def main():
     ap = argparse.ArgumentParser(description="Book5 ch6 KDA 正式件：双形态 + kimi_linear 对拍")
     ap.add_argument("--out-name", default="run1")
     args = ap.parse_args()
+    torch.set_num_threads(2)
 
     results = {"seed": SEED,
-               "hf_reference": "transformers 5.18.0 kimi_linear torch 双 kernel",
+               "hf_reference": "官方 transformers v5.18.0 纯torch函数快照（kda_reference.py，无融合调度）",
+               "torch": torch.__version__,
                "parity_cpu_fp32": parity_hf()}
     for kk, vv in results["parity_cpu_fp32"].items():
         print(f"[对拍] {kk}: max|Δ| = {vv:.2e}")
-    for key in ("mine_recurrent_vs_hf_out", "mine_chunk_vs_hf_out",
-                "mine_recurrent_vs_mine_chunk_out"):
+    for key in results["parity_cpu_fp32"]:
         assert results["parity_cpu_fp32"][key] < 1e-4, f"{key} 对拍失败"
 
     # 层模块双形态自洽 + 两 gate_mode 同构检查（单变量臂：参数完全相同；d=h·d_v=64 自洽口径）
@@ -303,7 +328,7 @@ def main():
     results["gate_mode_param_identical"] = (sum(p.numel() for p in layer.parameters())
                                             == sum(p.numel() for p in layer_pt.parameters()))
     results["per_token_vs_per_channel_max_diff"] = float((y_pt - y_c).abs().max())  # 应显著非零（门粒度不同）
-    results["kda_layer_params_128d_2h_32dim"] = sum(p.numel() for p in layer.parameters())
+    results["kda_layer_params_64d_2h_32dim"] = sum(p.numel() for p in layer.parameters())
     print(f"[层模块] chunk vs recurrent max|Δ| = {results['layer_dual_path_max_diff']:.2e} | "
           f"per_token vs per_channel max|Δ| = {results['per_token_vs_per_channel_max_diff']:.2e}（非零=粒度生效） | "
           f"参数同构 = {results['gate_mode_param_identical']}")

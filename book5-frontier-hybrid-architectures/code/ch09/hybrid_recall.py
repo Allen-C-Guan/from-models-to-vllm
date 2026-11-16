@@ -10,7 +10,7 @@
 #                 → 7,750,912（−24 = −0.0003%）
 #     all_linear：注意力少 60,408 → FFN 加 20 单位（704→724）→ 7,751,968（+1,032 = +0.013%）
 #   FFN 宽度粒度 = 3·d = 768 参/单位（×4 层 = 3,072）；三臂最大互差 1,056 参 = 0.0136%（assert 上限）。
-#   等激活说明：三臂均无 MoE（FFN 稠密全激活、注意力全激活）——等总参即等激活（probe07 caveat 闭合）。
+#   等激活说明：三臂均无 MoE（FFN 稠密全激活、注意力全激活）——同口径活跃参数近似相等，但计算量和时延不一定相等（probe07 caveat 闭合）。
 # 【判据预注册（跑前写定 2026-10-08，防事后择优；负结论照报——notes/08 同文留档）】
 #   任务：MQAR needle-recall（探针02 v4 定版：T=96/B=32/监督 8 查询位/needle 训练分布 50% 远端
 #   [16,60)+50% 窗内 [62,78)）；配方：AdamW(0.9,0.95,wd0.1)+clip1.0+lr 3e-3+warmup 50+cosine，
@@ -18,13 +18,13 @@
 #   主判据：
 #     J1 all_global 学会全位置召回：五位置（18/42/58/62/74）acc 全 ≥ 0.7；
 #     J2 hybrid31 凭 1 个全局层提供可达性也学会：远端三位置（18/42/58）acc 全 ≥ 0.7
-#        （Qwen3-Next/K3 配方的存在性证据）；
-#     J3 all_linear 固定状态容量+衰减+卷积局部性拖累远端召回：远端三位置均值比 hybrid31 低 ≥ 0.3。
+#        （只检验本玩具配方，不验证旗舰）；
+#     J3 all_linear远端三位置均值比hybrid31低至少0.3；达标本身不证明容量/衰减为原因。
 #   结果分支（预登记，均不算管道失败）：
-#     B1 若 hybrid31 意外垫底（五位置均值 < all_linear）→「recall 靠全局层」的谱系证据（大纲预登记）；
-#     B2 若 all_linear 远端三位置也 ≥ 0.7 → 推翻「线性层学不会远端召回」预期，如实报告并追查
-#        （候选解释：chunkwise 训练形态块内二次可及 + d_k=64 小档状态容量富余）；
-#     B3 若 all_global 未达 J1 → 6000 步预算不足信号，补 10000 步档再判（不据此下结论）。
+#     B1 若 hybrid31 意外垫底（五位置均值 < all_linear）→记录异常排序；须再查优化/任务/层位置，不据此确认机制；
+#     B2 若 all_linear 远端三位置也 ≥ 0.7 → 本任务中达到阈值，不证明任意容量均足够
+#        （候选解释：容量/优化/数据均需检查；chunkwise与递推计算同一函数，不额外增加记忆能力）；
+#     B3 若 all_global 未达 J1 → 6000 步尚未达标，预算不足只是候选原因，补 10000 步档再判（不据此下结论）。
 #   ruler-mini（次判据，长度外推苗头——训练只见 T=96，外推读数不下终局结论）：
 #     T ∈ {96,128,160,224} × needle 位 frac ∈ {0.2,0.5,0.8}（usable [16,T-18) 内取位），报各臂 acc 表；
 #     预期苗头：无 rope 下 full 臂随 T 缓降、GDN 臂衰减更快（卷积局部性）——只报方向。
@@ -33,12 +33,14 @@
 #   python "code/ch09/hybrid_recall.py" --arm hybrid31 --steps 300 --out-name pipe2
 #   python "code/ch09/hybrid_recall.py" --eval ruler-mini --out-name run1
 # 产物（log/book5-ch09/，不入库）：recall3_{arm}_{out}.json（逐臂，跑完即写——中断不丢已完臂）+
-#   recall3_{out}.json（总表）+ ckpt recall_ckpt_{arm}.pt（每 1000 步——单臂贴 25 min 窗分段续跑）。
+#   recall3_{out}.json（总表）+ ckpt recall_ckpt_{arm}_{out}.pt（每 1000 步——单臂贴 25 min 窗分段续跑）。
 import argparse
 import importlib.util
 import json
 import math
 import os
+from pathlib import Path
+from datetime import datetime, timezone
 import sys
 import time
 
@@ -46,15 +48,15 @@ import numpy as np
 import torch
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
+REPO_ROOT = str(next((p for p in Path(__file__).resolve().parents if (p/"env.sh").is_file()),Path.cwd()))
 FEAS = os.path.join(HERE, "..", "00-feasibility")       # 本册件 HERE 相对——工作区/书仓双布局同构
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book5-ch09")
-SEED = 20261002                       # 全书统一种子（P18 探针同款——同初始化跨臂可比）
+SEED = 20261002                       # 同种子协议；不同结构消耗随机数不同，不表示共用权重
 
-_B4_FEAS_CANDS = [
-    os.path.join(REPO_ROOT, "code", "Book4-规模与效率", "00-feasibility"),
-    os.path.join(REPO_ROOT, "from-models-to-vllm", "book4-scale-and-efficiency", "code", "00-feasibility"),
-    os.path.join(REPO_ROOT, "book4-scale-and-efficiency", "code", "00-feasibility"),
+_B4_FEAS_CANDS = [str(p/"book4-scale-and-efficiency/code/00-feasibility") for p in Path(__file__).resolve().parents]
+_B4_FEAS_CANDS += [
+    os.path.join(REPO_ROOT,"from-models-to-vllm/book4-scale-and-efficiency/code/00-feasibility"),
+    os.path.join(REPO_ROOT,"code/Book4-规模与效率/00-feasibility"),
 ]
 
 
@@ -74,6 +76,7 @@ def bootstrap():
 def load_feas(name):
     spec = importlib.util.spec_from_file_location(name, os.path.join(FEAS, f"{name}.py"))
     mod = importlib.util.module_from_spec(spec)
+    sys.modules[name]=mod
     spec.loader.exec_module(mod)
     return mod
 
@@ -140,22 +143,30 @@ def ruler_mini_eval(p02, model, device, n_seq=60, seed=SEED + 999):
 
 
 # ---------------- 训练环（P18 train_mini 同配方 + cosine + ckpt 续跑） ----------------
-def train_arm(p02, model, kind, steps, device, lr=3e-3, warmup=50):
+def train_arm(p02, model, kind, steps, device, lr=3e-3, warmup=50, out_name='run1', resume=False):
     """一臂训练：AdamW(0.9,0.95,wd0.1)+clip1.0+warmup+cosine；每 1000 步 ckpt（单臂贴 25 min 窗分段续跑）。"""
-    ckpt_path = os.path.join(OUT_DIR, f"recall_ckpt_{kind}.pt")
+    ckpt_path = os.path.join(OUT_DIR, f"recall_ckpt_{kind}_{out_name}.pt")
     opt = torch.optim.AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95), weight_decay=0.1)
     rng = np.random.default_rng(SEED + 7)
     start_step = 1
-    if os.path.exists(ckpt_path):                      # 分段续跑（判据不降）
+    if os.path.exists(ckpt_path) and not resume:raise FileExistsError("已有checkpoint；显式--resume或换输出名")
+    if resume and not os.path.exists(ckpt_path):raise FileNotFoundError(ckpt_path)
+    if os.path.exists(ckpt_path):
         ck = torch.load(ckpt_path, map_location=device, weights_only=False)
+        if ck.get("protocol")!="book5-r2-recall-v1" or ck.get("kind")!=kind:
+            raise ValueError("checkpoint来源/版本不符；历史checkpoint不得静默混用")
+        if ck.get("target_steps")!=steps:
+            print(f"  [{kind}] 目标由{ck.get('target_steps')}改为{steps}；重新计算cosine，不等于原长日程")
         model.load_state_dict(ck["model"]); opt.load_state_dict(ck["opt"])
+        if "torch_rng" in ck:torch.set_rng_state(ck["torch_rng"].cpu())
         rng.bit_generator.state = ck["rng"]
         if ck["step"] < steps:
             start_step = ck["step"] + 1
             print(f"  [{kind}] 续跑自 ckpt 第 {ck['step']} 步", flush=True)
         else:
             print(f"  [{kind}] ckpt 已达 {ck['step']} 步 ≥ 目标 {steps}（复用末态）", flush=True)
-            return ck.get("losses") or [], ck.get("secs") or [], start_step
+            if ck["step"]>steps:raise ValueError("checkpoint超出目标步数")
+            return ck.get("losses",[]),ck.get("secs",[]),ck["step"]+1
     model.train()
     losses, secs = [], []
     for step in range(start_step, steps + 1):
@@ -168,8 +179,9 @@ def train_arm(p02, model, kind, steps, device, lr=3e-3, warmup=50):
                 else torch.autocast("cpu", enabled=False):
             loss = p02.needle_loss(model, x, p, 96)
         opt.zero_grad(set_to_none=True)
+        if not torch.isfinite(loss):raise FloatingPointError(f"非有限loss step={step}")
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0, error_if_nonfinite=True)
         opt.step()
         if device.type == "mps":
             torch.mps.synchronize()
@@ -180,21 +192,31 @@ def train_arm(p02, model, kind, steps, device, lr=3e-3, warmup=50):
                   f"({np.median(secs[-50:]) * 1000:.0f} ms/step)", flush=True)
         if step % 1000 == 0 or step == steps:
             torch.save({"model": model.state_dict(), "opt": opt.state_dict(), "step": step,
-                        "rng": rng.bit_generator.state, "losses": losses, "secs": secs}, ckpt_path)
+                        "rng": rng.bit_generator.state, "losses": losses, "secs": secs,
+                        "torch_rng":torch.get_rng_state(), "protocol":"book5-r2-recall-v1",
+                        "kind":kind, "target_steps":steps}, ckpt_path)
     return losses, secs, start_step
 
 
-def run_arm(p02, p05, kind, steps, device, out_name):
+def run_arm(p02, p05, kind, steps, device, out_name, resume=False):
+    saved=Path(OUT_DIR)/f"recall3_{kind}_{out_name}_s{steps}.json"
+    if saved.exists():
+        if not resume:raise FileExistsError(saved)
+        prior=json.loads(saved.read_text())
+        if prior.get("protocol")!="book5-r2-recall-v1" or prior["kind"]!=kind or prior["steps"]!=steps:
+            raise ValueError("已有单臂记录版本/范围不符")
+        return prior
     t0 = time.perf_counter()
     torch.manual_seed(SEED)
     model, n_par, d_ff = build_arm(p02, p05, kind, device)
     ref_dev = n_par - REF_TOTAL
     print(f"  [{kind}] {ARM_SPECS[kind]} | d_ff={d_ff} | 总参 {n_par:,}（vs 锚 {ref_dev:+d}）", flush=True)
-    losses, secs, resumed = train_arm(p02, model, kind, steps, device)
+    losses, secs, resumed = train_arm(p02, model, kind, steps, device, out_name=out_name,
+        resume=resume and (Path(OUT_DIR)/f"recall_ckpt_{kind}_{out_name}.pt").exists())
     positions = [18, 42, 58, 62, 74]                                  # P18 五位置（probe07 同款）
     scan = p02.needle_eval(model, 96, positions, device=device)
     ruler = ruler_mini_eval(p02, model, device)
-    res = {"kind": kind, "spec": ARM_SPECS[kind], "d_ff": d_ff, "params": n_par,
+    res = {"protocol":"book5-r2-recall-v1", "kind": kind, "spec": ARM_SPECS[kind], "d_ff": d_ff, "params": n_par,
            "params_vs_ref": ref_dev, "seed": SEED, "steps": steps, "T": 96,
            "resumed_from_step": resumed if resumed > 1 else None,
            "train": {"loss_first": losses[0] if losses else None,
@@ -210,7 +232,7 @@ def run_arm(p02, p05, kind, steps, device, out_name):
           f"{res['train']['sec_per_step_p50'] * 1000:.0f} ms/step | 五位置 "
           f"{ {k: round(v, 2) for k, v in scan.items()} } | 远端均值 {far:.2f} | wall {res['wall_sec'] / 60:.1f} min",
           flush=True)
-    with open(os.path.join(OUT_DIR, f"recall3_{kind}_{out_name}.json"), "w", encoding="utf-8") as f:
+    with open(os.path.join(OUT_DIR, f"recall3_{kind}_{out_name}_s{steps}.json"), "w", encoding="utf-8") as f:
         json.dump(res, f, ensure_ascii=False, indent=2)
     return res
 
@@ -219,13 +241,14 @@ def eval_only(p02, p05, kinds, steps, device, out_name):
     """--eval ruler-mini：从各臂末态 ckpt 只跑评估（不重训——写作期复评口径）。"""
     out = {}
     for kind in kinds:
-        ckpt_path = os.path.join(OUT_DIR, f"recall_ckpt_{kind}.pt")
+        ckpt_path = os.path.join(OUT_DIR, f"recall_ckpt_{kind}_{out_name}.pt")
         if not os.path.exists(ckpt_path):
-            print(f"  [{kind}] 无 ckpt（跳过）", flush=True)
-            continue
+            raise FileNotFoundError(ckpt_path)
         ck = torch.load(ckpt_path, map_location=device, weights_only=False)
         torch.manual_seed(SEED)
         model, n_par, d_ff = build_arm(p02, p05, kind, device)
+        if ck.get("protocol")!="book5-r2-recall-v1" or ck.get("kind")!=kind:
+            raise ValueError("checkpoint来源/版本不符")
         model.load_state_dict(ck["model"])
         scan = p02.needle_eval(model, 96, [18, 42, 58, 62, 74], device=device)
         ruler = ruler_mini_eval(p02, model, device)
@@ -245,14 +268,27 @@ def main():
     ap.add_argument("--arm", default=None, choices=list(ARM_SPECS), help="只跑一臂（默认三臂串行）")
     ap.add_argument("--steps", type=int, default=6000, help="正式档 6000（大纲 6000-10000 下限保底线）")
     ap.add_argument("--eval", default=None, help="评估模式：ruler-mini（从 ckpt 只跑评估不重训）")
+    ap.add_argument("--resume",action="store_true",help="明确续接同out-name的当前协议checkpoint")
     args = ap.parse_args()
+    if args.steps<1:raise ValueError("steps必须为正")
+    if not args.out_name or Path(args.out_name).name!=args.out_name or args.out_name in (".",".."):
+        raise ValueError("out-name必须为单个文件名")
+    if args.eval not in (None,"ruler-mini"):raise ValueError("未知eval模式")
+    report_path=Path(OUT_DIR)/(f"recall3_eval_{args.out_name}.json" if args.eval else f"recall3_{args.out_name}_s{args.steps}.json")
+    if report_path.exists():
+        if args.eval or not args.resume:raise FileExistsError(report_path)
+        previous=json.loads(report_path.read_text())
+        if previous.get("protocol")!="book5-r2-recall-v1" or previous.get("steps")!=args.steps:
+            raise ValueError("已有总表版本/范围不符")
     os.makedirs(OUT_DIR, exist_ok=True)
     m4 = bootstrap()
     p02 = load_feas("02_probe_swa_sink")
-    p05 = load_feas("05_probe_hybrid")
-    p05.p04 = load_feas("04_probe_gdn")
+    from types import SimpleNamespace
+    sys.path.insert(0,os.path.abspath(os.path.join(HERE,"..","ch05")))
+    from gdn import GatedDeltaNet
+    p05 = SimpleNamespace(GDNLayer=GatedDeltaNet)
     device = m4.pick_device("mps")
-    print(f"[bootstrap] moe_mla_slots + 探针 02（needle 管道）/05（GDNLayer）| device {device} | "
+    print(f"[bootstrap] moe_mla_slots + 历史探针02任务/已核ch05 GDN| device {device} | "
           f"steps {args.steps} | seed {SEED}", flush=True)
 
     # 等参对齐核验（跑前三臂参数账逐位报数 + 插槽常数对枚举 + assert 互差上限）
@@ -277,13 +313,15 @@ def main():
         eval_only(p02, p05, kinds, args.steps, device, args.out_name)
         return
 
-    results = {"seed": SEED, "date": "2026-10-08", "steps": args.steps, "T": 96, "B": 32,
+    results = {"protocol":"book5-r2-recall-v1", "seed": SEED, "date": datetime.now(timezone.utc).isoformat(), "torch": torch.__version__, "steps": args.steps, "T": 96, "B": 32,
                "recipe": "AdamW(0.9,0.95,wd0.1)+clip1.0+lr3e-3+warmup50+cosine（P18 管道升格）",
                "equal_param_plan": plan, "ref_total": REF_TOTAL,
                "prereg": "见文件头 J1-J3 / B1-B3（notes/08 同文留档）", "arms": {}}
+    if report_path.exists():
+        results["arms"].update(previous.get("arms",{}))
     for kind in kinds:
-        results["arms"][kind] = run_arm(p02, p05, kind, args.steps, device, args.out_name)
-        with open(os.path.join(OUT_DIR, f"recall3_{args.out_name}.json"), "w", encoding="utf-8") as f:
+        results["arms"][kind] = run_arm(p02, p05, kind, args.steps, device, args.out_name, args.resume)
+        with open(os.path.join(OUT_DIR, f"recall3_{args.out_name}_s{args.steps}.json"), "w", encoding="utf-8") as f:
             json.dump(results, f, ensure_ascii=False, indent=2)     # 逐臂落盘——中断不丢已完臂
 
     # ---- 判据结算（预注册 J1-J3 / B1-B3） ----
@@ -299,7 +337,7 @@ def main():
         }
         results["prereg_verdict"] = verdict
         print(f"[判据结算] {verdict}", flush=True)
-        with open(os.path.join(OUT_DIR, f"recall3_{args.out_name}.json"), "w", encoding="utf-8") as f:
+        with open(os.path.join(OUT_DIR, f"recall3_{args.out_name}_s{args.steps}.json"), "w", encoding="utf-8") as f:
             json.dump(results, f, ensure_ascii=False, indent=2)
     print("hybrid_recall 完成。", flush=True)
 

@@ -6,8 +6,8 @@
 #   ② 双臂谱系对照（ch7 表 7.2 的产物源）：
 #      --arm qat  = K3 谱系：从第 1 步起前向走模拟量化（STE 反传恒等）——「SFT 起量化感知微调」
 #                   的玩具模拟（数百步短训里，量化噪声全程在场）；
-#      --arm ptq  = gpt-oss 谱系：训练全程高精度，训完一次性套量化评估（post-trained quantization
-#                   ——Book4 ch7 已核 gpt-oss「post-trained … quantization」无 QAT 字样）；
+#      --arm ptq = 教学纯PTQ对照：先高精度训练，最后套量化；不是gpt-oss官方训练流程的复现。
+#      本机使用44.278M普通MoE K3Toy，无latent升降投影；三项设计消融机另约124.627M。
 #      读数：ptq 臂报「量化前后 eval loss 跳变」；qat 臂报「量化噪声下的 loss 曲线」；
 #      官方掉点数字未披露（papers/05 未核实项 #4）——玩具结果无论方向都是
 #      「本册自产数据 + 官方无数字」的诚实组合；
@@ -24,6 +24,8 @@ import argparse
 import importlib.util
 import json
 import os
+import math
+from pathlib import Path
 import sys
 
 import numpy as np
@@ -32,25 +34,26 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
+REPO_ROOT = str(next((p for p in Path(__file__).resolve().parents if (p/"env.sh").is_file()),Path.cwd()))
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book5-ch07")
 SEED = 20261002
 CH06 = os.path.join(HERE, "..", "ch06")                 # 本册件 HERE 相对——工作区/书仓双布局同构
-_B4_FEAS_CANDS = [                                      # 三候选（hybrid409 同款；书仓布局同款可命中）
-    os.path.join(REPO_ROOT, "code", "Book4-规模与效率", "00-feasibility"),
-    os.path.join(REPO_ROOT, "from-models-to-vllm", "book4-scale-and-efficiency", "code", "00-feasibility"),
-    os.path.join(REPO_ROOT, "book4-scale-and-efficiency", "code", "00-feasibility"),
+_B4_FEAS_CANDS = [str(p/"book4-scale-and-efficiency/code/00-feasibility") for p in Path(__file__).resolve().parents]
+_B4_FEAS_CANDS += [
+    os.path.join(REPO_ROOT,"from-models-to-vllm/book4-scale-and-efficiency/code/00-feasibility"),
+    os.path.join(REPO_ROOT,"code/Book4-规模与效率/00-feasibility"),
 ]
-_B4_CH07_CANDS = [
-    os.path.join(REPO_ROOT, "code", "Book4-规模与效率", "ch07"),
-    os.path.join(REPO_ROOT, "from-models-to-vllm", "book4-scale-and-efficiency", "code", "ch07"),
-    os.path.join(REPO_ROOT, "book4-scale-and-efficiency", "code", "ch07"),
+_B4_CH07_CANDS = [str(p/"book4-scale-and-efficiency/code/ch07") for p in Path(__file__).resolve().parents]
+_B4_CH07_CANDS += [
+    os.path.join(REPO_ROOT,"from-models-to-vllm/book4-scale-and-efficiency/code/ch07"),
+    os.path.join(REPO_ROOT,"code/Book4-规模与效率/ch07"),
 ]
 
 
 def _load(path, name):
     spec = importlib.util.spec_from_file_location(name, path)
     mod = importlib.util.module_from_spec(spec)
+    sys.modules[name] = mod
     spec.loader.exec_module(mod)
     return mod
 
@@ -72,10 +75,18 @@ def bootstrap():
     return m4, fp8, k3_toy
 
 
+def output_path(name,out_name):
+    if not out_name or Path(out_name).name!=out_name or out_name in (".",".."):
+        raise ValueError("out-name必须为单个文件名")
+    path=Path(OUT_DIR)/f"{name}_{out_name}.json"
+    if path.exists():raise FileExistsError(path)
+    return path
+
+
 def save_json(name, obj, out_name):
     os.makedirs(OUT_DIR, exist_ok=True)
-    path = os.path.join(OUT_DIR, f"{name}_{out_name}.json")
-    with open(path, "w", encoding="utf-8") as f:
+    path = output_path(name,out_name)
+    with open(path, "x", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False, indent=2)
     print(f"[产物] {path}")
     return path
@@ -85,11 +96,28 @@ def save_json(name, obj, out_name):
 def mxfp8_rt(x, block=32, fp8=None, e4m3_max=448.0):
     """MXFP8 块模拟：最后维每 block=32 元素一块、共享 E8M0 纯指数 scale（2 的幂，保证块内元素
     ≤E4M3 上限 448）；块内元素 round 到 E4M3 格点（fp8_sim.fake_fp8_quant）。量化-反量化 round-trip。"""
-    x2 = x.reshape(-1, block).float()
-    amax = x2.abs().amax(dim=1, keepdim=True).clamp_min(1e-30)
-    s = torch.exp2(torch.ceil(torch.log2(amax / e4m3_max)))                     # E8M0：2 的幂
-    y = fp8.fake_fp8_quant(x2 / s, fp8.E4M3)                                    # E4M3 格点（声明见文件头）
-    return (y * s).reshape(x.shape).to(x.dtype)
+    if block!=32 or x.ndim<1 or x.shape[-1]%32 or x.numel()==0:
+        raise ValueError("MXFP8教学块沿最后维每32元素一组，输入须非空且整除")
+    if not x.is_floating_point() or not bool(torch.isfinite(x).all()):
+        raise ValueError("只模拟有限浮点输入")
+    if e4m3_max!=448.:raise ValueError("本件固定使用E4M3FN上限448")
+    if fp8 is None:
+        fp8=_load(os.path.join(_first(_B4_CH07_CANDS,"fp8_sim.py"),"fp8_sim.py"),"fp8_qat")
+    x2=x.reshape(-1,32).float()
+    amax=x2.abs().amax(dim=1,keepdim=True)
+    # 保留旧ceil-cover选scale规则；E8M0的可表示指数有限，不把任意2幂都称E8M0。
+    # log域相减避免极小amax/448先下溢；FP32保持MPS兼容。
+    exponent=torch.ceil(torch.log2(amax.clamp_min(torch.finfo(torch.float32).tiny))-math.log2(448.)).clamp(-127,127)
+    exponent=torch.where(amax==0,torch.zeros_like(exponent),exponent)
+    s=torch.exp2(exponent).float()
+    # 修正log舍入使scale略小的边界；最终仍限制E8M0指数。
+    exponent=torch.where(amax>448.*s,(exponent+1).clamp_max(127),exponent)
+    s=torch.exp2(exponent).float()
+    y=fp8.fake_fp8_quant(x2/s,fp8.E4M3)
+    out=(y*s).reshape(x.shape).to(x.dtype)
+    if not bool(torch.isfinite(out).all()):
+        raise FloatingPointError("量化重建超出承载dtype范围")
+    return out
 
 
 # ---------------- STE 件（权重 MXFP4 + 专家输入 MXFP8） ----------------
@@ -145,12 +173,14 @@ def apply_qat_partition(model, k3_toy, fp8, weights=True, acts=True):
         if not hasattr(mlp, "experts") or not isinstance(mlp.experts, (nn.ModuleList, list)):
             continue
         for e in mlp.experts:
-            if weights:
+            if not all(hasattr(e,key) for key in ("gate_proj","up_proj","down_proj")):
+                raise TypeError("此入口用于普通K3Toy专家，不能直接套在StableLatentMoE上")
+            if weights and not isinstance(e.gate_proj,k3_toy.MXFP4Linear):
                 e.gate_proj = k3_toy.MXFP4Linear(e.gate_proj, fp8=fp8)
                 e.up_proj = k3_toy.MXFP4Linear(e.up_proj, fp8=fp8)
                 e.down_proj = k3_toy.MXFP4Linear(e.down_proj, fp8=fp8)
                 n_w += 3
-            if acts:
+            if acts and not hasattr(e,"in_quant"):
                 _attach_input_quant(e, fp8)
                 n_a += 1
     return {"weights_swapped": n_w, "expert_inputs_quantized": n_a}
@@ -174,6 +204,8 @@ def eval_loss(model, stream, device, n_batches=4):
 
 
 def run_arm(m4, fp8, k3_toy, arm, steps, out_name, batch=8, block=512, peak_lr=1e-3):
+    output_path(f"qat_sim_{arm}",out_name)
+    if min(steps,batch,block)<1:raise ValueError("训练步/批/长度须为正")
     device = m4.pick_device("mps")
     cfg = k3_toy.toy_a_cfg(kda_impl="kda")
     torch.manual_seed(SEED)
@@ -184,6 +216,8 @@ def run_arm(m4, fp8, k3_toy, arm, steps, out_name, batch=8, block=512, peak_lr=1
     model = model.to(device)
     print(f"[{arm} 臂] {steps} 步 @ {device} | 分区 {part}（ptq 臂训练全程高精度）", flush=True)
     stream = m4.TokenStream(m4.TOKENS_SP8K, batch, block)
+    if steps>=stream.max_step-3:
+        raise ValueError("训练数据必须与末尾4个评估批不重叠")
     opt = torch.optim.AdamW(model.parameters(), lr=peak_lr, betas=(0.9, 0.95), weight_decay=0.1)
     warmup = max(5, steps // 15)
     import time
@@ -197,8 +231,9 @@ def run_arm(m4, fp8, k3_toy, arm, steps, out_name, batch=8, block=512, peak_lr=1
         with torch.autocast(device_type=device.type, dtype=torch.bfloat16):
             _, loss = model(x, y)
         opt.zero_grad(set_to_none=True)
+        if not torch.isfinite(loss):raise FloatingPointError(f"非有限loss step={step}")
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0,error_if_nonfinite=True)
         opt.step()
         if device.type == "mps":
             torch.mps.synchronize()
@@ -207,13 +242,19 @@ def run_arm(m4, fp8, k3_toy, arm, steps, out_name, batch=8, block=512, peak_lr=1
         if step % max(1, steps // 10) == 0:
             print(f"    step {step}/{steps} loss {loss.item():.4f}", flush=True)
     # eval 双读数：高精度路径 vs 量化路径（PTQ 臂=训后量化的跳变；QAT 臂=量化在场的收敛水平）
-    out = {"arm": arm, "steps": steps, "partition": part, "seed": SEED,
+    out = {"arm":arm,"steps":steps,"partition":part,"seed":SEED,
+           "total_params":model.n_params(),"device":str(device),"torch":torch.__version__,
+           "model_scope":"普通MoE K3Toy，无StableLatentMoE潜投影",
+           "activation_scope":"仅专家入口，不含down矩阵输入或低精度累加",
+           "scale_rules":{"weight":"Book4 OCP v1.0建议scale","activation":"ceil-cover，E8M0有限指数"},
+           "eval_steps":[stream.max_step-i for i in range(4)],
            "sec_per_step_p50": float(np.median(secs)),
            "loss_first": losses[0], "loss_last": losses[-1], "losses": losses}
     if arm == "ptq":
         out["eval_loss_clean"] = eval_loss(model, stream, device)
         # 训后一次性套量化：权重 MXFP4 + 输入 MXFP8（同一分区，只是从评估时才生效）
         part2 = apply_qat_partition(model, k3_toy, fp8, weights=True, acts=True)
+        out["partition_after_training"] = part2
         out["eval_loss_quantized"] = eval_loss(model, stream, device)
         out["ptq_jump"] = out["eval_loss_quantized"] - out["eval_loss_clean"]
         print(f"[PTQ 读数] clean {out['eval_loss_clean']:.4f} → quantized "
@@ -232,6 +273,7 @@ def main():
     ap.add_argument("--steps", type=int, default=300)
     ap.add_argument("--out-name", default="fast")
     args = ap.parse_args()
+    torch.set_num_threads(2)
     m4, fp8, k3_toy = bootstrap()
     run_arm(m4, fp8, k3_toy, args.arm, args.steps, args.out_name)
 

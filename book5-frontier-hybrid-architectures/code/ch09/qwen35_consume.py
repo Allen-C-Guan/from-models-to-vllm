@@ -1,9 +1,8 @@
 # qwen35_consume.py —— Book5 ch9 正式件：真权重①路消费点（Qwen3.5-4B 加载对账+分类型账+生成样例）
 # 用途：ch9 9.2 谱系表的「真身压舱实物」——config 承诺（layer_types 24 linear + 8 full）与真权重
-#       逐层互证：加载模型 → 逐层 isinstance 对账 → 分类型 KV/状态账逐层实测 → 两条生成样例。
-# 【条件性降级链（大纲钉死）】Qwen3.5-4B（8.69 GiB，MPS 10-20 min）加载失败时依次降级：
-#   小档真权重（若在盘）→ 随机权重同 config 构造（layer_types 对账仍成立、生成样例放弃）。
-#   本轮主路径一次通过，降级链未触发（如实登记）。
+#       逐层互证：加载模型 → 逐层 isinstance 对账 → 分类型 KV/状态账按配置推算 → 两条生成样例。
+# 历史稿记载4B本地权重加载成功；当前不假设权重已在盘。
+# 本脚本只读本地缓存；模型加载失败时保存config账和错误后返回，不自动换模型或随机权重。
 # 【层号口径】config layer_types 为 0 起索引；行文人读 1 起（第 4/8/12/…/32 层全局）。
 # 运行方式：cd 工作区根目录 && source env.sh &&
 #   python "code/ch09/qwen35_consume.py" --out-name run1
@@ -11,18 +10,20 @@
 import argparse
 import json
 import os
+from pathlib import Path
+from datetime import datetime, timezone
 import time
 
 import torch
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
+REPO_ROOT = str(next((p for p in Path(__file__).resolve().parents if (p/"env.sh").is_file()),Path.cwd()))
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book5-ch09")
 MODEL_ID = "Qwen/Qwen3.5-4B"          # Apache-2.0；批一夜间预取（8.69 GiB 在盘）
 
 
 def typed_ledger(cfg):
-    """分类型 KV/状态账（元素数口径，承第 1 章式 (1.3)）——逐层实测自真 config 字段。
+    """分类型 KV/状态账（元素数口径，承第 1 章式 (1.3)）——按配置推算自真 config 字段。
 
     full_attention 层：每 token 每层 2·h_kv·head_dim 元素（K+V 各一份），随 n 线性（无界）；
     linear_attention 层（GDN）：固定 h_v·d_k·d_v（递归状态 S）+ (k_conv−1)·conv_dim（因果短卷积滞留），
@@ -45,15 +46,23 @@ def typed_ledger(cfg):
             "linear_fixed_per_layer": {"recurrent_state": h_v * d_k * d_v,
                                        "conv_state": (conv - 1) * conv_dim, "total": fixed_linear},
             "linear_fixed_all_layers": fixed_total,
-            "crossover_n": fixed_total / per_tok if per_tok else None}
+            "crossover_n": fixed_total / per_tok if per_tok else None,
+            "scope":"B=1的配置元素账，conv取最小k-1历史；非实分配或字节峰值",
+            "allocated_conv_k_elements":n_lin*conv*conv_dim}
 
 
 def main(out_name):
+    if not out_name or Path(out_name).name!=out_name or out_name in (".",".."):
+        raise ValueError("out-name必须为单个文件名")
+    path=os.path.join(OUT_DIR,f"qwen35_consume_{out_name}.json")
+    if os.path.exists(path):raise FileExistsError(path)
     os.makedirs(OUT_DIR, exist_ok=True)
-    from transformers import AutoConfig, AutoTokenizer    # 5.18.0（本地浅克隆同版本）
+    import transformers
+    from transformers import AutoConfig, AutoTokenizer    # 版本写入运行记录；须支持Qwen3.5
     t0 = time.perf_counter()
-    report = {"model_id": MODEL_ID, "seed": 20261002, "date": "2026-10-08"}
+    report = {"model_id": MODEL_ID, "seed": 20261002, "date": datetime.now(timezone.utc).isoformat(), "torch": torch.__version__}
 
+    report["transformers"]=transformers.__version__
     # ① config 零下载直读（在盘 snapshot；真实权重消费点的前半步）
     cfg = AutoConfig.from_pretrained(MODEL_ID, local_files_only=True)
     tcfg = cfg.text_config if hasattr(cfg, "text_config") else cfg
@@ -72,19 +81,20 @@ def main(out_name):
     # ② 真权重加载（MPS bf16；失败降级链见文件头）
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     try:
-        from transformers import AutoModelForCausalLM
-        model = AutoModelForCausalLM.from_pretrained(
+        from transformers import AutoModelForImageTextToText
+        model = AutoModelForImageTextToText.from_pretrained(
             MODEL_ID, local_files_only=True, dtype=torch.bfloat16).to(device).eval()
         report["load"] = {"device": str(device), "dtype": "bfloat16", "ok": True}
     except Exception as e:                                   # 降级链触发登记（本轮未触发）
         report["load"] = {"device": str(device), "ok": False, "error": repr(e)}
         print(f"[降级] 真权重加载失败：{e!r}——按条件性降级链登记，账本仍以 config 为正身", flush=True)
-        with open(os.path.join(OUT_DIR, f"qwen35_consume_{out_name}.json"), "w", encoding="utf-8") as f:
+        with open(os.path.join(OUT_DIR, f"qwen35_consume_{out_name}.json"), "x", encoding="utf-8") as f:
             json.dump(report, f, ensure_ascii=False, indent=2)
         return
     t_load = time.perf_counter() - t0
     mem = torch.mps.current_allocated_memory() / 1024**3 if device.type == "mps" else None
-    print(f"[加载] {t_load:.0f} s | 权重驻留 {mem:.2f} GiB（{device}）", flush=True)
+    memory_text=f"{mem:.2f} GiB" if mem is not None else "CPU未统计"
+    print(f"[加载] {t_load:.0f} s | 当前张量分配 {memory_text}（{device}）", flush=True)
     report["load"].update({"wall_sec": round(t_load, 1), "resident_gib": round(mem, 2) if mem else None})
 
     # ③ layer_types 逐层对账（真权重侧 block_type 属性 + isinstance 双证 vs config 承诺）
@@ -132,7 +142,7 @@ def main(out_name):
 
     report["wall_sec"] = round(time.perf_counter() - t0, 1)
     path = os.path.join(OUT_DIR, f"qwen35_consume_{out_name}.json")
-    with open(path, "w", encoding="utf-8") as f:
+    with open(path, "x", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
     print(f"[判定] PASS | wall {report['wall_sec']} s | 产物 {path}", flush=True)
 

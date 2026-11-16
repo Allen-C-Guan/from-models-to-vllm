@@ -1,3 +1,4 @@
+# 第二轮修订：核心改为复用ch03因果函数；旧前视版本的历史计时不由当前版本重现。
 # 03_probe_nsa.py —— Book5 ch3 实验可行性探针：NSA 式块稀疏注意力（blockwise top-k 选择 + gather）
 # 用途：ch3（路线二·可学习稀疏：NSA→DSA）的机制件在本机是否成立——
 #   ① 机制件：块级 top-k 选择注意力——「块压缩分数 → 因果资格过滤 → top-k 块选择 →
@@ -19,6 +20,8 @@ import json
 import os
 import sys
 import time
+from pathlib import Path
+from datetime import datetime, timezone
 
 import numpy as np
 import torch
@@ -26,7 +29,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
+REPO_ROOT = str(next((p for p in Path(__file__).resolve().parents if (p / "env.sh").is_file()), Path.cwd()))
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book5-feasibility")
 SEED = 20261002
 
@@ -58,7 +61,7 @@ def load_sibling(name):
 def save_json(name, obj, out_name):
     os.makedirs(OUT_DIR, exist_ok=True)
     path = os.path.join(OUT_DIR, f"{name}_{out_name}.json")
-    with open(path, "w", encoding="utf-8") as f:
+    with open(path, "x", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False, indent=2)
     print(f"[产物] {path}")
     return path
@@ -66,54 +69,10 @@ def save_json(name, obj, out_name):
 
 # ---------------- 块稀疏注意力核心（op 级，含形状流转） ----------------
 def block_sparse_attention(q, k, v, block, n_selected, return_shapes=False):
-    """块级 top-k 选择注意力（NSA 选择分支教学骨架）。
-
-    输入：q (B,h,n,d_k) / k,v (B,h,n,d_k)（已展开到 h 头、已过 rope）；
-    选择分 = 查询块 × 块均值键 的点积和；因果资格：查询块 i 只可选键块 j ≤ i；
-    选中块 gather 全精度 K/V，块内做带因果位的注意力。
-    返回 (B,h,n,d_k)。"""
-    B, h, n, d_k = q.shape
-    nb = n // block
-    assert n == nb * block, f"n={n} 需为 block={block} 的倍数"
-    scale = d_k ** -0.5
-
-    qb = q.view(B, h, nb, block, d_k)                                            # (B,h,nb,b,d_k) 查询块
-    kb = k.view(B, h, nb, block, d_k)                                            # (B,h,nb,b,d_k) 键块
-    vb = v.view(B, h, nb, block, d_k)                                            # (B,h,nb,b,d_k) 值块
-    k_mean = kb.mean(dim=3)                                                      # (B,h,nb,d_k) 块压缩键（NSA 压缩分支近似）
-
-    # 块选择分：查询块内 token 与压缩键的点积求和（相对序不变，故不另除 b；索引约定 z=B,h=头,q=查询块,
-    # k=键块,w=块内位,d=d_k——einsum 字母不重用）
-    blk_scores = torch.einsum("zhqwd,zhkd->zhqk", qb, k_mean) * scale            # (B,h,nb,nb) 选择矩阵
-    elig = torch.ones(nb, nb, dtype=torch.bool, device=q.device).tril()          # (nb,nb) 因果资格：j ≤ i
-    blk_scores = blk_scores.masked_fill(~elig, float("-inf"))                   # 未来块不可选
-
-    k_sel = min(n_selected, nb)
-    _, sel_idx = torch.topk(blk_scores, k_sel, dim=-1)                           # (B,h,nb,k_sel) 选中块号
-
-    # gather 键/值块：torch.gather 不能增维——按选中槽位逐个 gather（k_sel ≤ nb，小循环清晰）
-    def gather_blocks(xb):
-        parts = [xb.gather(2, sel_idx[..., i:i + 1].unsqueeze(-1)
-                           .expand(B, h, nb, block, xb.shape[-1]))
-                 for i in range(k_sel)]                                          # 各 (B,h,nb,block,d_k)
-        return torch.stack(parts, dim=3).reshape(B, h, nb, k_sel * block, xb.shape[-1])
-    kg = gather_blocks(kb)                                                       # (B,h,nb,k_sel·b,d_k) gather 键
-    vg = gather_blocks(vb)                                                       # (B,h,nb,k_sel·b,d_k) gather 值
-
-    att = torch.einsum("zhqwd,zhqsd->zhqws", qb, kg) * scale                     # (B,h,nb,b,k_sel·b) 块内分数
-    # 因果位掩码：键全局位 = 块号·b + 块内位；查询全局位同理；allowed = kp ≤ qp
-    kp = (sel_idx.unsqueeze(-1) * block + torch.arange(block, device=q.device)).view(B, h, nb, 1, k_sel * block)
-    qp = (torch.arange(nb, device=q.device).view(nb, 1) * block + torch.arange(block, device=q.device)).view(1, 1, nb, block, 1)
-    allowed = kp <= qp                                                           # (B,h,nb,b,k_sel·b) 广播
-    att = att.masked_fill(~allowed, float("-inf"))
-    p = F.softmax(att.float(), dim=-1).to(q.dtype)                               # fp32 softmax → 原 dtype
-    out = torch.einsum("zhqws,zhqsd->zhqwd", p, vg)                              # (B,h,nb,b,d_k)
-    out = out.reshape(B, h, n, d_k)                                              # (B,h,n,d_k)
-    if return_shapes:
-        shapes = {"blk_scores": tuple(blk_scores.shape), "sel_idx": tuple(sel_idx.shape),
-                  "gathered_k": tuple(kg.shape), "intra_att": tuple(att.shape), "out": tuple(out.shape)}
-        return out, shapes
-    return out
+    """复用正式因果核心；旧前视版本仅在冻结底本中留存。"""
+    sys.path.insert(0,str(Path(HERE).parent/"ch03"))
+    from nsa_block import block_sparse_attention as causal
+    return causal(q,k,v,block,n_selected,return_shapes=return_shapes)
 
 
 def full_attention_ref(q, k, v):
@@ -158,13 +117,16 @@ def main():
     ap = argparse.ArgumentParser(description="Book5 ch3 NSA 式块稀疏可行性探针")
     ap.add_argument("--out-name", default="run1")
     args = ap.parse_args()
+    output = os.path.join(OUT_DIR,f"probe03_nsa_{args.out_name}.json")
+    if os.path.exists(output):
+        raise FileExistsError(output)
     global p02
     m4, hits = bootstrap_book4()
     p02 = load_sibling("02_probe_swa_sink")                                      # 复用 FullAttn/MiniLM/训练环
     device = m4.pick_device("mps")
     print(f"[bootstrap] moe_mla_slots 自：{hits[0]} | 02 探针复用（FullAttn/MiniLM）| device {device}")
     torch.manual_seed(SEED)
-    results = {"seed": SEED, "date": "2026-10-05"}
+    results = {"seed": SEED, "date": datetime.now(timezone.utc).isoformat(), "device": str(device), "implementation": "causal_core_from_ch03"}
 
     # ① 正确性（CPU fp32）：k_sel=nb 逐位对拍 + k_sel<nb 近似 gap + 形状流转
     #   （run1 教训：n=512/block=64 只有 8 块——k_sel=8/16 被钳到全块，gap 阶梯退化；改 n=1024 → 16 块）
@@ -225,12 +187,14 @@ def main():
         ):
             for _ in range(3):
                 fn()
-            torch.mps.synchronize()
+            if device.type == "mps":
+                torch.mps.synchronize()
             ts = []
             for _ in range(20):
                 t0 = time.perf_counter()
                 fn()
-                torch.mps.synchronize()
+                if device.type == "mps":
+                    torch.mps.synchronize()
                 ts.append(time.perf_counter() - t0)
             timing[tag] = float(np.median(ts))
             print(f"  [{tag}] {timing[tag]*1000:.1f} ms")

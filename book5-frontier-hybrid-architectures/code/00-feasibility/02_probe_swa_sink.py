@@ -1,3 +1,5 @@
+# 第二轮勘误：下方头注中的原预注册只作历史记录；两层可达边界须复合，实际判据见 main。
+# 该旧任务与 ch02/needle_probe.py 的 T64 任务不同，不把当前脚本视为旧 run5 全配置的证据。
 # 02_probe_swa_sink.py —— Book5 ch2 实验可行性探针：滑窗注意力 + attention sink + lost-in-the-middle mini
 # 用途：ch2（路线一 SWA 与 attention sink）的两件正身实验在本机（Apple M5 Pro 48GB, MPS）是否成立——
 #   ① 机制件：banded causal mask 滑窗注意力 + 每头可学 sink 标量（gpt-oss 语义：sink 作为附加注意力
@@ -30,6 +32,8 @@ import math
 import os
 import sys
 import time
+from pathlib import Path
+from datetime import datetime, timezone
 
 import numpy as np
 import torch
@@ -37,7 +41,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
+REPO_ROOT = str(next((p for p in Path(__file__).resolve().parents if (p / "env.sh").is_file()), Path(__file__).resolve().parents[3]))
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book5-feasibility")
 SEED = 20261002
 
@@ -60,7 +64,7 @@ def bootstrap_book4():
 def save_json(name, obj, out_name):
     os.makedirs(OUT_DIR, exist_ok=True)
     path = os.path.join(OUT_DIR, f"{name}_{out_name}.json")
-    with open(path, "w", encoding="utf-8") as f:
+    with open(path, "x", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False, indent=2)
     print(f"[产物] {path}")
     return path
@@ -290,9 +294,11 @@ def train_mini(model, steps, batch_fn, device, lr=1e-3, warmup=20, tag="", cosin
         with torch.autocast(device_type=device.type, dtype=torch.bfloat16) if device.type == "mps" \
                 else torch.autocast("cpu", enabled=False):
             loss = batch_fn.loss(model, x, y)
+        if not torch.isfinite(loss):
+            raise FloatingPointError(f"非有限 loss，step={step}")
         opt.zero_grad(set_to_none=True)
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0, error_if_nonfinite=True)
         opt.step()
         if device.type == "mps":
             torch.mps.synchronize()
@@ -349,6 +355,9 @@ def main():
     ap.add_argument("--out-name", default="run1")
     ap.add_argument("--steps", type=int, default=6000, help="Part B 训练步数（fast=6000 / full=10000）")
     args = ap.parse_args()
+    output = os.path.join(OUT_DIR, f"probe02_swa_sink_{args.out_name}.json")
+    if os.path.exists(output):
+        raise FileExistsError(output)
     m4, hits = bootstrap_book4()
     device = m4.pick_device("mps")
     print(f"[bootstrap] moe_mla_slots 自：{hits[0]} | device {device}")
@@ -379,9 +388,9 @@ def main():
     print("[Part B] needle-recall：full / 滑窗 / 滑窗+sink 三臂（T=96, w=32, L=2, 6000 步 fast 档）")
     Tb, steps = 96, args.steps
     cfgB = dict(d=256, L=2, h=8, h_kv=4, d_k=64, d_ff=704, window=32, use_rope=False)
-    cliff = Tb - 2 - (cfgB["window"] - 1) - 1                                    # 可达边界：p ≥ cliff（=62）
+    cliff = Tb - 2 - cfgB["L"] * (cfgB["window"] - 1) - 1                                    # 目标值可达的必要边界 p>=31，不保证学成
     positions = [18, 42, 58, 62, 74]                                             # 全部避开查询区 [80,96)
-    print(f"  [预注册] 可达边界 p ≥ {cliff}（query 在 T-2=94，窗口 {cfgB['window']}）")
+    print(f"  [修订几何] 值可达边界 p ≥ {cliff}（query 在 T-2=94，窗口 {cfgB['window']}）")
     sdB = build_arm("full", cfgB).state_dict()
     partB = {"T": Tb, "steps": steps, "reach_cliff": cliff, "positions": positions, "arms": {}}
     for kind in ("full", "swa", "swa_sink"):
@@ -410,9 +419,9 @@ def main():
     print(f"[判据结算] {verdict}")
 
     save_json("probe02_swa_sink", {
-        "seed": SEED, "date": "2026-10-05", "cfgA": cfg, "T_A": T, "cfgB": cfgB,
+        "seed": SEED, "date": datetime.now(timezone.utc).isoformat(), "device": str(device), "torch": torch.__version__, "cfgA": cfg, "T_A": T, "cfgB": cfgB,
         "partA_sp8k_trainability": partA, "partB_needle_scan": partB,
-        "prereg_verdict": verdict,
+        "revised_checks": verdict,
         "references": {"gpt_oss_sink_semantics": "transformers 5.18.0 modeling_gpt_oss.py L251-259"},
     }, args.out_name)
     print("探针 02 完成。")

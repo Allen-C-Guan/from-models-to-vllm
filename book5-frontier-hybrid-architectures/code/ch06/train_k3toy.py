@@ -12,13 +12,14 @@
 # 产物：log/book5-ch06/train_k3toy_{arm}_{out}.json（+ 可选 ckpt）——不入库
 import argparse
 import os
+from pathlib import Path
 import sys
 
 import numpy as np
 import torch
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
+REPO_ROOT = str(next((p for p in Path(__file__).resolve().parents if (p / "env.sh").is_file()), Path.cwd()))
 
 sys.path.insert(0, HERE)
 import importlib.util
@@ -45,11 +46,22 @@ def main():
     ap.add_argument("--peak-lr", type=float, default=1e-3)
     ap.add_argument("--out-name", default="fast")
     ap.add_argument("--mxfp4", action="store_true", help="路由专家权重 MXFP4 STE 钩子")
-    ap.add_argument("--ckpt-dir", default=None, help="给路径则存 state_dict ckpt（续跑/复用）")
-    ap.add_argument("--resume", default=None, help="从 ckpt 恢复权重（继续训练不恢复优化器）")
+    ap.add_argument("--ckpt-dir", default=None, help="给路径则保存权重供另轮初始化；不含优化器/步数")
+    ap.add_argument("--warm-start", "--resume", dest="warm_start", default=None,
+                    help="仅以旧权重开始一轮新训练；优化器、数据步与日程重置，不是断点续跑")
     ap.add_argument("--seed", type=int, default=20261002)
     args = ap.parse_args()
+    torch.set_num_threads(2)
 
+    if min(args.steps,args.batch,args.block)<=0:
+        raise ValueError("steps/batch/block须为正")
+    if not args.out_name or Path(args.out_name).name!=args.out_name or args.out_name in (".",".."):
+        raise ValueError("输出名须为单个文件名")
+    output_path=Path(k3_toy.OUT_DIR)/f"train_k3toy_{args.arm}_{args.out_name}.json"
+    if output_path.exists():
+        raise FileExistsError(output_path)
+    if args.ckpt_dir and (Path(args.ckpt_dir)/f"k3toy_{args.arm}_{args.out_name}.pt").exists():
+        raise FileExistsError("权重输出已存在")
     gate_mode = "per_channel" if args.arm == "kda" else "per_token"
     device = m4.pick_device("mps")
     cfg = k3_toy.toy_a_cfg(kda_impl="kda", gate_mode=gate_mode)
@@ -58,9 +70,9 @@ def main():
     total = model.n_params()
     assert total == k3_toy.TOY_A_ASSERTS["kda"]["total"], \
         f"参数账 {total} != {k3_toy.TOY_A_ASSERTS['kda']['total']}（两臂必须同参——单变量）"
-    if args.resume:
-        model.load_state_dict(torch.load(args.resume, map_location="cpu"))
-        print(f"[续跑] 自 {args.resume} 恢复权重")
+    if args.warm_start:
+        model.load_state_dict(torch.load(args.warm_start, map_location="cpu", weights_only=True))
+        print(f"[新训练初始化] 载入 {args.warm_start}；优化器、数据步与日程从头开始")
     model = model.to(device)
     n_swapped = k3_toy.apply_mxfp4_to_experts(model) if args.mxfp4 else 0
     if args.mxfp4:
@@ -81,13 +93,15 @@ def main():
 
     out = {
         "arm": args.arm, "gate_mode": gate_mode, "seed": args.seed,
+        "warm_start": args.warm_start, "checkpoint_kind": "weights_only_not_resume",
+        "device":str(device), "torch":torch.__version__,
         "steps": args.steps, "batch": args.batch, "block": args.block,
         "peak_lr": args.peak_lr, "mxfp4_swapped": n_swapped,
         "total_params": total,
         "sec_per_step_p50": float(np.median(secs)), "sec_per_step_mean": float(np.mean(secs)),
         "loss_first": losses[0], "loss_last": losses[-1],
         "loss_min": min(losses), "losses": losses,
-        "mps_peak_mb": peak_mb,
+        "mps_current_allocated_mb_after_train": peak_mb,
         "g_stats": g_stats,
     }
     if args.ckpt_dir:

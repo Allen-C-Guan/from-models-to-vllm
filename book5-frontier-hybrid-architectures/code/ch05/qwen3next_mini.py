@@ -15,7 +15,7 @@
 #      rotary_dim 维、后段直通；
 #   K4 门控注意力：q_proj 宽 2·h·d（q + 逐维 sigmoid 门），输出 attn_out·sigmoid(gate) 后才 o_proj；
 #   K5 conv1d：padding=k−1 卷积后取前 n 位（因果短卷积），权重按头 squeeze(1)；
-#   K6 dt_bias/A_log：g = −exp(A_log)·softplus(a + dt_bias)，fp32 计算防溢出。
+#   K6 dt_bias/A_log：g = −exp(A_log)·softplus(a + dt_bias)，fp32 计算降低低精度误差，仍需检查有限值。
 # 运行方式：cd 工作区根目录 && source env.sh && python "code/ch05/qwen3next_mini.py" [--out-name run1]
 #   全程 CPU fp32（数值对拍口径）；预计 2-3 分钟。
 #   --params-80b：只出 80B 真机参数账（meta device 零分配，秒级；正文表 5.3 数据源）——
@@ -25,13 +25,14 @@ import argparse
 import importlib.util
 import json
 import os
+from pathlib import Path
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
+REPO_ROOT = next((p for p in Path(__file__).resolve().parents if (p / "env.sh").is_file()), Path.cwd())
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book5-ch05")
 SEED = 20261002
 
@@ -55,9 +56,11 @@ def load_sibling(name):
 
 
 def save_json(name, obj, out_name):
+    if not out_name or Path(out_name).name != out_name or out_name in (".", ".."):
+        raise ValueError("--out-name 必须为单个文件名")
     os.makedirs(OUT_DIR, exist_ok=True)
     path = os.path.join(OUT_DIR, f"{name}_{out_name}.json")
-    with open(path, "w", encoding="utf-8") as f:
+    with open(path, "x", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False, indent=2)
     print(f"[产物] {path}")
     return path
@@ -74,7 +77,7 @@ class RMSNorm1pW(nn.Module):
 
     def forward(self, x):
         var = x.float().pow(2).mean(-1, keepdim=True)
-        return (x * torch.rsqrt(var + self.eps)).to(x.dtype) * (1.0 + self.weight.float())
+        return (x.float() * torch.rsqrt(var + self.eps) * (1.0 + self.weight.float())).to(x.dtype)
 
 
 class RMSNormGated(nn.Module):
@@ -137,7 +140,7 @@ class HFCompatGDN(nn.Module):
             q = q.repeat_interleave(ratio, dim=2)                                 # k 侧 GQA 展开（HF 同款）
             k = k.repeat_interleave(ratio, dim=2)
         beta = b.sigmoid()
-        g = -self.A_log.float().exp() * F.softplus(a.float() + self.dt_bias)       # K6：fp32 防溢出
+        g = -self.A_log.float().exp() * F.softplus(a.float() + self.dt_bias)       # K6：fp32 降低低精度误差，仍需检查有限值
         core, _ = gdn.gdn_chunkwise(q, k, v, g, beta, chunk=self.chunk)           # (B,S,h_v,d_v)
         core = self.norm(core, z)                                                 # 带权 RMSNormGated（K2）
         return self.out_proj(core.reshape(B, S, self.value_dim))                   # (B,S,H)
@@ -332,7 +335,6 @@ def params_account_80b():
     ③ README 三口径（80B 总参 / 79B non-embedding / 3B activated）舍入对平。
     返回 dict（正文表 5.3 的数据源）。
     """
-    from accelerate import init_empty_weights
     from transformers.models.qwen3_next.configuration_qwen3_next import Qwen3NextConfig
     from transformers.models.qwen3_next.modeling_qwen3_next import Qwen3NextForCausalLM
 
@@ -354,7 +356,7 @@ def params_account_80b():
     cfg = Qwen3NextConfig(**QWEN3NEXT_80B_FIELDS)
     counts = {t: cfg.layer_types.count(t) for t in sorted(set(cfg.layer_types))}
     assert counts == {"full_attention": 12, "linear_attention": 36}, counts       # 3:1（interval=4 展开）
-    with init_empty_weights():
+    with torch.device('meta'):
         model = Qwen3NextForCausalLM(cfg)
     meta_total = sum(p.numel() for p in model.parameters())                        # meta 张量 numel 可读、无数据
 
@@ -364,12 +366,13 @@ def params_account_80b():
     assert formula_total + mtp == CKPT_TOTAL_ELEMENTS, (formula_total + mtp, CKPT_TOTAL_ELEMENTS)  # ② MTP 补齐=索引
 
     active_non_embed = counts["full_attention"] * full_attn + counts["linear_attention"] * gdn \
-        + 48 * moe_active
+        + 48 * moe_active + norms
     ledger = {  # 分类型状态账（ch1 式 (1.3) 的 Qwen3-Next 行；单位=元素）
         "gdn_state_fixed": counts["linear_attention"] * h_v * d_k * d_v,           # 524,288/层，与 n 无关
         "gdn_conv_state_fixed": counts["linear_attention"] * (conv - 1) * (2 * h_k * d_k + h_v * d_v),
         "full_kv_per_token": 12 * 2 * h_kv * hd,                                   # 1,024 元素/token，无界
         "crossover_n_star": counts["linear_attention"] * h_v * d_k * d_v // (12 * 2 * h_kv * hd),
+        "crossover_with_min_conv": counts["linear_attention"] * (h_v*d_k*d_v + (conv-1)*(2*h_k*d_k+h_v*d_v)) // (12*2*h_kv*hd),
     }
     return {"config_fields": QWEN3NEXT_80B_FIELDS, "layer_counts": counts,
             "per_layer": {"full_attn": full_attn, "gdn": gdn, "moe": moe, "moe_active": moe_active},
@@ -377,6 +380,8 @@ def params_account_80b():
             "total_formula": formula_total, "total_meta": meta_total,
             "non_embedding": formula_total - embed,
             "active_non_embedding": active_non_embed,
+            "active_with_output_table": active_non_embed + V*d,
+            "active_scope": "主干非嵌入含全部norm；另一口径另计单份输出词表，均不含MTP",
             "ckpt_index_total_elements": CKPT_TOTAL_ELEMENTS,
             "ledger": ledger,
             "readme_check": {"total_80B": round(formula_total / 1e9, 2),
@@ -391,6 +396,7 @@ def main():
     ap.add_argument("--params-80b", action="store_true",
                     help="80B 真机参数账（meta device 零分配，秒级）——不跑对拍，只出账")
     args = ap.parse_args()
+    torch.set_num_threads(2)
     if args.params_80b:
         acc = params_account_80b()
         print(f"[参数账] 3:1 层计数 = {acc['layer_counts']}")
@@ -419,7 +425,7 @@ def main():
     q = torch.randn(B, S, Hh, Dk); k = torch.randn(B, S, Hh, Dk); v = torch.randn(B, S, Hh, Dv)
     beta = torch.randn(B, S, Hh).sigmoid()
     g = -F.softplus(torch.randn(B, S, Hh) * 1.5)
-    o_hr, _ = torch_recurrent_gated_delta_rule(q, k, v, g=g, beta=beta, use_qk_l2norm_in_kernel=True)
+    o_hr, _ = torch_recurrent_gated_delta_rule(q, k, v, g=g, beta=beta, initial_state=None, output_final_state=False, use_qk_l2norm_in_kernel=True)
     o_mr, _ = gdn.gdn_recurrent(q, k, v, g, beta)
     o_hc, _ = torch_chunk_gated_delta_rule(q, k, v, g=g, beta=beta, use_qk_l2norm_in_kernel=True)
     o_mc, _ = gdn.gdn_chunkwise(q, k, v, g, beta)
@@ -427,6 +433,8 @@ def main():
                            "chunk_max_diff": float((o_hc - o_mc).abs().max())}
     print(f"[op 级] recurrent max|Δ|={results['op_level']['recurrent_max_diff']:.2e} | "
           f"chunk max|Δ|={results['op_level']['chunk_max_diff']:.2e}")
+
+    assert all(v < 1e-4 for v in results["op_level"].values()), "核心对拍失败"
 
     # ② 层级 strict 直搬（GDN 层，含 h_v=2·h_k 的 GQA 比 + 交错排布 K1）
     cfg_l = Qwen3NextConfig(hidden_size=128, num_hidden_layers=1,
@@ -441,8 +449,10 @@ def main():
     x = torch.randn(2, 64, 128)
     y_hf = hf_layer(hidden_states=x, cache_params=None, attention_mask=None)
     y_my = my_layer(x)
-    results["layer_level_gdn_max_diff"] = float((y_hf - y_my).abs().max())
+    results["layer_level_gdn_max_diff"] = float((y_hf - y_my).abs().max().detach())
     print(f"[层级 GDN strict] load strict ✓ | max|Δ|={results['layer_level_gdn_max_diff']:.2e}")
+
+    assert results["layer_level_gdn_max_diff"] < 1e-4, "层级对拍失败"
 
     # ③ 整机 strict 直搬（MiniQwen3Next vs Qwen3NextForCausalLM）
     mini_cfg = dict(vocab=256, hidden=128, n_head=4, n_kv=2, head_dim=32, eps=1e-6,
@@ -470,7 +480,7 @@ def main():
     results["model_level"] = {
         "strict_load_missing": list(load_res.missing_keys),
         "strict_load_unexpected": list(load_res.unexpected_keys),
-        "max_abs_diff_logits": float((logits_hf - logits_my).abs().max()),
+        "max_abs_diff_logits": float((logits_hf - logits_my).abs().max().detach()),
     }
     print(f"[整机 strict] missing={results['model_level']['strict_load_missing']} "
           f"unexpected={results['model_level']['strict_load_unexpected']} | "

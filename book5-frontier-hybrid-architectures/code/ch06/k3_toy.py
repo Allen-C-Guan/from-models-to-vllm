@@ -5,24 +5,25 @@
 #      （KimiDeltaAttention——K3 化正身插槽）+ Book4 SparseMoE——四代组件一台机器；
 #   ② 层排布 [kda×3, mla]×2（full_attention_interval=4 缩微；末层全局——K3「末层必全局」缩微）；
 #   ③ 参数账双口径 assert（config 公式整数精确算 vs 模型实测 n_params 逐位对账）：
-#      gdn_sub 臂（ch05 GatedDeltaNet 替身插槽）= toyA 定版账 **43,905,888 / 激活非嵌入 11,662,176**；
+#      gdn_sub 臂（ch05 GatedDeltaNet 替身插槽）= toyA 定版账 **43,905,888 / 激活非嵌入 11,924,320（补入router）**；
 #      kda 臂（K3 化正身插槽：per-channel 下界门 + 低秩遗忘门 + 满秩输出门）= K3 化换装账
-#      **44,277,936 / 12,034,224**（差值 +372,048 = 6 层 × 62,008/层——「K3 化单点替换的参数代价」
+#      **44,277,936 / 12,296,368（补入router）**（差值 +372,048 = 6 层 × 62,008/层——「K3 化单点替换的参数代价」
 #      逐项报，主账仍 toyA——大纲口径「换档另报参数账，主账仍 toyA」）；
 #   ④ MXFP4 钩子：路由专家权重 STE 模拟量化（复用 Book4 ch07 fp8_sim.mxfp4_rt——块 32/E8M0；
-#      只量路由专家 12 Linear/层，router/共享专家/注意力不量——K3 侧口径）；
-#   ⑤ KDA 遗忘门分布采集（collect_g_stats——「每通道学出了不同的遗忘速度」第一手，图 6.4 数据源）。
+#      只量路由专家 192个Linear/层，router/共享专家/注意力不量——K3 侧口径）；
+#   ⑤ KDA 遗忘门分布采集（collect_g_stats——拆开头内/头间变化；历史图6.4只保留旧汇总）。
 # 【替换件几何（toyA 定版；大纲 v1.1 §K3 玩具 config）】
 #   V=8192 / d=512 / L=8；KDA 插槽 h_k=h_v=8、d_k=d_v=64、conv 4、chunk 64（gdn_sub）/16（kda——
 #   K3 报告 16-token 数字链口径）；MLA 插槽 h=8、kv_lora=128、q_lora=None、qk_nope=64、qk_rope=32、
 #   v_head=64（承 Book4 ch06 件几何）；MoE E=64/top4/共享 1/w_e=32（稀疏度 16:1——K3 896:16=56:1 缩微）。
 # 运行方式：cd 工作区根目录 && source env.sh && python "code/ch06/k3_toy.py" [--out-name run1]
-#   CPU 参数账 assert + MPS 3 步冒烟；预计 <2 分钟。
+#   CPU 参数账 assert + MPS或CPU一次前后向及一次量化前向；预计 <2 分钟。
 # 产物：log/book5-ch06/k3_toy_{out}.json（不入库）
 import argparse
 import importlib.util
 import json
 import os
+from pathlib import Path
 import sys
 
 import torch
@@ -30,20 +31,20 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
+REPO_ROOT = str(next((p for p in Path(__file__).resolve().parents if (p / "env.sh").is_file()), Path.cwd()))
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book5-ch06")
 SEED = 20261002
 
 # ---------------- 三候选 bootstrap（hybrid409 `_B4_CH09_CANDS` 同款；书仓布局同款可命中） ----------------
-_B4_FEAS_CANDS = [
-    os.path.join(REPO_ROOT, "code", "Book4-规模与效率", "00-feasibility"),              # 工作区布局
-    os.path.join(REPO_ROOT, "from-models-to-vllm", "book4-scale-and-efficiency", "code", "00-feasibility"),
-    os.path.join(REPO_ROOT, "book4-scale-and-efficiency", "code", "00-feasibility"),    # 书仓裸布局
+_B4_FEAS_CANDS = [str(p/"book4-scale-and-efficiency/code/00-feasibility") for p in Path(__file__).resolve().parents]
+_B4_FEAS_CANDS += [
+    os.path.join(REPO_ROOT,"from-models-to-vllm/book4-scale-and-efficiency/code/00-feasibility"),
+    os.path.join(REPO_ROOT,"code/Book4-规模与效率/00-feasibility"),
 ]
-_B4_CH07_CANDS = [
-    os.path.join(REPO_ROOT, "code", "Book4-规模与效率", "ch07"),
-    os.path.join(REPO_ROOT, "from-models-to-vllm", "book4-scale-and-efficiency", "code", "ch07"),
-    os.path.join(REPO_ROOT, "book4-scale-and-efficiency", "code", "ch07"),
+_B4_CH07_CANDS = [str(p/"book4-scale-and-efficiency/code/ch07") for p in Path(__file__).resolve().parents]
+_B4_CH07_CANDS += [
+    os.path.join(REPO_ROOT,"from-models-to-vllm/book4-scale-and-efficiency/code/ch07"),
+    os.path.join(REPO_ROOT,"code/Book4-规模与效率/ch07"),
 ]
 
 
@@ -62,6 +63,7 @@ def _fp8_path():
 def _load(path, name):
     spec = importlib.util.spec_from_file_location(name, path)
     mod = importlib.util.module_from_spec(spec)
+    sys.modules[name] = mod
     spec.loader.exec_module(mod)
     return mod
 
@@ -79,9 +81,11 @@ def bootstrap():
 
 
 def save_json(name, obj, out_name):
+    if not out_name or Path(out_name).name != out_name or out_name in (".", ".."):
+        raise ValueError("--out-name 必须为单个文件名")
     os.makedirs(OUT_DIR, exist_ok=True)
     path = os.path.join(OUT_DIR, f"{name}_{out_name}.json")
-    with open(path, "w", encoding="utf-8") as f:
+    with open(path, "x", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False, indent=2)
     print(f"[产物] {path}")
     return path
@@ -129,20 +133,22 @@ def hand_account(V, d, pattern, E, top_k, w_e, n_shared, kda_impl):
     emb = 2 * V * d + d                                                          # untied 两份 + 终态 norm
     total = sum(per_layer) + emb
     act_body = sum((attn_of if k == "kda" else mla_attn) + 3 * d * (top_k * w_e + n_shared * w_e)
-                   + 2 * d for k in pattern) + d
-    return {"total": total, "activated_non_emb": act_body, "detail": detail}
+                   + E*d + 2*d for k in pattern) + d
+    return {"total": total, "activated_non_emb": act_body, "active_with_output_table": act_body+V*d, "detail": detail}
 
 
 # toyA 定版账（大纲 v1.1）：gdn_sub 与 kda 两口径——assert 正身
 TOY_A_ASSERTS = {
-    "gdn_sub": {"total": 43_905_888, "activated_non_emb": 11_662_176},
-    "kda": {"total": 44_277_936, "activated_non_emb": 12_034_224},
+    "gdn_sub": {"total": 43_905_888, "activated_non_emb": 11_924_320},
+    "kda": {"total": 44_277_936, "activated_non_emb": 12_296_368},
 }
 
 
 def make_pattern(L=8, interval=4):
-    """[kda×(interval−1), mla] 重复——3:1；末层必全局（interval 整除处为 mla，末层落在整除点）。"""
-    return ["mla" if (i + 1) % interval == 0 else "kda" for i in range(L)]
+    """[kda×(interval−1), mla] 重复——3:1；interval整除处或末层为mla（非整除层数也保留末层全局）。"""
+    if L<1 or interval<1:
+        raise ValueError("L和interval须为正")
+    return ["mla" if (i+1)%interval==0 or i==L-1 else "kda" for i in range(L)]
 
 
 # ---------------- K3 玩具整机 ----------------
@@ -158,6 +164,8 @@ class K3Toy(nn.Module):
         m4, _, gdn, kda = bootstrap()
         self.m4, self.cfg = m4, cfg
         pattern = cfg.get("pattern") or make_pattern(cfg["L"])
+        if len(pattern)!=cfg["L"] or not set(pattern)<= {"kda","mla"}:
+            raise ValueError("pattern长度或层型错误")
         self.pattern = pattern
         slot_cfg = m4.SlotConfig(vocab_size=cfg["V"], hidden_size=cfg["d"],
                                  num_hidden_layers=cfg["L"], num_attention_heads=8,
@@ -194,9 +202,9 @@ class K3Toy(nn.Module):
         return self.inner(idx, targets)
 
     def collect_g_stats(self, x):
-        """KDA 遗忘门分布采集：给一批 token id 或隐状态 x，返回各 KDA 层 g 的逐通道均值与直方图。
+        """KDA 遗忘门分布采集：给一批 token id x，返回各 KDA 层 g 的逐通道均值与直方图。
 
-        g ∈ (g_min,0) per-channel——「每通道学出了不同的遗忘速度」的实测（图 6.4 数据源）。
+        g为逐头逐通道门；分别报告头内、头间差异，不能由展平std唯一断言头内分化。
         实现：临时以实例属性遮蔽各 kda 层的 forget_gate 抓输出（finally 还原，不侵入 kda.py）。
         gdn_sub 臂（无 per-channel 门）返回 None。
         """
@@ -204,6 +212,8 @@ class K3Toy(nn.Module):
         if not kda_layers or not hasattr(self.model.layers[kda_layers[0]].self_attn,
                                          "forget_gate"):
             return None
+        if x.dtype != torch.long:
+            raise ValueError("统计入口接收token id；完整模型负责生成RoPE和层输入")
         captured = {}
 
         def wrap(layer_idx, orig):
@@ -218,12 +228,7 @@ class K3Toy(nn.Module):
             for i, slot in zip(kda_layers, slots):
                 slot.forget_gate = wrap(i, slot.forget_gate)                      # 实例属性遮蔽类方法
             with torch.no_grad():
-                if x.dtype == torch.long:
-                    self.inner(x)
-                else:
-                    h = x
-                    for layer in self.model.layers:
-                        h = layer(h, None, None)
+                self.inner(x)
         finally:
             for slot in slots:
                 del slot.forget_gate                                              # 还原类方法
@@ -235,6 +240,10 @@ class K3Toy(nn.Module):
                 hist = torch.histogram(g.flatten(), bins=50, range=(-5.0, 0.0))
                 stats.append({"layer": i, "per_channel_mean": per_channel.tolist(),
                               "per_channel_std_across_channels": float(per_channel.std()),
+                              "within_head_std_mean": float(per_channel.std(dim=-1).mean()),
+                              "between_head_std": float(per_channel.mean(-1).std()),
+                              "statistic_note": "旧std展平H×Dk，含头间差；新增within_head区分同头通道差",
+                              "probe_shape": list(g.shape),
                               "hist_counts": hist.hist.tolist(),
                               "bin_edges": hist.bin_edges.tolist(),
                               "g_min_bound": -5.0})
@@ -285,6 +294,7 @@ def main():
     ap = argparse.ArgumentParser(description="Book5 ch6 K3 玩具整机：参数账 assert + 冒烟")
     ap.add_argument("--out-name", default="run1")
     args = ap.parse_args()
+    torch.set_num_threads(2)
     m4 = bootstrap()[0]
     device = m4.pick_device("mps")
     results = {"seed": SEED, "device": str(device)}
@@ -303,15 +313,18 @@ def main():
         print(f"[{kda_impl}] 总参 {actual:,}（手算逐位 ✓ 定版账 ✓）| "
               f"激活非嵌入 {hand['activated_non_emb']:,} ✓ | 明细 {hand['detail']}")
         results[kda_impl] = {"total": actual, "activated_non_emb": hand["activated_non_emb"],
+                             "active_with_output_table": hand["active_with_output_table"],
                              "detail": hand["detail"]}
 
-    # 冒烟：kda 臂 3 步（MPS bf16 autocast）+ MXFP4 钩子量/不量参数账不变 assert
+    # 冒烟：kda 臂一次前后向（MPS bf16 autocast）+ MXFP4 钩子量/不量参数账不变 assert
     torch.manual_seed(SEED)
     model = K3Toy(toy_a_cfg(kda_impl="kda")).to(device)
     idx = torch.randint(0, 8192, (2, 128), device=device)
     with torch.autocast(device_type=device.type, dtype=torch.bfloat16):
         _, loss = model(idx[:, :-1], idx[:, 1:])
     loss.backward()
+    assert torch.isfinite(loss), "非有限loss"
+    assert all(torch.isfinite(p.grad).all() for p in model.parameters() if p.grad is not None), "非有限梯度"
     gnorm = sum(p.grad.norm().item() for p in model.parameters() if p.grad is not None)
     print(f"[kda 冒烟] loss {loss.item():.3f} | 梯度范数 {gnorm:.2f}（有限）")
     n_before = model.n_params()
@@ -319,6 +332,7 @@ def main():
     assert model.n_params() == n_before, "量化钩子不得改参数账"
     with torch.autocast(device_type=device.type, dtype=torch.bfloat16):
         _, loss_q = model(idx[:, :-1], idx[:, 1:])
+    assert torch.isfinite(loss_q), "量化模拟产生非有限loss"
     print(f"[MXFP4 钩子] 换 {n_swapped} 个 Linear | 参数账不变 ✓ | loss {loss.item():.3f}→{loss_q.item():.3f}")
     results["smoke"] = {"loss": float(loss.item()), "grad_norm": float(gnorm),
                         "mxfp4_swapped": n_swapped, "loss_with_mxfp4": float(loss_q.item())}

@@ -11,7 +11,7 @@
 # 底座=Book4 cand2 两刀机（409,115,648；d=1024/L=12/MLA_LITE/E8 top2 s1 w=938）；
 #   等总参补偿：w_expert 938→810（ΔMoE=12×3,538,944=42,467,328 抵 Δattn=9×4,705,824=42,352,416）；
 #   净差 −114,912（−0.028%）→ 三刀总参 409,000,736（与 cand2 等总参的 ≈409M 口径；精确值以本件 assert 为正身）。
-#   —— 三形态等参对照链：Book3 稠密 207M（207,119,360）→ Book4 两刀 409M（409,115,648）→ 本册三刀 409M（409,000,736）。
+#   —— 三形态对照链（仅后两代近似等总参）：Book3 稠密 207M（207,119,360）→ Book4 两刀 409M（409,115,648）→ 本册三刀 409M（409,000,736）。
 # 【层号双口径（全文一套）】层模式 [gdn,gdn,gdn,mla]×3 为 config 0 起索引——MLA 在 3/7/11；
 #   行文/例题固定人读 1 起：第 4/8/12 层 MLA（首次出现处加换算句）。
 # 【分类型状态账】MLA 3 层：每 token (d_c+d_h^R)=320 元素 × 3 层 = 960 元素/token，随 n 线性（无界）；
@@ -25,6 +25,8 @@ import argparse
 import json
 import math
 import os
+from pathlib import Path
+from datetime import datetime, timezone
 import sys
 import time
 
@@ -33,21 +35,17 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
+REPO_ROOT = str(next((p for p in Path(__file__).resolve().parents if (p/"env.sh").is_file()),Path.cwd()))
 OUT_DIR = os.path.join(REPO_ROOT, "log", "book5-ch09")
 SEED = 20261002                                            # 全书统一种子
 
 # ---------------- 三候选 bootstrap（llama409 `_B3_CANDS` 已验证模式；书仓定稿后同款可命中） ----------------
-_B4_CH09_CANDS = [
-    os.path.join(REPO_ROOT, "code", "Book4-规模与效率", "ch09"),                          # 工作区布局
-    os.path.join(REPO_ROOT, "from-models-to-vllm", "book4-scale-and-efficiency", "code", "ch09"),
-    os.path.join(REPO_ROOT, "book4-scale-and-efficiency", "code", "ch09"),                # 书仓裸布局
+_B4_CH09_CANDS = [str(p/"book4-scale-and-efficiency/code/ch09") for p in Path(__file__).resolve().parents]
+_B4_CH09_CANDS += [
+    os.path.join(REPO_ROOT,"from-models-to-vllm/book4-scale-and-efficiency/code/ch09"),
+    os.path.join(REPO_ROOT,"code/Book4-规模与效率/ch09"),
 ]
-_B5_CH05_CANDS = [
-    os.path.join(REPO_ROOT, "code", "Book5-前沿混合架构", "ch05"),
-    os.path.join(REPO_ROOT, "from-models-to-vllm", "book5-frontier-hybrid-architectures", "code", "ch05"),
-    os.path.join(REPO_ROOT, "book5-frontier-hybrid-architectures", "code", "ch05"),
-]
+_B5_CH05_CANDS = [os.path.abspath(os.path.join(HERE,"..","ch05"))]
 
 
 def bootstrap():
@@ -235,7 +233,8 @@ def mla_layer_params(cfg: ThreeKnifeConfig):
     """MLA 插槽层参数手算（含 q_a/kv_a 两枚潜向量 RMSNorm）——Book4 hand_account 同式。"""
     d, h, m = cfg.hidden_size, cfg.num_attention_heads, cfg.mla
     r_q = m.get("q_lora_rank")
-    q_side = (d * r_q + r_q * h * (m["qk_nope_head_dim"] + m["qk_rope_head_dim"]))
+    width = h * (m["qk_nope_head_dim"] + m["qk_rope_head_dim"])
+    q_side = d * width if r_q is None else d * r_q + r_q * width
     kv_down = d * (m["kv_lora_rank"] + m["qk_rope_head_dim"])                   # [W^DKV;W^KR] 融合一件
     kv_up = m["kv_lora_rank"] * h * (m["qk_nope_head_dim"] + m["v_head_dim"])   # [W^UK;W^UV] 按头行块拼接
     o_side = h * m["v_head_dim"] * d
@@ -298,7 +297,7 @@ def typed_state_account(cfg: ThreeKnifeConfig, conv_kernel=4, ns=(1024, 4096, 16
                    n token 共 3×320×n（无界，随 n 线性）。
     GDN 层（9 层）：每层固定 h_v·d_k·d_v（递归状态矩阵 S）+ (k_conv−1)·conv_dim（因果短卷积滞留）
                    = 131,072 + 15,360 = 146,432——与 n 无关；9 层合计 1,317,888。
-    交叉点 n*：全 MLA 等价账 = 9 层 GDN 固定账 ÷ 每 token MLA 账 = 1,317,888/960 ≈ 1,373——
+    交叉点 n*：同一混合模型内增长项追平固定项 = 9 层 GDN 固定账 ÷ 每 token MLA 账 = 1,317,888/960 ≈ 1,373——
                n 超过此值后「9 层 GDN 的全部状态」仍恒定，而 3 层 MLA 的账继续线性上涨。
     """
     g = cfg.gdn
@@ -319,10 +318,14 @@ def typed_state_account(cfg: ThreeKnifeConfig, conv_kernel=4, ns=(1024, 4096, 16
 
 # ---------------- 自测：双口径 assert + 分类型账打印 + 初始 loss 数学自检 ----------------
 def self_test(out_name):
+    if not out_name or Path(out_name).name!=out_name or out_name in (".",".."):
+        raise ValueError("out-name必须为单个文件名")
+    path=os.path.join(OUT_DIR,f"hybrid409_selftest_{out_name}.json")
+    if os.path.exists(path):raise FileExistsError(path)
     os.makedirs(OUT_DIR, exist_ok=True)
     t0 = time.perf_counter()
     torch.manual_seed(SEED)
-    report = {"seed": SEED, "date": "2026-10-08", "arms": {}}
+    report = {"seed": SEED, "date": datetime.now(timezone.utc).isoformat(), "torch": torch.__version__, "arms": {}}
 
     cfg = make_hybrid_cfg()
     model = ThreeKnifeLM(cfg)
@@ -377,7 +380,7 @@ def self_test(out_name):
     for n, row in st["totals_by_n"].items():
         print(f"  n={n:>6}: MLA 无界账 {row['mla_unbounded_elems']:>10,} + GDN 固定账 "
               f"{row['gdn_fixed_elems']:>10,} = {row['total_elems']:>11,} 元素"
-              f"（fp16 字节 {row['total_elems'] * 2 / 1024 / 1024:,.1f} MiB）")
+              f"（假定全部2字节的估计 {row['total_elems'] * 2 / 1024 / 1024:,.1f} MiB）")
     report["arms"]["hybrid409"]["typed_state_account"] = st
 
     # ④ 初始 loss 自检（随机 token，CPU fp32）：预言 ln V + d·σ²/2（untied 无自泄漏；承 Book3/4 判据）
@@ -423,7 +426,7 @@ def self_test(out_name):
     report["wall_sec"] = round(time.perf_counter() - t0, 1)
     report["verdict"] = "PASS"
     path = os.path.join(OUT_DIR, f"hybrid409_selftest_{out_name}.json")
-    with open(path, "w", encoding="utf-8") as f:
+    with open(path, "x", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
     print(f"[判定] PASS | 墙钟 {report['wall_sec']} s | 产物 {path}")
     return report
